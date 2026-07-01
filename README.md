@@ -12,10 +12,14 @@ Design docs: `SPEC.md`, `WATCHLIST-RESEARCH.md`.
 4. Holdings: alerts on STOP / TRIM / TARGET hits. Watchlist: alerts on BUY-zone hits with a 0-100 conviction score and position sizing.
 5. De-dupes so you get one alert per level per day (`state.json`).
 
-## Free vs Starter
+## Data sources (all free)
 
-- **Free (0 SAR):** delayed quotes, no history. Proves the pipeline. RSI, support/resistance, and full conviction are unavailable, so alerts fire on price levels + basic regime only.
-- **Starter (149 SAR/mo):** realtime quotes, bulk quotes, daily history. Everything lights up. Set repo variable `DATA_MODE=realtime`.
+- **Yahoo Finance (primary):** daily history + ~15-min delayed quotes, no key. Powers RSI, support/resistance, conviction, and auto-levels. Tadawul code `2222` maps to `2222.SR`.
+- **SAHMK Free (fallback + index):** covers the TASI index summary for the regime filter, and fills in a quote for any symbol Yahoo doesn't carry. Needs the free `SAHMK_API_KEY`.
+
+Total cost: 0 SAR. A 6-12 month swing system acts on daily levels, so ~15-min delayed prices are fine. Licensed realtime (SAHMK Starter, 149/mo) is an optional later upgrade, not required.
+
+Known risks: Yahoo is unofficial and can break (the SAHMK fallback covers gaps), and its coverage of Saudi small-caps / recent IPOs is uneven. The first `suggest` run shows which of your 13 names resolve.
 
 ## Setup
 
@@ -29,7 +33,7 @@ Design docs: `SPEC.md`, `WATCHLIST-RESEARCH.md`.
 
 ## Levels are auto-derived (you approve)
 
-You chose auto-derive, so you don't edit levels by hand. Once the SAHMK key is in (Starter, since history is needed):
+You chose auto-derive, so you don't edit levels by hand. History comes from Yahoo (free), so this works without a paid plan:
 
 1. Generate proposals: Actions -> TASI alerts -> Run workflow -> mode = `autolevels`. The system writes proposed watchlist buy zones (near support) and holding stops/targets (from support/resistance) to `levels.json` and prints them in the run log.
 2. Review `levels.json`. Adjust any number you disagree with, or re-run `autolevels` to refresh.

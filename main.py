@@ -15,6 +15,7 @@ from datetime import date
 
 import config as C
 import analyze as A
+import data
 from sahmk import Sahmk, SahmkError
 import notify
 
@@ -74,7 +75,7 @@ def mark_alerted(state, key):
 
 
 def run():
-    mode = os.environ.get("DATA_MODE", "realtime")
+    mode = os.environ.get("DATA_MODE", "delayed")  # SAHMK Free is delayed; Yahoo is primary
     api = Sahmk(data_mode=mode)
 
     if "--heartbeat" in sys.argv:
@@ -82,15 +83,16 @@ def run():
         return
 
     symbols = resolve_symbols(api)
+    provider = data.DataProvider(sahmk=api)  # Yahoo primary, SAHMK Free fallback
     levels = load_json(LEVELS_FILE, {})
     state = load_json(STATE_FILE, {})
 
-    summary = api.market_summary()
+    summary = api.market_summary()  # SAHMK Free covers the index summary
     ok_to_buy, regime_reason = A.regime_ok_for_buys(summary, [], C.REGIME)
 
     all_keys = {**C.HOLDINGS, **C.WATCHLIST}
     valid = {k: symbols[k] for k in all_keys if symbols.get(k)}
-    qmap = api.quotes(list(valid.values()))
+    qmap = provider.quotes(list(valid.values()))
 
     suggest = "--suggest" in sys.argv
     autolevels = "--autolevels" in sys.argv
@@ -104,7 +106,7 @@ def run():
         price = q.get("price")
         if price is None:
             continue
-        closes = api.history_closes(sym, C.HISTORY_DAYS)
+        closes = provider.history_closes(sym, C.HISTORY_DAYS)
         rsi_val = A.rsi(closes, C.RSI_PERIOD) if closes else None
         support, resistance = A.support_resistance(closes, C.SR_LOOKBACK_DAYS) if closes else (None, None)
         is_holding = key in C.HOLDINGS

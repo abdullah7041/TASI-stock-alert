@@ -2,9 +2,10 @@ name: TASI alerts
 
 on:
   schedule:
-    # Every 10 min, 07:00-11:59 UTC (10:00-14:55 Riyadh), Sunday-Thursday.
+    # Every 15 min, 07:00-11:59 UTC (10:00-14:55 Riyadh), Sunday-Thursday.
+    # Yahoo data is ~15-min delayed, so polling faster than 15 min just burns Action minutes.
     # GitHub cron is UTC and can be delayed a few minutes under load.
-    - cron: "*/10 7-11 * * 0,1,2,3,4"
+    - cron: "*/15 7-11 * * 0,1,2,3,4"
   workflow_dispatch:
     inputs:
       mode:
@@ -19,9 +20,9 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -31,7 +32,7 @@ jobs:
         env:
           SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          DATA_MODE: ${{ vars.DATA_MODE || 'realtime' }}
+          DATA_MODE: ${{ vars.DATA_MODE || 'delayed' }}
         run: |
           if [ "${{ github.event.inputs.mode }}" = "heartbeat" ]; then
             python main.py --heartbeat
