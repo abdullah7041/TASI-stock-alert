@@ -1,165 +1,203 @@
 """
-Pure analysis functions. No network, no I/O -> fully unit-testable.
-RSI, support/resistance, market-regime read, conviction score, position sizing.
+Recommendation engine.
+
+Turns price + history + your levels into an action call. Pure functions on
+plain inputs so every decision is inspectable and unit-testable offline.
+
+It automates YOUR rules. It is not licensed financial advice and it never places
+an order. You execute every trade yourself.
 """
-from math import floor
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+
+import indicators as ind
 
 
-def rsi(closes, period=14):
-    """Wilder's RSI. Returns None if not enough data. 0-100."""
-    if len(closes) < period + 1:
-        return None
-    gains, losses = [], []
-    for i in range(1, len(closes)):
-        ch = closes[i] - closes[i - 1]
-        gains.append(max(ch, 0.0))
-        losses.append(max(-ch, 0.0))
-    avg_gain = sum(gains[:period]) / period
-    avg_loss = sum(losses[:period]) / period
-    for i in range(period, len(gains)):
-        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
-        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
-    if avg_loss == 0:
-        return 100.0
-    rs = avg_gain / avg_loss
-    return round(100 - (100 / (1 + rs)), 2)
+# --- Market regime ---------------------------------------------------------
+def market_regime(index_df: pd.DataFrame, index_ma: int) -> str:
+    """'ok' or 'breakdown'. Breakdown = index below its MA and the MA is falling.
+    When breakdown, BUY signals are suppressed."""
+    if index_df is None or index_df.empty or "Close" not in index_df:
+        return "unknown"
+    closes = index_df["Close"]
+    if len(closes) < index_ma + 2:
+        return "unknown"
+    ma_now = closes.iloc[-index_ma:].mean()
+    ma_prev = closes.iloc[-index_ma - 1:-1].mean()
+    price = float(closes.iloc[-1])
+    if price < ma_now and ma_now < ma_prev:
+        return "breakdown"
+    return "ok"
 
 
-def support_resistance(closes, lookback=20):
-    """Simple S/R = min/max of the recent window. Returns (support, resistance) or (None, None)."""
-    if len(closes) < 2:
-        return (None, None)
-    window = closes[-lookback:]
-    return (round(min(window), 2), round(max(window), 2))
+# --- Level derivation ------------------------------------------------------
+def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float) -> dict:
+    """Propose levels from technicals so you don't hand-set them.
 
-
-def moving_average(values, n):
-    if len(values) < n:
-        return None
-    return sum(values[-n:]) / n
-
-
-def regime_ok_for_buys(summary, index_closes, regime_cfg):
+    - buy_zone: just above nearest support (a place to add on a pullback).
+    - stop:     below support, capped by stop_pct.
+    - target:   nearest resistance above.
+    You review these in levels.json before they go live.
     """
-    Decide whether the market regime permits BUY alerts.
-    summary: SAHMK market_summary dict (may be None).
-    index_closes: TASI daily closes oldest->newest (may be []).
-    Returns (ok: bool, reason: str).
-    """
-    if summary:
-        chg = summary.get("index_change_percent")
-        if chg is not None and chg <= regime_cfg["index_down_day_pct"]:
-            return (False, f"TASI down {chg}% today (<= {regime_cfg['index_down_day_pct']}%)")
-        mood = summary.get("market_mood")
-        if mood in regime_cfg["bearish_moods"]:
-            return (False, f"market mood {mood}")
-    if index_closes:
-        ma = moving_average(index_closes, regime_cfg["index_below_ma_days"])
-        if ma is not None and index_closes[-1] < ma:
-            return (False, f"TASI below its {regime_cfg['index_below_ma_days']}-day average")
-    return (True, "regime ok")
-
-
-def conviction_score(price, rsi_val, closes, buy_zone):
-    """
-    0-100 conviction for a BUY setup. Transparent, weighted:
-      trend (40): price above short MA and MA rising
-      rsi   (35): favours 40-60 rising, penalises >70 (extended) and <30 (falling knife risk)
-      level (25): closer to / inside the buy zone scores higher
-    Missing inputs (Free tier: no history) just drop that component's weight.
-    """
-    parts, weights = [], []
-
-    # Trend component
-    ma20 = moving_average(closes, 20) if closes else None
-    ma50 = moving_average(closes, 50) if closes else None
-    if ma20 is not None:
-        trend = 0.0
-        if price > ma20:
-            trend += 0.6
-        if ma50 is not None and ma20 > ma50:
-            trend += 0.4
-        parts.append(trend * 100)
-        weights.append(40)
-
-    # RSI component
-    if rsi_val is not None:
-        if rsi_val >= 70:
-            r = 20        # extended, risky to chase
-        elif rsi_val >= 55:
-            r = 85        # strong but not overbought
-        elif rsi_val >= 45:
-            r = 100       # sweet spot
-        elif rsi_val >= 35:
-            r = 60
-        else:
-            r = 30        # oversold, could keep falling
-        parts.append(r)
-        weights.append(35)
-
-    # Level proximity component
-    if buy_zone:
-        low, high = buy_zone
-        if low <= price <= high:
-            lvl = 100
-        else:
-            nearest = low if price < low else high
-            dist = abs(price - nearest) / price
-            lvl = max(0.0, 100 - dist * 1000)  # ~10% away -> 0
-        parts.append(lvl)
-        weights.append(25)
-
-    if not parts:
-        return None
-    return round(sum(p * w for p, w in zip(parts, weights)) / sum(weights))
-
-
-def derive_levels(kind, price, support, resistance, stop_loss_pct=0.09):
-    """
-    Propose levels from live technicals (for your approval, not auto-applied blindly).
-    kind: 'watchlist' -> {'buy_zone': (low, high)} near support.
-          'holding'   -> {'stop','trim','target'} from support/resistance.
-    Needs history (support/resistance); returns {} if unavailable (e.g. Free tier).
-    """
-    if kind == "watchlist":
-        if support is None:
-            return {}
-        return {"buy_zone": [round(support, 2), round(support * 1.03, 2)]}
-    # holding
-    out = {}
-    out["stop"] = round(support * 0.97, 2) if support is not None else round(price * (1 - stop_loss_pct), 2)
-    if resistance is not None:
-        out["trim"] = round(resistance, 2)
-        out["target"] = round(resistance * 1.05, 2)
+    if df is None or df.empty:
+        return {}
+    support, resistance = ind.support_resistance(
+        df["High"], df["Low"], df["Close"], tech["sr_lookback"]
+    )
+    price = float(df["Close"].iloc[-1])
+    out = {"price_at_derivation": round(price, 2)}
+    if support:
+        out["buy_zone_low"] = round(support, 2)
+        out["buy_zone_high"] = round(support * 1.03, 2)
+        # Stop below support, but no deeper than stop_pct from the buy zone.
+        stop_by_pct = support * (1 - stop_pct)
+        out["stop"] = round(min(support * 0.97, stop_by_pct), 2)
+    if resistance:
+        out["target"] = round(resistance, 2)
     return out
 
 
-def position_size(price, risk):
-    """
-    Shares to buy given cash + risk rules. Returns dict with shares, cost, commission,
-    and a 'skip' reason if the trade fails a rule.
+# --- Conviction ------------------------------------------------------------
+def conviction_score(df: pd.DataFrame, horizon_cfg: dict, tech: dict,
+                     distance_to_level_pct: float) -> int:
+    """0-100. Blends long-term trend, RSI position, and how close price is to the
+    actionable level. Higher = stronger setup. Transparent, no black box."""
+    closes = df["Close"]
+    score = 50.0
+
+    tr = ind.trend(closes, horizon_cfg["short_ma"], horizon_cfg["long_ma"])
+    score += {"up": 20, "flat": 0, "down": -20, "unknown": -5}.get(tr, 0)
+
+    r = ind.rsi(closes, tech["rsi_period"])
+    if not np.isnan(r):
+        if r < tech["rsi_oversold"]:
+            score += 15           # oversold into support = better entry.
+        elif r > tech["rsi_overbought"]:
+            score -= 15           # overbought = chasing.
+        else:
+            score += (50 - abs(r - 50)) * 0.2  # mild bonus for mid-range.
+
+    # Closer to the level = more actionable now.
+    if not np.isnan(distance_to_level_pct):
+        d = abs(distance_to_level_pct)
+        score += 15 if d <= 1 else 8 if d <= 3 else 0 if d <= 6 else -8
+
+    return int(max(0, min(100, round(score))))
+
+
+# --- Position sizing -------------------------------------------------------
+def position_size(price: float, risk: dict) -> dict:
+    """How many shares to buy given cash and risk rules. Transparent math.
+
+    Returns shares, spend, and a `skip` reason if the trade fails a rule.
     """
     cash = risk["deployable_cash"]
-    if cash <= 0:
-        return {"shares": 0, "skip": "deployable_cash is 0 - set it in config"}
-
     investable = cash * (1 - risk["cash_buffer_pct"])
-    budget = min(investable * risk["position_pct"],
-                 cash * risk["max_single_position_pct"])
-    shares = floor(budget / price)
-    if shares <= 0:
-        return {"shares": 0, "skip": "budget too small for one share"}
+    target_spend = min(investable * risk["position_pct"],
+                       cash * risk["max_single_pct"])
+    if price <= 0 or target_spend <= 0:
+        return {"shares": 0, "spend": 0.0, "skip": "no cash / bad price"}
 
-    trade_value = shares * price
-    one_side = max(trade_value * risk["commission_rate"], risk["min_commission_sar"])
-    round_trip = one_side * 2
-    if round_trip > trade_value * risk["commission_floor_pct"]:
-        return {"shares": 0, "skip": "commission > floor (trade too small to be worth it)"}
+    shares = int(target_spend // price)
+    if shares < 1:
+        return {"shares": 0, "spend": 0.0,
+                "skip": f"one share ({price:.2f}) exceeds target spend ({target_spend:.0f})"}
+
+    spend = shares * price
+    commission = max(spend * risk["commission_rate"], risk["min_commission"])
+    if commission > spend * risk["commission_floor_pct"]:
+        return {"shares": 0, "spend": 0.0,
+                "skip": "round-trip commission over floor; lot too small"}
 
     return {
         "shares": shares,
-        "cost": round(trade_value, 2),
-        "commission_round_trip": round(round_trip, 2),
-        "stop_price": round(price * (1 - risk["stop_loss_pct"]), 2),
-        "skip": None,
+        "spend": round(spend, 2),
+        "commission": round(commission, 2),
+        "pct_of_cash": round(spend / cash * 100, 1),
     }
+
+
+# --- Holdings evaluation ---------------------------------------------------
+def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict,
+                     horizon_cfg: dict, tech: dict) -> dict:
+    """STOP / TRIM / TARGET / HOLD for a name you own, with short+long reads."""
+    code = holding["code"]
+    action, reason = "HOLD", []
+    stop = levels.get("stop")
+    trim = levels.get("trim")
+    target = levels.get("target")
+
+    if stop is not None and price <= stop:
+        action = "SELL (STOP)"
+        reason.append(f"price {price:.2f} <= stop {stop:.2f}")
+    elif target is not None and price >= target:
+        action = "SELL (TARGET)"
+        reason.append(f"price {price:.2f} >= target {target:.2f}")
+    elif trim is not None and price >= trim:
+        action = "TRIM"
+        reason.append(f"price {price:.2f} >= trim {trim:.2f}")
+
+    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"], horizon_cfg["short_ma"])
+    long = ind.long_term_read(df, horizon_cfg["long_lookback_days"],
+                              horizon_cfg["short_ma"], horizon_cfg["long_ma"])
+    pnl_pct = round((price - holding["avg_cost"]) / holding["avg_cost"] * 100, 1) \
+        if holding.get("avg_cost") else None
+
+    return {
+        "kind": "holding",
+        "code": code, "name": holding.get("name", code),
+        "price": round(price, 2), "action": action, "reason": reason,
+        "unrealized_pct": pnl_pct,
+        "short_term": short, "long_term": long,
+    }
+
+
+# --- Watchlist evaluation --------------------------------------------------
+def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
+                       regime: str, risk: dict, horizon_cfg: dict, tech: dict,
+                       news=None) -> dict:
+    """BUY-zone check for a name you might buy. Suppressed in a market breakdown."""
+    code = item["code"]
+    low = levels.get("buy_zone_low")
+    high = levels.get("buy_zone_high")
+
+    in_zone = low is not None and high is not None and low <= price <= high
+    action = "WATCH"
+    reason = []
+    sizing = None
+
+    if in_zone:
+        if regime == "breakdown":
+            action = "WATCH (regime block)"
+            reason.append("in buy zone, but TASI is breaking down; BUY suppressed")
+        else:
+            action = "BUY"
+            reason.append(f"price {price:.2f} in buy zone {low:.2f}-{high:.2f}")
+            sizing = position_size(price, risk)
+            if sizing.get("skip"):
+                action = "WATCH (sizing skip)"
+                reason.append(sizing["skip"])
+
+    ref_level = low if low is not None else price
+    dist = (price - ref_level) / ref_level * 100 if ref_level else float("nan")
+    conviction = conviction_score(df, horizon_cfg, tech, dist) if not df.empty else 0
+
+    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"], horizon_cfg["short_ma"])
+    long = ind.long_term_read(df, horizon_cfg["long_lookback_days"],
+                              horizon_cfg["short_ma"], horizon_cfg["long_ma"])
+
+    out = {
+        "kind": "watchlist",
+        "code": code, "name": item.get("name", code),
+        "price": round(price, 2), "action": action, "reason": reason,
+        "conviction": conviction, "buy_zone": [low, high],
+        "distance_to_zone_pct": round(dist, 2) if not np.isnan(dist) else None,
+        "sizing": sizing, "short_term": short, "long_term": long,
+    }
+    if news is not None:
+        out["news"] = {"label": news.label, "score": news.score,
+                       "confidence": news.confidence, "count": len(news.headlines)}
+    return out

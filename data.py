@@ -1,73 +1,139 @@
 """
-Data layer. Yahoo Finance primary (free: daily history + ~15-min delayed quote),
-SAHMK Free as a fallback quote source. Tadawul code 2222 maps to '2222.SR' on Yahoo.
+Data layer.
 
-Rationale: a 6-12 month swing system computes RSI / support / resistance on daily
-closes and acts on prices that are 15 min old without harm, so licensed realtime
-(SAHMK Starter, 149/mo) isn't needed. Yahoo covers this for 0 SAR. SAHMK Free stays
-wired as a fallback for any symbol Yahoo doesn't cover.
+Primary source: Yahoo Finance (yfinance) — free, no key. Daily history +
+~15-min delayed quotes. Tadawul code 2222 maps to Yahoo symbol '2222.SR'.
+
+Fallback: SAHMK Free REST API — used only if Yahoo returns nothing for a symbol,
+and for the TASI index if Yahoo's index symbol misbehaves. Needs SAHMK_API_KEY.
+
+Every quote carries a timestamp and a `delayed` flag so an alert always tells you
+what it is acting on.
 """
-import yfinance as yf
+
+from __future__ import annotations
+
+import os
+import time
+from dataclasses import dataclass
+
+import pandas as pd
+
+SAHMK_BASE = "https://app.sahmk.sa/api/v1"
 
 
-def yahoo_symbol(sym):
-    return f"{sym}.SR"
+@dataclass
+class Quote:
+    code: str
+    price: float
+    ts: str          # ISO timestamp of the price
+    delayed: bool     # True on free/delayed data
+    source: str       # 'yahoo' or 'sahmk'
 
 
-def _period_for_days(days):
-    if days <= 35:
-        return "1mo"
-    if days <= 95:
-        return "3mo"
-    if days <= 185:
-        return "6mo"
-    if days <= 370:
-        return "1y"
-    return "2y"
+def yahoo_symbol(code: str) -> str:
+    """Tadawul code -> Yahoo symbol. '2222' -> '2222.SR'. Index symbols
+    already starting with '^' pass through."""
+    code = str(code).strip()
+    if code.startswith("^"):
+        return code
+    return f"{code}.SR"
 
 
-class DataProvider:
-    def __init__(self, sahmk=None):
-        self.sahmk = sahmk  # optional SAHMK client for fallback quotes
+# --- Yahoo -----------------------------------------------------------------
+def _yahoo_history(symbol: str, period: str) -> pd.DataFrame:
+    import yfinance as yf  # imported lazily so tests can run without it.
+    df = yf.Ticker(symbol).history(period=period, auto_adjust=False)
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.rename(columns=str.title)  # normalize column casing.
+    keep = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
+    return df[keep].dropna()
 
-    def history_closes(self, symbol, days=180):
-        """Daily closes oldest->newest from Yahoo. [] if unavailable."""
-        try:
-            df = yf.Ticker(yahoo_symbol(symbol)).history(
-                period=_period_for_days(days), interval="1d")
-            if len(df):
-                return [float(x) for x in df["Close"].dropna().tolist()]
-        except Exception:
-            pass
-        return []
 
-    def quote(self, symbol):
-        """Latest (delayed) price. Yahoo primary, SAHMK Free fallback. Dict or None."""
-        try:
-            t = yf.Ticker(yahoo_symbol(symbol))
-            price = None
-            try:
-                price = float(t.fast_info["last_price"])
-            except Exception:
-                df = t.history(period="5d", interval="1d")
-                if len(df):
-                    price = float(df["Close"].dropna().iloc[-1])
-            if price and price > 0:
-                return {"symbol": symbol, "price": round(price, 2),
-                        "is_delayed": True, "source": "yahoo"}
-        except Exception:
-            pass
-        if self.sahmk:
-            q = self.sahmk.quote(symbol)
-            if q and q.get("price") is not None:
-                q["source"] = "sahmk"
-                return q
+# --- SAHMK fallback --------------------------------------------------------
+def _sahmk_get(path: str, params: dict | None = None) -> dict | None:
+    key = os.environ.get("SAHMK_API_KEY")
+    if not key:
+        return None
+    import requests
+    try:
+        r = requests.get(
+            f"{SAHMK_BASE}{path}",
+            params=params or {},
+            headers={"X-API-Key": key},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return None
+        return r.json()
+    except Exception:
         return None
 
-    def quotes(self, symbols):
-        out = {}
-        for s in symbols:
-            q = self.quote(s)
-            if q:
-                out[s] = q
-        return out
+
+def _sahmk_quote(code: str) -> Quote | None:
+    data = _sahmk_get("/quotes/", {"symbols": code})
+    if not data:
+        return None
+    # SAHMK returns a list of quote objects; shape-tolerant parse.
+    rows = data if isinstance(data, list) else data.get("data") or data.get("results") or []
+    if not rows:
+        return None
+    row = rows[0]
+    price = row.get("price") or row.get("last") or row.get("close")
+    if price is None:
+        return None
+    return Quote(
+        code=str(code),
+        price=float(price),
+        ts=str(row.get("timestamp") or row.get("time") or time.strftime("%Y-%m-%dT%H:%M:%S")),
+        delayed=True,  # Free/Starter delayed unless you know you are on realtime.
+        source="sahmk",
+    )
+
+
+# --- Public API ------------------------------------------------------------
+def get_history(code: str, period: str = "1y") -> pd.DataFrame:
+    """Daily OHLCV history. Yahoo first, empty DataFrame if unavailable.
+    (SAHMK Free has no history, so no history fallback here.)"""
+    try:
+        df = _yahoo_history(yahoo_symbol(code), period)
+    except Exception:
+        df = pd.DataFrame()
+    return df
+
+
+def get_quote(code: str, delayed_default: bool = True) -> Quote | None:
+    """Latest price. Yahoo first (from the most recent daily bar), SAHMK fallback."""
+    try:
+        df = _yahoo_history(yahoo_symbol(code), "5d")
+        if not df.empty:
+            last = df.iloc[-1]
+            return Quote(
+                code=str(code),
+                price=float(last["Close"]),
+                ts=str(df.index[-1]),
+                delayed=delayed_default,
+                source="yahoo",
+            )
+    except Exception:
+        pass
+    return _sahmk_quote(code)
+
+
+def get_index_history(index_code: str, period: str = "6mo") -> pd.DataFrame:
+    """TASI index daily history for the regime filter."""
+    try:
+        df = _yahoo_history(yahoo_symbol(index_code), period)
+        if not df.empty:
+            return df
+    except Exception:
+        pass
+    # SAHMK index summary fallback (single point, wrapped as a 1-row frame).
+    data = _sahmk_get("/index/", {"symbol": "TASI"})
+    if data:
+        val = (data.get("value") or data.get("last") or data.get("close")
+               if isinstance(data, dict) else None)
+        if val is not None:
+            return pd.DataFrame({"Close": [float(val)]})
+    return pd.DataFrame()

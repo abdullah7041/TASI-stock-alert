@@ -1,208 +1,194 @@
 """
-TASI alert system - one run.
-  python main.py              # normal run: check levels, send alerts
-  python main.py --suggest    # print live price/RSI/support/resistance (no alerts)
-  python main.py --autolevels # propose buy zones + stops/targets from live data -> levels.json
-  python main.py --heartbeat  # send a 'system alive' ping to Discord
+Orchestration + CLI modes.
 
-Levels come from levels.json (auto-derived, you approve) and fall back to config.py.
-Secrets from env: SAHMK_API_KEY, DISCORD_WEBHOOK_URL. Optional: DATA_MODE=delayed|realtime.
+Modes (set via env MODE or first CLI arg):
+  heartbeat  - send one "alive" ping to Discord. Tests secrets + webhook.
+  suggest    - print raw price/RSI/support/resistance for every name. No alerts.
+  autolevels - derive buy zones / stops / targets into levels.json. You review it.
+  digest     - one pre-open summary of holdings + watchlist, sent to Discord.
+  run        - the session job: check levels, send alerts on hits, dedup.
+
+Run locally:  MODE=suggest python main.py
+On GitHub Actions the workflow sets MODE.
 """
+
+from __future__ import annotations
+
+import json
 import os
 import sys
-import json
-from datetime import date
+import time
+from pathlib import Path
 
-import config as C
-import analyze as A
-import data
-from sahmk import Sahmk, SahmkError
-import notify
+import config as cfg
+import data as dat
+import analyze as az
+import notify as nt
+import indicators as ind
 
-HERE = os.path.dirname(__file__)
-STATE_FILE = os.path.join(HERE, "state.json")
-SYMBOLS_FILE = os.path.join(HERE, "symbols.json")
-LEVELS_FILE = os.path.join(HERE, "levels.json")
-
-
-def load_json(path, default):
-    try:
-        with open(path) as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return default
+HERE = Path(__file__).parent
+SYMBOLS_FILE = HERE / "symbols.json"
+LEVELS_FILE = HERE / "levels.json"
+STATE_FILE = HERE / "state.json"
 
 
-def save_json(path, obj):
-    with open(path, "w") as f:
-        json.dump(obj, f, indent=2)
-
-
-def resolve_symbols(api):
-    cache = load_json(SYMBOLS_FILE, {})
-    changed = False
-    for key, meta in {**C.HOLDINGS, **C.WATCHLIST}.items():
-        if key in cache:
-            continue
-        cache[key] = key if key.isdigit() else api.resolve_symbol(meta["name"])
-        if cache[key] is None:
-            print(f"  ! could not resolve '{meta['name']}' ({key})")
-        changed = True
-    if changed:
-        save_json(SYMBOLS_FILE, cache)
-    return cache
-
-
-def holding_level(levels, key, name):
-    """levels.json value wins over config.py."""
-    v = levels.get(key, {}).get(name)
-    return v if v is not None else C.HOLDINGS[key].get(name)
-
-
-def watch_zone(levels, key):
-    v = levels.get(key, {}).get("buy_zone")
-    if v is None:
-        v = C.WATCHLIST[key].get("buy_zone")
-    return tuple(v) if v else None
-
-
-def already_alerted(state, key):
-    return state.get(key) == date.today().isoformat()
-
-
-def mark_alerted(state, key):
-    state[key] = date.today().isoformat()
-
-
-def run():
-    mode = os.environ.get("DATA_MODE", "delayed")  # SAHMK Free is delayed; Yahoo is primary
-    api = Sahmk(data_mode=mode)
-
-    if "--heartbeat" in sys.argv:
-        notify.send_text("TASI alert system is alive and watching. :white_check_mark:")
-        return
-
-    symbols = resolve_symbols(api)
-    provider = data.DataProvider(sahmk=api)  # Yahoo primary, SAHMK Free fallback
-    levels = load_json(LEVELS_FILE, {})
-    state = load_json(STATE_FILE, {})
-
-    summary = api.market_summary()  # SAHMK Free covers the index summary
-    ok_to_buy, regime_reason = A.regime_ok_for_buys(summary, [], C.REGIME)
-
-    all_keys = {**C.HOLDINGS, **C.WATCHLIST}
-    valid = {k: symbols[k] for k in all_keys if symbols.get(k)}
-    qmap = provider.quotes(list(valid.values()))
-
-    suggest = "--suggest" in sys.argv
-    autolevels = "--autolevels" in sys.argv
-    lines, proposals, alerts = [], {}, []
-
-    for key, meta in all_keys.items():
-        sym = symbols.get(key)
-        if not sym or sym not in qmap:
-            continue
-        q = qmap[sym]
-        price = q.get("price")
-        if price is None:
-            continue
-        closes = provider.history_closes(sym, C.HISTORY_DAYS)
-        rsi_val = A.rsi(closes, C.RSI_PERIOD) if closes else None
-        support, resistance = A.support_resistance(closes, C.SR_LOOKBACK_DAYS) if closes else (None, None)
-        is_holding = key in C.HOLDINGS
-
-        if suggest:
-            lines.append(f"{key} ({meta['name']}) sym={sym} price={price} RSI={rsi_val} "
-                         f"support={support} resistance={resistance} delayed={q.get('is_delayed')}")
-            continue
-
-        if autolevels:
-            kind = "holding" if is_holding else "watchlist"
-            proposed = A.derive_levels(kind, price, support, resistance, C.RISK["stop_loss_pct"])
-            if proposed:
-                proposals[key] = proposed
-                lines.append(f"{key} ({meta['name']}): {proposed}")
-            else:
-                lines.append(f"{key} ({meta['name']}): no history yet (Free tier?) - can't derive")
-            continue
-
-        if is_holding:
-            h = C.HOLDINGS[key]
-            for level_name, action in (("stop", "STOP"), ("trim", "TRIM"), ("target", "SELL")):
-                lvl = holding_level(levels, key, level_name)
-                if lvl is None:
-                    continue
-                hit = price <= lvl if level_name == "stop" else price >= lvl
-                if not hit:
-                    continue
-                dkey = f"{sym}:{action}:{lvl}"
-                if already_alerted(state, dkey):
-                    continue
-                pnl_pct = round((price - h["avg_cost"]) / h["avg_cost"] * 100, 1)
-                alerts.append({"action": action, "symbol": sym, "name": meta["name"], "price": price,
-                               "message": f"{action} level {lvl} hit at {price}.",
-                               "fields": [("P&L", f"{pnl_pct}%"), ("Shares", h["shares"]),
-                                          ("RSI", rsi_val), ("Delayed", q.get("is_delayed"))]})
-                mark_alerted(state, dkey)
-        else:
-            zone = watch_zone(levels, key)
-            if not zone:
-                continue
-            low, high = zone
-            if not (low <= price <= high):
-                continue
-            if not ok_to_buy:
-                dkey = f"{sym}:BUY_SUPPRESSED:{low}-{high}"
-                if not already_alerted(state, dkey):
-                    alerts.append({"action": "INFO", "symbol": sym, "name": meta["name"], "price": price,
-                                   "message": f"In buy zone {low}-{high} at {price}, but BUY suppressed: {regime_reason}.",
-                                   "fields": [("RSI", rsi_val)]})
-                    mark_alerted(state, dkey)
-                continue
-            dkey = f"{sym}:BUY:{low}-{high}"
-            if already_alerted(state, dkey):
-                continue
-            conv = A.conviction_score(price, rsi_val, closes, zone)
-            size = A.position_size(price, C.RISK)
-            fields = [("Conviction", f"{conv}/100" if conv is not None else "n/a"),
-                      ("RSI", rsi_val), ("Support", support), ("Resistance", resistance)]
-            if size.get("skip"):
-                fields.append(("Sizing", size["skip"]))
-            else:
-                fields += [("Buy", f"{size['shares']} sh = {size['cost']} SAR"),
-                           ("Stop", size["stop_price"]), ("Commission", size["commission_round_trip"])]
-            alerts.append({"action": "BUY", "symbol": sym, "name": meta["name"], "price": price,
-                           "message": f"In buy zone {low}-{high} at {price}.", "fields": fields})
-            mark_alerted(state, dkey)
-
-    if suggest:
-        print(f"Regime: {'BUY-OK' if ok_to_buy else 'BUYS OFF'} ({regime_reason})")
-        print("\n".join(lines) if lines else "no data (Free tier gives no history)")
-        return
-
-    if autolevels:
-        if proposals:
-            merged = {**levels, **proposals}
-            save_json(LEVELS_FILE, merged)
-            print("Proposed levels written to levels.json (review before relying on them):")
-        print("\n".join(lines) if lines else "no history available - upgrade to Starter to auto-derive")
-        return
-
-    for a in alerts:
+# --- small JSON helpers ----------------------------------------------------
+def _load(path: Path, default):
+    if path.exists():
         try:
-            notify.send(a)
-            print(f"sent: {a['action']} {a['symbol']} @ {a['price']}")
-        except Exception as e:
-            print(f"FAILED to send {a['symbol']}: {e}")
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return default
+    return default
 
-    save_json(STATE_FILE, state)
-    if not alerts:
-        print(f"No alerts. Regime: {regime_reason}. Checked {len(valid)} names.")
+
+def _save(path: Path, obj):
+    path.write_text(json.dumps(obj, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _today() -> str:
+    return time.strftime("%Y-%m-%d")
+
+
+# --- data assembly ---------------------------------------------------------
+def _load_history(code: str) -> "any":
+    return dat.get_history(code, cfg.TECH["history_period"])
+
+
+def _regime() -> str:
+    idx = dat.get_index_history(cfg.REGIME["index_code"])
+    return az.market_regime(idx, cfg.REGIME["index_ma"])
+
+
+def _levels_for(code: str) -> dict:
+    stored = _load(LEVELS_FILE, {})
+    if code in stored:
+        return stored[code]
+    return cfg.FALLBACK_LEVELS.get(code, {})
+
+
+# --- modes -----------------------------------------------------------------
+def mode_heartbeat() -> int:
+    ok = nt.send_discord("TASI recommender is alive and watching. (heartbeat, no prices checked)")
+    print("heartbeat sent:", ok)
+    return 0 if ok else 1
+
+
+def mode_suggest() -> int:
+    for item in cfg.HOLDINGS + cfg.WATCHLIST:
+        code = item["code"]
+        df = _load_history(code)
+        if df.empty:
+            print(f"{code} {item['name']}: NO DATA")
+            continue
+        price = float(df["Close"].iloc[-1])
+        r = ind.rsi(df["Close"], cfg.TECH["rsi_period"])
+        sup, res = ind.support_resistance(df["High"], df["Low"], df["Close"], cfg.TECH["sr_lookback"])
+        print(f"{code} {item['name']:<16} px {price:>8.2f}  RSI {r:>5.1f}  "
+              f"sup {sup}  res {res}  bars {len(df)}")
+    return 0
+
+
+def mode_autolevels() -> int:
+    out = _load(LEVELS_FILE, {})
+    for item in cfg.HOLDINGS + cfg.WATCHLIST:
+        code = item["code"]
+        df = _load_history(code)
+        if df.empty or len(df) < cfg.TECH["min_history_bars"]:
+            print(f"{code} {item['name']}: skipped (insufficient history)")
+            continue
+        lv = az.derive_levels(df, cfg.TECH, cfg.RISK["stop_loss_pct"])
+        out[code] = {**out.get(code, {}), **lv}
+        print(f"{code} {item['name']}: {lv}")
+    _save(LEVELS_FILE, out)
+    print(f"\nWrote {LEVELS_FILE.name}. Review it, adjust any number, then run normally.")
+    return 0
+
+
+def _collect_recs(include_news: bool):
+    regime = _regime()
+    recs = []
+    # Holdings.
+    for h in cfg.HOLDINGS:
+        df = _load_history(h["code"])
+        if df.empty:
+            continue
+        price = float(df["Close"].iloc[-1])
+        recs.append(az.evaluate_holding(h, price, df, _levels_for(h["code"]),
+                                        cfg.HORIZON, cfg.TECH))
+    # Watchlist.
+    for w in cfg.WATCHLIST:
+        df = _load_history(w["code"])
+        if df.empty:
+            continue
+        price = float(df["Close"].iloc[-1])
+        news = None
+        if include_news:
+            try:
+                import news as newsmod
+                news = newsmod.get_news(w["name"], w["code"])
+            except Exception:
+                news = None
+        recs.append(az.evaluate_watchlist(w, price, df, _levels_for(w["code"]),
+                                          regime, cfg.RISK, cfg.HORIZON, cfg.TECH, news))
+    return regime, recs
+
+
+def mode_digest() -> int:
+    regime, recs = _collect_recs(include_news=True)
+    msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
+                           quote_note="Delayed/daily data. Long-term reads are the reliable ones.")
+    ok = nt.send_discord(msg)
+    print("digest sent:", ok, "| recs:", len(recs))
+    return 0 if ok else 1
+
+
+def mode_run() -> int:
+    regime, recs = _collect_recs(include_news=False)
+    # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
+    actionable = [r for r in recs if r["action"] not in ("HOLD", "WATCH")]
+
+    state = _load(STATE_FILE, {})
+    today = _today()
+    fresh = []
+    for r in actionable:
+        key = f"{r['code']}:{r['action']}:{today}"
+        if state.get(key):
+            continue  # already alerted this level today.
+        state[key] = int(time.time())
+        fresh.append(r)
+
+    if fresh:
+        msg = nt.build_message(fresh, f"TASI alert ({today}) - regime: {regime}",
+                               quote_note="Delayed/daily data. Verify the live price before acting.")
+        ok = nt.send_discord(msg)
+        print("alert sent:", ok, "| fresh recs:", len(fresh))
+    else:
+        print("no fresh actionable recs; nothing sent.")
+
+    # prune old state keys (keep today only).
+    state = {k: v for k, v in state.items() if k.endswith(today)}
+    _save(STATE_FILE, state)
+    return 0
+
+
+MODES = {
+    "heartbeat": mode_heartbeat,
+    "suggest": mode_suggest,
+    "autolevels": mode_autolevels,
+    "digest": mode_digest,
+    "run": mode_run,
+}
+
+
+def main() -> int:
+    mode = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MODE", "run")).strip()
+    fn = MODES.get(mode)
+    if not fn:
+        print(f"unknown mode '{mode}'. choose: {', '.join(MODES)}")
+        return 2
+    return fn()
 
 
 if __name__ == "__main__":
-    try:
-        run()
-    except SahmkError as e:
-        print(f"SAHMK error: {e}")
-        sys.exit(1)
+    raise SystemExit(main())

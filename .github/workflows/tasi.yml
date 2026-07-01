@@ -1,23 +1,29 @@
-name: TASI alerts
+name: TASI recommender
 
+# Times are UTC. TASI trades 10:00-15:00 Riyadh = 07:00-12:00 UTC, Sun-Thu.
+# Cron day-of-week: Sunday=0 ... Thursday=4.
 on:
-  schedule:
-    # Every 15 min, 07:00-11:59 UTC (10:00-14:55 Riyadh), Sunday-Thursday.
-    # Yahoo data is ~15-min delayed, so polling faster than 15 min just burns Action minutes.
-    # GitHub cron is UTC and can be delayed a few minutes under load.
-    - cron: "*/15 7-11 * * 0,1,2,3,4"
   workflow_dispatch:
     inputs:
       mode:
-        description: "heartbeat or suggest (leave blank for normal run)"
-        required: false
-        default: ""
+        description: "heartbeat | suggest | autolevels | digest | run"
+        required: true
+        default: "run"
+  schedule:
+    # Pre-open digest at 06:45 UTC (09:45 Riyadh), Sun-Thu.
+    - cron: "45 6 * * 0,1,2,3,4"
+    # Session checks every 15 min, 07:00-11:59 UTC (10:00-14:59 Riyadh), Sun-Thu.
+    - cron: "*/15 7-11 * * 0,1,2,3,4"
 
 permissions:
-  contents: write
+  contents: write   # to commit state.json / levels.json back.
+
+concurrency:
+  group: tasi-recommender
+  cancel-in-progress: false
 
 jobs:
-  run:
+  watch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -25,28 +31,32 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
 
       - run: pip install -r requirements.txt
 
-      - name: Run
-        env:
-          SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          DATA_MODE: ${{ vars.DATA_MODE || 'delayed' }}
+      - name: Pick mode
+        id: mode
         run: |
-          if [ "${{ github.event.inputs.mode }}" = "heartbeat" ]; then
-            python main.py --heartbeat
-          elif [ "${{ github.event.inputs.mode }}" = "suggest" ]; then
-            python main.py --suggest
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "45 6 * * 0,1,2,3,4" ]; then
+            echo "mode=digest" >> "$GITHUB_OUTPUT"
           else
-            python main.py
+            echo "mode=run" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Persist alert state
-        if: github.event.inputs.mode == ''
+      - name: Run
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+          SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python main.py
+
+      - name: Commit state
         run: |
           git config user.name "tasi-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add state.json symbols.json levels.json 2>/dev/null || true
-          git commit -m "update state [skip ci]" 2>/dev/null || echo "nothing to commit"
+          git config user.email "tasi-bot@users.noreply.github.com"
+          git add state.json levels.json symbols.json 2>/dev/null || true
+          git commit -m "state update [skip ci]" 2>/dev/null || echo "nothing to commit"
           git push 2>/dev/null || echo "nothing to push"
