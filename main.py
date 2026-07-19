@@ -30,6 +30,7 @@ HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
 LEVELS_FILE = HERE / "levels.json"
 STATE_FILE = HERE / "state.json"
+BUDGET_FILE = HERE / "budget_state.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -60,11 +61,41 @@ def _regime() -> str:
     return az.market_regime(idx, cfg.REGIME["index_ma"])
 
 
-def _levels_for(code: str) -> dict:
-    stored = _load(LEVELS_FILE, {})
+def _levels_for(code: str, stored: dict | None = None) -> dict:
+    if stored is None:  # fallback path; callers in a loop pass the loaded dict.
+        stored = _load(LEVELS_FILE, {})
     if code in stored:
         return stored[code]
     return cfg.FALLBACK_LEVELS.get(code, {})
+
+
+# --- monthly budget ledger --------------------------------------------------
+def _month_key() -> str:
+    return time.strftime("%Y-%m")
+
+
+def _budget_remaining() -> float:
+    """Monthly cap minus what has already been RECOMMENDED this calendar month.
+    Edit budget_state.json by hand if you skipped a recommended buy."""
+    state = _load(BUDGET_FILE, {})
+    spent = float(state.get(_month_key(), {}).get("spent", 0.0))
+    return max(0.0, cfg.BUDGET["monthly_budget_sar"] - spent)
+
+
+def _budget_record(buys: list) -> None:
+    """Append this run's sized BUY recommendations to the month's ledger."""
+    sized = [b for b in buys if b.get("sizing") and b["sizing"].get("shares", 0) > 0]
+    if not sized:
+        return
+    state = _load(BUDGET_FILE, {})
+    month = state.setdefault(_month_key(), {"spent": 0.0, "allocations": []})
+    for b in sized:
+        month["allocations"].append({
+            "date": _today(), "code": b["code"], "name": b["name"],
+            "shares": b["sizing"]["shares"], "spend": b["sizing"]["spend"],
+        })
+        month["spent"] = round(month["spent"] + b["sizing"]["spend"], 2)
+    _save(BUDGET_FILE, state)
 
 
 # --- modes -----------------------------------------------------------------
@@ -75,6 +106,8 @@ def mode_heartbeat() -> int:
 
 
 def mode_suggest() -> int:
+    dat.get_histories([x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST],
+                      cfg.TECH["history_period"])  # one batch; loop reads cache.
     for item in cfg.HOLDINGS + cfg.WATCHLIST:
         code = item["code"]
         df = _load_history(code)
@@ -91,6 +124,8 @@ def mode_suggest() -> int:
 
 def mode_autolevels() -> int:
     out = _load(LEVELS_FILE, {})
+    dat.get_histories([x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST],
+                      cfg.TECH["history_period"])  # one batch; loop reads cache.
     for item in cfg.HOLDINGS + cfg.WATCHLIST:
         code = item["code"]
         df = _load_history(code)
@@ -106,45 +141,76 @@ def mode_autolevels() -> int:
 
 
 def _collect_recs(include_news: bool):
-    regime = _regime()
-    recs = []
-    # Holdings.
-    for h in cfg.HOLDINGS:
-        df = _load_history(h["code"])
-        if df.empty:
-            continue
-        price = float(df["Close"].iloc[-1])
-        recs.append(az.evaluate_holding(h, price, df, _levels_for(h["code"]),
-                                        cfg.HORIZON, cfg.TECH))
-    # Watchlist.
-    for w in cfg.WATCHLIST:
-        df = _load_history(w["code"])
-        if df.empty:
-            continue
-        price = float(df["Close"].iloc[-1])
-        news = None
-        if include_news:
+    """Returns (regime, recs, budget_summary).
+
+    Speed: one batched Yahoo download for every name PLUS the index (was 14
+    serial HTTP calls), news fetched in parallel threads (was 20 serial RSS
+    requests), levels.json loaded once (was once per name).
+    """
+    index_code = cfg.REGIME["index_code"]
+    all_codes = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST] + [index_code]
+    hist = dat.get_histories(all_codes, cfg.TECH["history_period"])
+
+    idx = hist.get(index_code)
+    if idx is None or idx.empty:
+        idx = dat.get_index_history(index_code)  # SAHMK fallback path.
+    regime = az.market_regime(idx, cfg.REGIME["index_ma"])
+
+    stored_levels = _load(LEVELS_FILE, {})
+
+    news_by_code = {}
+    if include_news:
+        from concurrent.futures import ThreadPoolExecutor
+        import news as newsmod
+
+        def _fetch(w):
             try:
-                import news as newsmod
-                news = newsmod.get_news(w["name"], w["code"])
+                return w["code"], newsmod.get_news(w["name"], w["code"])
             except Exception:
-                news = None
-        recs.append(az.evaluate_watchlist(w, price, df, _levels_for(w["code"]),
-                                          regime, cfg.RISK, cfg.HORIZON, cfg.TECH, news))
-    return regime, recs
+                return w["code"], None
+
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            news_by_code = dict(ex.map(_fetch, cfg.WATCHLIST))
+
+    recs = []
+    for h in cfg.HOLDINGS:
+        df = hist.get(h["code"])
+        if df is None or df.empty:
+            continue
+        price = float(df["Close"].iloc[-1])
+        recs.append(az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
+                                        cfg.HORIZON, cfg.TECH))
+    for w in cfg.WATCHLIST:
+        df = hist.get(w["code"])
+        if df is None or df.empty:
+            continue
+        price = float(df["Close"].iloc[-1])
+        recs.append(az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
+                                          regime, cfg.RISK, cfg.HORIZON, cfg.TECH,
+                                          news_by_code.get(w["code"]), cfg.BUY_CRITERIA))
+
+    # Pool all BUYs and size them from what is left of this month's budget.
+    buys = [r for r in recs if r["action"] == "BUY"]
+    budget_summary = az.allocate_budget(buys, _budget_remaining())
+    budget_summary["monthly_cap"] = cfg.BUDGET["monthly_budget_sar"]
+    _budget_record(buys)
+    return regime, recs, budget_summary
 
 
 def mode_digest() -> int:
-    regime, recs = _collect_recs(include_news=True)
+    regime, recs, budget = _collect_recs(include_news=True)
     msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
-                           quote_note="Delayed/daily data. Long-term reads are the reliable ones.")
+                           quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
+                           budget=budget)
     ok = nt.send_discord(msg)
+    if not ok:
+        print(msg)  # no webhook configured (e.g. local run) — show the digest here.
     print("digest sent:", ok, "| recs:", len(recs))
     return 0 if ok else 1
 
 
 def mode_run() -> int:
-    regime, recs = _collect_recs(include_news=False)
+    regime, recs, budget = _collect_recs(include_news=False)
     # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
     actionable = [r for r in recs if r["action"] not in ("HOLD", "WATCH")]
 
@@ -160,7 +226,8 @@ def mode_run() -> int:
 
     if fresh:
         msg = nt.build_message(fresh, f"TASI alert ({today}) - regime: {regime}",
-                               quote_note="Delayed/daily data. Verify the live price before acting.")
+                               quote_note="Delayed/daily data. Verify the live price before acting.",
+                               budget=budget)
         ok = nt.send_discord(msg)
         print("alert sent:", ok, "| fresh recs:", len(fresh))
     else:

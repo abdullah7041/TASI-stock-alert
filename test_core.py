@@ -79,14 +79,88 @@ def test_regime_unknown_when_empty():
 
 # --- conviction -------------------------------------------------------------
 def test_conviction_uptrend_beats_downtrend():
-    up = _frame(list(range(1, 160)))
-    down = _frame(list(range(160, 1, -1)))
-    cfg_h = {"short_ma": 20, "long_ma": 50}
     cfg_t = {"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70}
-    up_score = az.conviction_score(up, cfg_h, cfg_t, 0.5)
-    down_score = az.conviction_score(down, cfg_h, cfg_t, 0.5)
+    up_score = az.conviction_score("up", 55.0, cfg_t, 0.5)
+    down_score = az.conviction_score("down", 55.0, cfg_t, 0.5)
     assert up_score > down_score
     assert 0 <= up_score <= 100 and 0 <= down_score <= 100
+
+
+# --- BUY decision -----------------------------------------------------------
+CRITERIA = {"conviction_min": 65, "conviction_min_breakdown": 80,
+            "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+GOOD_LONG = {"trend": "up", "momentum_pct": 10.0, "rsi": 45.0}
+
+def test_buy_fires_when_all_criteria_met():
+    ok, failed = az.buy_decision(90, 0.0, GOOD_LONG, "ok", CRITERIA)
+    assert ok and not failed
+
+def test_breakdown_raises_bar_instead_of_blocking():
+    # conviction 70 passes in 'ok' regime but not the raised breakdown bar...
+    assert az.buy_decision(70, 0.0, GOOD_LONG, "ok", CRITERIA)[0]
+    assert not az.buy_decision(70, 0.0, GOOD_LONG, "breakdown", CRITERIA)[0]
+    # ...yet a strong enough setup still fires in a breakdown (no hard veto).
+    assert az.buy_decision(85, 0.0, GOOD_LONG, "breakdown", CRITERIA)[0]
+
+def test_negative_news_vetoes_buy():
+    ok, failed = az.buy_decision(90, -0.5, GOOD_LONG, "ok", CRITERIA)
+    assert not ok and any("news" in f for f in failed)
+
+def test_rsi_outside_recovery_band_vetoes_buy():
+    hot = {**GOOD_LONG, "rsi": 75.0}
+    assert not az.buy_decision(90, 0.0, hot, "ok", CRITERIA)[0]
+    capitulating = {**GOOD_LONG, "rsi": 15.0}
+    assert not az.buy_decision(90, 0.0, capitulating, "ok", CRITERIA)[0]
+
+def test_deteriorating_long_term_vetoes_buy():
+    bad = {"trend": "down", "momentum_pct": -20.0, "rsi": 45.0}
+    ok, failed = az.buy_decision(90, 0.0, bad, "ok", CRITERIA)
+    assert not ok and any("deteriorating" in f for f in failed)
+
+def test_mild_long_weakness_allowed():
+    soft = {"trend": "flat", "momentum_pct": -3.0, "rsi": 45.0}  # above -5 floor
+    assert az.buy_decision(90, 0.0, soft, "ok", CRITERIA)[0]
+
+
+# --- budget allocation ------------------------------------------------------
+def _buy(code, conviction, price):
+    return {"kind": "watchlist", "code": code, "name": code, "price": price,
+            "action": "BUY", "conviction": conviction}
+
+def test_allocate_whole_shares_within_budget():
+    buys = [_buy("A", 90, 33.4), _buy("B", 60, 13.7)]
+    summary = az.allocate_budget(buys, 500.0)
+    total = sum(b["sizing"]["spend"] for b in buys if not b["sizing"].get("skip"))
+    for b in buys:
+        if not b["sizing"].get("skip"):
+            assert b["sizing"]["shares"] == int(b["sizing"]["shares"])
+            assert abs(b["sizing"]["shares"] * b["price"] - b["sizing"]["spend"]) < 0.01
+    assert total <= 500.0 + 1e-9
+    assert abs(summary["allocated"] - total) < 0.01
+    assert abs(summary["leftover"] - (500.0 - total)) < 0.01
+
+def test_allocate_higher_conviction_gets_more():
+    buys = [_buy("A", 90, 10.0), _buy("B", 45, 10.0)]
+    az.allocate_budget(buys, 500.0)
+    a = next(b for b in buys if b["code"] == "A")["sizing"]["spend"]
+    b_ = next(b for b in buys if b["code"] == "B")["sizing"]["spend"]
+    assert a > b_
+
+def test_allocate_min_one_share_when_slice_small_but_budget_allows():
+    buys = [_buy("A", 90, 10.0), _buy("B", 10, 45.0)]  # B's slice ~45 SAR
+    az.allocate_budget(buys, 500.0)
+    assert next(b for b in buys if b["code"] == "B")["sizing"]["shares"] >= 1
+
+def test_allocate_skips_share_pricier_than_budget():
+    buys = [_buy("A", 95, 600.0)]
+    summary = az.allocate_budget(buys, 500.0)
+    assert buys[0]["sizing"]["shares"] == 0 and "skip" in buys[0]["sizing"]
+    assert summary["allocated"] == 0.0 and summary["leftover"] == 500.0
+
+def test_allocate_zero_budget_skips_all():
+    buys = [_buy("A", 95, 10.0)]
+    az.allocate_budget(buys, 0.0)
+    assert buys[0]["sizing"]["skip"] == "monthly budget exhausted"
 
 
 # --- position sizing --------------------------------------------------------
@@ -132,28 +206,35 @@ def test_holding_stop_triggers_sell():
                               tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
     assert rec["action"].startswith("SELL")
 
-def test_watchlist_buy_in_zone_ok_regime():
+_WL_HORIZON = {"short_lookback_days": 10, "long_lookback_days": 50,
+               "short_ma": 20, "long_ma": 50}
+_WL_TECH = {"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70}
+
+def test_watchlist_buy_fires_via_criteria_no_zone_needed():
+    # Wide-open criteria isolate the wiring: no buy zone, uptrend frame -> BUY.
     df = _frame(list(range(1, 160)))
     w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
-    rec = az.evaluate_watchlist(w, price=100.0, df=df,
-                                levels={"buy_zone_low": 99.0, "buy_zone_high": 101.0},
+    relaxed = {"conviction_min": 0, "conviction_min_breakdown": 0,
+               "rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
+    rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={},
                                 regime="ok", risk=BASE_RISK,
-                                horizon_cfg={"short_lookback_days": 10, "long_lookback_days": 50,
-                                             "short_ma": 20, "long_ma": 50},
-                                tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
+                                horizon_cfg=_WL_HORIZON, tech=_WL_TECH,
+                                buy_criteria=relaxed)
     assert rec["action"] == "BUY"
+    assert rec["sizing"] is None  # sizing happens later, pooled per run.
     assert 0 <= rec["conviction"] <= 100
 
-def test_watchlist_buy_suppressed_in_breakdown():
+def test_watchlist_watch_when_criteria_fail_with_reason():
     df = _frame(list(range(1, 160)))
     w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
-    rec = az.evaluate_watchlist(w, price=100.0, df=df,
-                                levels={"buy_zone_low": 99.0, "buy_zone_high": 101.0},
+    strict = {"conviction_min": 101, "conviction_min_breakdown": 101,
+              "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+    rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={},
                                 regime="breakdown", risk=BASE_RISK,
-                                horizon_cfg={"short_lookback_days": 10, "long_lookback_days": 50,
-                                             "short_ma": 20, "long_ma": 50},
-                                tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
-    assert "regime block" in rec["action"]
+                                horizon_cfg=_WL_HORIZON, tech=_WL_TECH,
+                                buy_criteria=strict)
+    assert rec["action"] == "WATCH"
+    assert any("conviction" in r for r in rec["reason"])
 
 
 # --- news sentiment (offline, no fetch) ------------------------------------

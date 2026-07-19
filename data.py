@@ -93,13 +93,64 @@ def _sahmk_quote(code: str) -> Quote | None:
 
 
 # --- Public API ------------------------------------------------------------
+# In-run memo: (code, period) -> DataFrame. One process = one run, so a plain
+# module dict is enough; nothing is fetched twice within a run.
+_HISTORY_CACHE: dict = {}
+
+
+def _clean_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.rename(columns=str.title)
+    keep = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
+    return df[keep].dropna()
+
+
+def get_histories(codes: list, period: str = "1y") -> dict:
+    """Daily OHLCV history for many codes in ONE Yahoo request (threaded batch
+    download) instead of a serial per-ticker loop. Results are cached for the
+    rest of the run, so later get_history() calls are free.
+
+    Returns {code: DataFrame}; a code with no data maps to an empty frame.
+    """
+    todo = [c for c in codes if (c, period) not in _HISTORY_CACHE]
+    if todo:
+        import yfinance as yf
+        symbols = {yahoo_symbol(c): c for c in todo}
+        try:
+            batch = yf.download(list(symbols), period=period, auto_adjust=False,
+                                group_by="ticker", threads=True, progress=False)
+        except Exception:
+            batch = None
+        for sym, code in symbols.items():
+            df = pd.DataFrame()
+            if batch is not None and not batch.empty:
+                try:
+                    part = batch[sym] if isinstance(batch.columns, pd.MultiIndex) else batch
+                    df = _clean_ohlcv(part)
+                except Exception:
+                    df = pd.DataFrame()
+            if df.empty:
+                # Per-code retry covers symbols the batch call dropped.
+                try:
+                    df = _yahoo_history(sym, period)
+                except Exception:
+                    df = pd.DataFrame()
+            _HISTORY_CACHE[(code, period)] = df
+    return {c: _HISTORY_CACHE[(c, period)] for c in codes}
+
+
 def get_history(code: str, period: str = "1y") -> pd.DataFrame:
     """Daily OHLCV history. Yahoo first, empty DataFrame if unavailable.
     (SAHMK Free has no history, so no history fallback here.)"""
+    key = (code, period)
+    if key in _HISTORY_CACHE:
+        return _HISTORY_CACHE[key]
     try:
         df = _yahoo_history(yahoo_symbol(code), period)
     except Exception:
         df = pd.DataFrame()
+    _HISTORY_CACHE[key] = df
     return df
 
 

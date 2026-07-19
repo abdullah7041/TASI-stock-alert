@@ -34,6 +34,30 @@ WATCHLIST = [
     {"code": "4142", "name": "AJIL Financial",   "sector": "logistics",  "verified": False},
 ]
 
+# --- Monthly buy budget -----------------------------------------------------
+# Hard cap on recommended NEW-buy spend per calendar month. The engine tracks
+# what it has already recommended this month in budget_state.json and only
+# allocates from the remainder. Edit that file if you skipped a recommended buy.
+BUDGET = {
+    "monthly_budget_sar": 500.0,
+}
+
+# --- BUY criteria ------------------------------------------------------------
+# A watchlist name becomes BUY only when ALL of these hold (see
+# analyze.buy_decision for the single place this is enforced):
+#   1. conviction >= conviction_min  (conviction_min_breakdown when TASI regime
+#      is 'breakdown' or 'unknown' — regime RAISES the bar, it never blocks).
+#   2. news sentiment score >= 0 (no news / failed fetch counts as neutral 0).
+#   3. RSI inside rsi_recovery_band — not capitulating, not chasing.
+#   4. long-term read not actively deteriorating: long trend == 'up' OR
+#      long momentum >= long_mom_floor_pct.
+BUY_CRITERIA = {
+    "conviction_min":           65,
+    "conviction_min_breakdown": 80,
+    "rsi_recovery_band":        (25, 60),
+    "long_mom_floor_pct":       -5.0,
+}
+
 # --- Risk rules (small account, balanced) ----------------------------------
 # Every number here is yours to change. The engine reads these, no magic constants.
 RISK = {

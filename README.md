@@ -57,6 +57,21 @@ News is a keyword tally over free Google News headlines. It is an input, not a t
 
 Set a holding `target` in `levels.json` just below its current price, run mode `run`, and confirm the SELL alert lands in Discord. Then set it back.
 
+## When BUY fires (the exact criteria)
+
+A watchlist name becomes **BUY** only when ALL four hold (enforced in one place: `analyze.buy_decision`):
+
+1. **Conviction** ≥ `BUY_CRITERIA["conviction_min"]` (65). When the TASI regime is `breakdown` or `unknown`, the bar rises to `conviction_min_breakdown` (80) — the regime **raises the bar, it never blocks outright**.
+2. **News** sentiment score ≥ 0. No news or a failed fetch counts as neutral (0.0) and passes.
+3. **RSI** inside `rsi_recovery_band` (25–60) — recovering, not capitulating, not chasing.
+4. **Long-term read not deteriorating**: long trend is `up`, OR long momentum ≥ `long_mom_floor_pct` (−5%).
+
+The buy zone from `levels.json` is no longer a gate — distance to it feeds the conviction score instead. All thresholds live in `BUY_CRITERIA` in `config.py`.
+
+## Monthly buy budget
+
+`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them weighted by conviction, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
+
 ## Risk rules (in config.py)
 
 Defaults are tuned for a small account: max 5 positions, 25% of deployable cash per buy, 9% stop, 35% cap on any single name, 12% cash buffer, and a commission floor that skips lots too small to be worth the fees. Change any number. The engine reads your values.

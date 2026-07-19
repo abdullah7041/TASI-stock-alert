@@ -28,9 +28,14 @@ def format_recommendation(rec: dict) -> str:
         lines.append(f"   P/L: {rec['unrealized_pct']}%")
     if rec["kind"] == "watchlist":
         lines.append(f"   conviction: {rec.get('conviction')}/100")
-        if rec.get("sizing") and not rec["sizing"].get("skip"):
-            sz = rec["sizing"]
-            lines.append(f"   size: {sz['shares']} sh (~{sz['spend']} SAR, {sz['pct_of_cash']}% of cash)")
+        sz = rec.get("sizing")
+        if sz and not sz.get("skip"):
+            lines.append(
+                f"   size: BUY {sz['shares']} sh x {rec['price']} = {sz['spend']} SAR "
+                f"({sz.get('weight_pct')}% conviction weight; "
+                f"{sz.get('budget_left_after')} SAR of monthly budget left after)")
+        elif sz and sz.get("skip"):
+            lines.append(f"   size: none — {sz['skip']}")
         if rec.get("news"):
             n = rec["news"]
             lines.append(f"   news: {n['label']} ({n['score']}, {n['count']} items, {n['confidence']} conf)")
@@ -38,7 +43,8 @@ def format_recommendation(rec: dict) -> str:
     return "\n".join(lines)
 
 
-def build_message(recs: list, header: str, quote_note: str = "") -> str:
+def build_message(recs: list, header: str, quote_note: str = "",
+                  budget: dict | None = None) -> str:
     """Full Discord message. Only includes actionable recs unless header says digest."""
     parts = [f"__**{header}**__"]
     if quote_note:
@@ -47,6 +53,11 @@ def build_message(recs: list, header: str, quote_note: str = "") -> str:
         parts.append("No actionable levels hit this run.")
     else:
         parts += [format_recommendation(r) for r in recs]
+    if budget is not None:
+        parts.append(
+            f"**Budget** (cap {budget.get('monthly_cap')} SAR/month): "
+            f"{budget['allocated']} SAR allocated this run out of {budget['budget']} SAR "
+            f"remaining; {budget['leftover']} SAR stays cash.")
     parts.append("\n_Automates your rules. Not financial advice. You execute every trade._")
     return "\n\n".join(parts)
 

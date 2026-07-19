@@ -61,18 +61,18 @@ def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float) -> dict:
 
 
 # --- Conviction ------------------------------------------------------------
-def conviction_score(df: pd.DataFrame, horizon_cfg: dict, tech: dict,
+def conviction_score(tr: str, r: float, tech: dict,
                      distance_to_level_pct: float) -> int:
     """0-100. Blends long-term trend, RSI position, and how close price is to the
-    actionable level. Higher = stronger setup. Transparent, no black box."""
-    closes = df["Close"]
+    actionable level. Higher = stronger setup. Transparent, no black box.
+
+    Takes the already-computed trend label and RSI value so indicators are
+    calculated once per name, not once per consumer."""
     score = 50.0
 
-    tr = ind.trend(closes, horizon_cfg["short_ma"], horizon_cfg["long_ma"])
     score += {"up": 20, "flat": 0, "down": -20, "unknown": -5}.get(tr, 0)
 
-    r = ind.rsi(closes, tech["rsi_period"])
-    if not np.isnan(r):
+    if r is not None and not np.isnan(r):
         if r < tech["rsi_oversold"]:
             score += 15           # oversold into support = better entry.
         elif r > tech["rsi_overbought"]:
@@ -155,40 +155,136 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
     }
 
 
+# --- BUY decision ----------------------------------------------------------
+def buy_decision(conviction: int, news_score: float, long_read: dict,
+                 regime: str, criteria: dict) -> tuple[bool, list]:
+    """The single place BUY is decided. Returns (is_buy, failed_checks).
+
+    BUY fires only when ALL of these hold:
+      1. conviction >= criteria['conviction_min'] — raised to
+         criteria['conviction_min_breakdown'] when the TASI regime is
+         'breakdown' or 'unknown'. The regime raises the bar; it never blocks.
+      2. news_score >= 0 (no news / failed fetch is neutral 0.0, which passes).
+      3. long-term RSI inside criteria['rsi_recovery_band'] — recovering, not
+         capitulating and not chasing.
+      4. long-term read not actively deteriorating: trend == 'up' OR long
+         momentum >= criteria['long_mom_floor_pct'].
+    """
+    failed = []
+    cautious = regime in ("breakdown", "unknown")
+    cutoff = criteria["conviction_min_breakdown"] if cautious else criteria["conviction_min"]
+    if conviction < cutoff:
+        failed.append(f"conviction {conviction} < {cutoff}"
+                      + (" (breakdown-raised bar)" if cautious else ""))
+    if news_score < 0:
+        failed.append(f"news sentiment negative ({news_score})")
+    lo, hi = criteria["rsi_recovery_band"]
+    r = long_read.get("rsi")
+    if r is None or np.isnan(r):
+        failed.append("RSI unavailable")
+    elif not (lo <= r <= hi):
+        failed.append(f"RSI {r} outside recovery band {lo}-{hi}")
+    mom = long_read.get("momentum_pct")
+    trend_up = long_read.get("trend") == "up"
+    mom_ok = mom is not None and not np.isnan(mom) and mom >= criteria["long_mom_floor_pct"]
+    if not (trend_up or mom_ok):
+        failed.append(f"long-term deteriorating (trend {long_read.get('trend')}, "
+                      f"mom {mom}% < {criteria['long_mom_floor_pct']}%)")
+    return (len(failed) == 0), failed
+
+
+# --- Budget allocation ------------------------------------------------------
+def allocate_budget(buys: list, budget_sar: float) -> dict:
+    """Split the remaining monthly budget across BUY recs, weighted by
+    conviction. Mutates each rec's 'sizing' in place; returns a summary.
+
+    Rules (transparent, in order):
+      - Candidates processed highest conviction first.
+      - Each gets slice = budget * (its conviction / total conviction), then
+        rounded DOWN to whole shares (Tadawul does not allow fractions).
+      - If the slice affords 0 shares but 1 share fits what is left of the
+        budget, it gets 1 share (highest conviction first).
+      - Unspent remainder of a slice rolls to the next candidate via the
+        running 'remaining' amount; whatever is left at the end stays cash.
+      - Hard invariant: total spend <= budget_sar.
+    """
+    summary = {"budget": round(budget_sar, 2), "allocated": 0.0, "leftover": round(budget_sar, 2)}
+    if not buys or budget_sar <= 0:
+        for r in buys:
+            r["sizing"] = {"shares": 0, "spend": 0.0, "skip": "monthly budget exhausted"}
+        return summary
+
+    candidates = sorted(buys, key=lambda r: r["conviction"], reverse=True)
+    total_conv = sum(r["conviction"] for r in candidates) or 1
+    remaining = budget_sar
+
+    for r in candidates:
+        price = r["price"]
+        weight = r["conviction"] / total_conv
+        slice_sar = min(budget_sar * weight, remaining)
+        shares = int(slice_sar // price) if price > 0 else 0
+        if shares == 0 and 0 < price <= remaining:
+            shares = 1  # min viable lot for a qualified name, if budget allows.
+        spend = shares * price
+        if spend > remaining:                    # never breach the cap.
+            shares = int(remaining // price) if price > 0 else 0
+            spend = shares * price
+        if shares == 0:
+            r["sizing"] = {"shares": 0, "spend": 0.0,
+                           "skip": f"1 share ({price:.2f}) exceeds remaining budget ({remaining:.2f})"}
+            continue
+        remaining -= spend
+        r["sizing"] = {
+            "shares": shares,
+            "spend": round(spend, 2),
+            "weight_pct": round(weight * 100, 1),
+            "budget_left_after": round(remaining, 2),
+        }
+
+    summary["allocated"] = round(budget_sar - remaining, 2)
+    summary["leftover"] = round(remaining, 2)
+    return summary
+
+
 # --- Watchlist evaluation --------------------------------------------------
 def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
                        regime: str, risk: dict, horizon_cfg: dict, tech: dict,
-                       news=None) -> dict:
-    """BUY-zone check for a name you might buy. Suppressed in a market breakdown."""
+                       news=None, buy_criteria: dict | None = None) -> dict:
+    """Criteria-based BUY/WATCH call for a name you might buy.
+
+    The buy zone (levels.json) is no longer a gate — proximity to it feeds the
+    conviction score. The actual BUY decision lives in buy_decision() above.
+    Sizing is NOT attached here; the caller pools all BUYs and runs
+    allocate_budget() so the monthly cap is respected across names.
+    """
     code = item["code"]
     low = levels.get("buy_zone_low")
-    high = levels.get("buy_zone_high")
-
-    in_zone = low is not None and high is not None and low <= price <= high
-    action = "WATCH"
-    reason = []
-    sizing = None
-
-    if in_zone:
-        if regime == "breakdown":
-            action = "WATCH (regime block)"
-            reason.append("in buy zone, but TASI is breaking down; BUY suppressed")
-        else:
-            action = "BUY"
-            reason.append(f"price {price:.2f} in buy zone {low:.2f}-{high:.2f}")
-            sizing = position_size(price, risk)
-            if sizing.get("skip"):
-                action = "WATCH (sizing skip)"
-                reason.append(sizing["skip"])
 
     ref_level = low if low is not None else price
     dist = (price - ref_level) / ref_level * 100 if ref_level else float("nan")
-    conviction = conviction_score(df, horizon_cfg, tech, dist) if not df.empty else 0
 
     short = ind.short_term_read(df, horizon_cfg["short_lookback_days"], horizon_cfg["short_ma"])
     long = ind.long_term_read(df, horizon_cfg["long_lookback_days"],
                               horizon_cfg["short_ma"], horizon_cfg["long_ma"])
 
+    conviction = conviction_score(long.get("trend"), long.get("rsi"), tech, dist) \
+        if not df.empty else 0
+
+    news_score = news.score if news is not None else 0.0
+    criteria = buy_criteria or {"conviction_min": 65, "conviction_min_breakdown": 80,
+                                "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+    is_buy, failed = buy_decision(conviction, news_score, long, regime, criteria)
+
+    reason = []
+    sizing = None
+    if is_buy:
+        action = "BUY"
+        reason.append(f"all BUY criteria met (conviction {conviction}, regime {regime})")
+    else:
+        action = "WATCH"
+        reason.extend(failed)
+
+    high = levels.get("buy_zone_high")
     out = {
         "kind": "watchlist",
         "code": code, "name": item.get("name", code),
