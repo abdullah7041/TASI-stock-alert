@@ -24,14 +24,17 @@ HOLDINGS = [
 WATCHLIST = [
     {"code": "4015", "name": "Jamjoom Pharma",   "sector": "pharma",     "verified": True},
     {"code": "4016", "name": "Avalon Pharma",    "sector": "pharma",     "verified": True},
-    {"code": "4164", "name": "Nahdi Medical",    "sector": "healthcare", "verified": False},
-    {"code": "4023", "name": "Nupco",            "sector": "healthcare", "verified": False},
-    {"code": "4030", "name": "SAL Logistics",    "sector": "logistics",  "verified": False},
-    {"code": "4262", "name": "Lumi Rental",      "sector": "mobility",   "verified": False},
-    {"code": "6015", "name": "Jahez",            "sector": "logistics",  "verified": False},
-    {"code": "4014", "name": "Almoosa Health",   "sector": "healthcare", "verified": False},
-    {"code": "4017", "name": "Fakeeh Care",      "sector": "healthcare", "verified": False},
-    {"code": "4142", "name": "AJIL Financial",   "sector": "logistics",  "verified": False},
+    {"code": "4164", "name": "Nahdi Medical",    "sector": "healthcare", "verified": True},
+    {"code": "4262", "name": "Lumi Rental",      "sector": "mobility",   "verified": True},
+    {"code": "4017", "name": "Fakeeh Care",      "sector": "healthcare", "verified": True},
+    # Codes corrected 2026-07-20 (old codes pointed at the wrong company; each
+    # new code confirmed against the data source's company name):
+    {"code": "6017", "name": "Jahez",            "sector": "logistics",  "verified": True},   # was 6015 (=Americana Restaurants)
+    {"code": "4263", "name": "SAL Logistics",    "sector": "logistics",  "verified": True},   # was 4030 (=Bahri/National Shipping)
+    {"code": "4018", "name": "Almoosa Health",   "sector": "healthcare", "verified": True},   # was 4014 (=Scientific & Medical Equip. House)
+    # Removed 2026-07-20 — not publicly traded on Tadawul (no ticker):
+    #   4142 "AJIL Financial"  -> AJIL is a closed joint-stock company (Argaam ticker 0).
+    #   4023 "Nupco"           -> National Unified Procurement not listed (Argaam ticker 0).
 ]
 
 # --- Monthly buy budget -----------------------------------------------------

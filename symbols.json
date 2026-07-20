@@ -1,39 +1,4 @@
 {
-  "4015": {
-    "config_name": "Jamjoom Pharma",
-    "yahoo_name": "Jamjoom Pharmaceuticals Factory Company",
-    "verified": true,
-    "reason": "confirmed via Yahoo get_info (2026-07-20)",
-    "checked": "2026-07-20"
-  },
-  "4016": {
-    "config_name": "Avalon Pharma",
-    "yahoo_name": "Middle East Pharmaceutical Industries Company",
-    "verified": true,
-    "reason": "brand vs legal name confirmed: Avalon Pharma = Middle East Pharmaceutical Industries (2026-07-20)",
-    "checked": "2026-07-20"
-  },
-  "4164": {
-    "config_name": "Nahdi Medical",
-    "yahoo_name": "Nahdi Medical Company",
-    "verified": true,
-    "reason": "confirmed via Yahoo get_info (2026-07-20)",
-    "checked": "2026-07-20"
-  },
-  "4262": {
-    "config_name": "Lumi Rental",
-    "yahoo_name": "Lumi Rental Company",
-    "verified": true,
-    "reason": "confirmed via Yahoo get_info (2026-07-20)",
-    "checked": "2026-07-20"
-  },
-  "4017": {
-    "config_name": "Fakeeh Care",
-    "yahoo_name": "Dr. Soliman Abdel Kader Fakeeh",
-    "verified": true,
-    "reason": "brand vs legal name confirmed: Fakeeh Care = Dr. Soliman Fakeeh Hospital (2026-07-20)",
-    "checked": "2026-07-20"
-  },
   "1303": {
     "config_name": "EIC",
     "yahoo_name": "Electrical Industries Company",
@@ -55,39 +20,60 @@
     "reason": "name match",
     "checked": "2026-07-20"
   },
-  "4023": {
-    "config_name": "Nupco",
-    "yahoo_name": "",
-    "verified": false,
-    "reason": "no company name from data source",
+  "4015": {
+    "config_name": "Jamjoom Pharma",
+    "yahoo_name": "Jamjoom Pharmaceuticals Factory Company",
+    "verified": true,
+    "reason": "confirmed via Yahoo get_info (2026-07-20)",
     "checked": "2026-07-20"
   },
-  "4030": {
-    "config_name": "SAL Logistics",
-    "yahoo_name": "The National Shipping Company of Saudi Arabia",
-    "verified": false,
-    "reason": "cfg 'SAL Logistics' != Yahoo 'The National Shipping Company of Saudi Arabia'",
+  "4016": {
+    "config_name": "Avalon Pharma",
+    "yahoo_name": "Middle East Pharmaceutical Industries Company",
+    "verified": true,
+    "reason": "brand vs legal name confirmed: Avalon Pharma = Middle East Pharmaceutical Industries (2026-07-20)",
     "checked": "2026-07-20"
   },
-  "6015": {
+  "4164": {
+    "config_name": "Nahdi Medical",
+    "yahoo_name": "Nahdi Medical Company",
+    "verified": true,
+    "reason": "name match",
+    "checked": "2026-07-20"
+  },
+  "4262": {
+    "config_name": "Lumi Rental",
+    "yahoo_name": "Lumi Rental Company",
+    "verified": true,
+    "reason": "name match",
+    "checked": "2026-07-20"
+  },
+  "4017": {
+    "config_name": "Fakeeh Care",
+    "yahoo_name": "Dr. Soliman Abdel Kader Fakeeh",
+    "verified": true,
+    "reason": "brand vs legal name confirmed: Fakeeh Care = Dr. Soliman Fakeeh Hospital (2026-07-20)",
+    "checked": "2026-07-20"
+  },
+  "6017": {
     "config_name": "Jahez",
-    "yahoo_name": "Americana Restaurants International PLC",
-    "verified": false,
-    "reason": "cfg 'Jahez' != Yahoo 'Americana Restaurants International PLC'",
+    "yahoo_name": "Jahez International Company for Information Systems Technology",
+    "verified": true,
+    "reason": "code corrected from 6015 (=Americana); confirmed via Yahoo get_info (2026-07-20)",
     "checked": "2026-07-20"
   },
-  "4014": {
+  "4263": {
+    "config_name": "SAL Logistics",
+    "yahoo_name": "SAL Saudi Logistics Services Co",
+    "verified": true,
+    "reason": "code corrected from 4030 (=Bahri); confirmed via Yahoo get_info (2026-07-20)",
+    "checked": "2026-07-20"
+  },
+  "4018": {
     "config_name": "Almoosa Health",
-    "yahoo_name": "Scientific and Medical Equipment House Company",
-    "verified": false,
-    "reason": "cfg 'Almoosa Health' != Yahoo 'Scientific and Medical Equipment House Company'",
-    "checked": "2026-07-20"
-  },
-  "4142": {
-    "config_name": "AJIL Financial",
-    "yahoo_name": "Riyadh Cables Group Company",
-    "verified": false,
-    "reason": "cfg 'AJIL Financial' != Yahoo 'Riyadh Cables Group Company'",
+    "yahoo_name": "Almoosa Health Company",
+    "verified": true,
+    "reason": "code corrected from 4014 (=Sci & Med Equip House); confirmed via Yahoo get_info (2026-07-20)",
     "checked": "2026-07-20"
   }
 }
