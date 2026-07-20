@@ -167,8 +167,11 @@ def buy_decision(conviction: int, news_score: float, long_read: dict,
       2. news_score >= 0 (no news / failed fetch is neutral 0.0, which passes).
       3. long-term RSI inside criteria['rsi_recovery_band'] — recovering, not
          capitulating and not chasing.
-      4. long-term read not actively deteriorating: trend == 'up' OR long
-         momentum >= criteria['long_mom_floor_pct'].
+      4. long-term read confirms strength: trend == 'up' AND long momentum
+         >= criteria['long_mom_floor_pct']. Both are required — an 'up' MA
+         cross with falling momentum (or positive momentum under a non-up
+         trend) is not enough. This closes the "up trend but momentum below
+         the floor" contradiction.
     """
     failed = []
     cautious = regime in ("breakdown", "unknown")
@@ -187,9 +190,10 @@ def buy_decision(conviction: int, news_score: float, long_read: dict,
     mom = long_read.get("momentum_pct")
     trend_up = long_read.get("trend") == "up"
     mom_ok = mom is not None and not np.isnan(mom) and mom >= criteria["long_mom_floor_pct"]
-    if not (trend_up or mom_ok):
-        failed.append(f"long-term deteriorating (trend {long_read.get('trend')}, "
-                      f"mom {mom}% < {criteria['long_mom_floor_pct']}%)")
+    if not (trend_up and mom_ok):
+        failed.append(f"long-term not confirmed (trend {long_read.get('trend')}, "
+                      f"mom {mom}% vs floor {criteria['long_mom_floor_pct']}%; "
+                      f"need trend=up AND mom>=floor)")
     return (len(failed) == 0), failed
 
 

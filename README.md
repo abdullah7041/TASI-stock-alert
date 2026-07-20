@@ -64,9 +64,13 @@ A watchlist name becomes **BUY** only when ALL four hold (enforced in one place:
 1. **Conviction** ≥ `BUY_CRITERIA["conviction_min"]` (65). When the TASI regime is `breakdown` or `unknown`, the bar rises to `conviction_min_breakdown` (80) — the regime **raises the bar, it never blocks outright**.
 2. **News** sentiment score ≥ 0. No news or a failed fetch counts as neutral (0.0) and passes.
 3. **RSI** inside `rsi_recovery_band` (25–60) — recovering, not capitulating, not chasing.
-4. **Long-term read not deteriorating**: long trend is `up`, OR long momentum ≥ `long_mom_floor_pct` (−5%).
+4. **Long-term read confirms strength**: long trend is `up` **AND** long momentum ≥ `long_mom_floor_pct` (−5%). Both are required — an `up` MA cross with falling momentum is not enough.
 
 The buy zone from `levels.json` is no longer a gate — distance to it feeds the conviction score instead. All thresholds live in `BUY_CRITERIA` in `config.py`.
+
+## Symbol verification (why a name might say UNVERIFIED)
+
+Config codes are hand-entered, and a wrong code silently resolves to a real but **different** company — e.g. `6015` labeled "Jahez" is actually Americana Restaurants. Each run compares your config name to the company name the data source returns and caches the result in `symbols.json`. A mismatch marks the name **UNVERIFIED**: it is shown but **excluded from BUY and the budget**, and listed in the digest footer so you can fix the code against Tadawul (the authority). Brand-vs-legal-name cases (Avalon Pharma = "Middle East Pharmaceutical Industries") are confirmed once by setting `verified: true` for that code in `symbols.json`.
 
 ## Monthly buy budget
 

@@ -58,6 +58,12 @@ def build_message(recs: list, header: str, quote_note: str = "",
             f"**Budget** (cap {budget.get('monthly_cap')} SAR/month): "
             f"{budget['allocated']} SAR allocated this run out of {budget['budget']} SAR "
             f"remaining; {budget['leftover']} SAR stays cash.")
+        unver = budget.get("unverified") or []
+        if unver:
+            lines = ["**⚠ Unverified symbols — excluded from BUY. Fix the code in config.py against Tadawul:**"]
+            for code, name, yahoo in unver:
+                lines.append(f"   - {code} labeled '{name}' resolves to '{yahoo or 'no data'}'")
+            parts.append("\n".join(lines))
     parts.append("\n_Automates your rules. Not financial advice. You execute every trade._")
     return "\n\n".join(parts)
 

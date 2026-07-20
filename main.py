@@ -82,6 +82,37 @@ def _budget_remaining() -> float:
     return max(0.0, cfg.BUDGET["monthly_budget_sar"] - spent)
 
 
+# --- symbol verification ----------------------------------------------------
+def _verify_symbols(items: list) -> dict:
+    """Map code -> {verified, yahoo_name, reason}. Catches wrong config codes
+    (e.g. 6015 labeled 'Jahez' is really Americana Restaurants).
+
+    A code the user has confirmed in symbols.json (verified:true for the same
+    config name) is trusted without a network call — this is how brand-vs-legal
+    names are whitelisted (Avalon Pharma == 'Middle East Pharmaceutical
+    Industries'). Everything else is checked against Yahoo's company name and
+    the result cached back to symbols.json.
+    """
+    store = _load(SYMBOLS_FILE, {})
+    result, changed = {}, False
+    for it in items:
+        code, name = it["code"], it["name"]
+        entry = store.get(code)
+        if entry and entry.get("verified") and entry.get("config_name") == name:
+            result[code] = {"verified": True, "yahoo_name": entry.get("yahoo_name", ""),
+                            "reason": entry.get("reason", "confirmed in symbols.json")}
+            continue
+        yn = dat._yahoo_name(code)
+        ok, reason = dat.verify_symbol(name, yn)
+        store[code] = {"config_name": name, "yahoo_name": yn, "verified": ok,
+                       "reason": reason, "checked": _today()}
+        result[code] = {"verified": ok, "yahoo_name": yn, "reason": reason}
+        changed = True
+    if changed:
+        _save(SYMBOLS_FILE, store)
+    return result
+
+
 def _budget_record(buys: list) -> None:
     """Append this run's sized BUY recommendations to the month's ledger."""
     sized = [b for b in buys if b.get("sizing") and b["sizing"].get("shares", 0) > 0]
@@ -157,6 +188,7 @@ def _collect_recs(include_news: bool):
     regime = az.market_regime(idx, cfg.REGIME["index_ma"])
 
     stored_levels = _load(LEVELS_FILE, {})
+    verify = _verify_symbols(cfg.HOLDINGS + cfg.WATCHLIST)
 
     news_by_code = {}
     if include_news:
@@ -172,27 +204,44 @@ def _collect_recs(include_news: bool):
         with ThreadPoolExecutor(max_workers=8) as ex:
             news_by_code = dict(ex.map(_fetch, cfg.WATCHLIST))
 
+    unverified = []
     recs = []
     for h in cfg.HOLDINGS:
         df = hist.get(h["code"])
         if df is None or df.empty:
             continue
         price = float(df["Close"].iloc[-1])
-        recs.append(az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
-                                        cfg.HORIZON, cfg.TECH))
+        rec = az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
+                                  cfg.HORIZON, cfg.TECH)
+        v = verify.get(h["code"], {})
+        rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
+        if not rec["verified"]:
+            rec["reason"].insert(0, f"symbol UNVERIFIED: {v.get('reason')} — P/L may be wrong")
+            unverified.append((h["code"], h["name"], v.get("yahoo_name", "")))
+        recs.append(rec)
     for w in cfg.WATCHLIST:
         df = hist.get(w["code"])
         if df is None or df.empty:
             continue
         price = float(df["Close"].iloc[-1])
-        recs.append(az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
-                                          regime, cfg.RISK, cfg.HORIZON, cfg.TECH,
-                                          news_by_code.get(w["code"]), cfg.BUY_CRITERIA))
+        rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
+                                    regime, cfg.RISK, cfg.HORIZON, cfg.TECH,
+                                    news_by_code.get(w["code"]), cfg.BUY_CRITERIA)
+        v = verify.get(w["code"], {})
+        rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
+        if not rec["verified"]:
+            # Unverified names cannot become BUY; excluded from the budget too.
+            rec["action"] = "WATCH (UNVERIFIED)"
+            rec["reason"] = [f"symbol UNVERIFIED: {v.get('reason')} — fix the code in config.py"]
+            unverified.append((w["code"], w["name"], v.get("yahoo_name", "")))
+        recs.append(rec)
 
-    # Pool all BUYs and size them from what is left of this month's budget.
+    # Pool all BUYs (verified only — unverified were re-tagged above) and size
+    # them from what is left of this month's budget.
     buys = [r for r in recs if r["action"] == "BUY"]
     budget_summary = az.allocate_budget(buys, _budget_remaining())
     budget_summary["monthly_cap"] = cfg.BUDGET["monthly_budget_sar"]
+    budget_summary["unverified"] = unverified
     _budget_record(buys)
     return regime, recs, budget_summary
 
@@ -249,6 +298,12 @@ MODES = {
 
 
 def main() -> int:
+    # Digest/reasons carry Arabic news + a ⚠ marker; force utf-8 so a Windows
+    # cp1252 console does not crash on print (Discord delivery is utf-8 already).
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     mode = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("MODE", "run")).strip()
     fn = MODES.get(mode)
     if not fn:

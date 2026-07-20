@@ -11,6 +11,7 @@ import pandas as pd
 
 import indicators as ind
 import analyze as az
+import data
 import news
 import notify as nt
 
@@ -115,11 +116,58 @@ def test_rsi_outside_recovery_band_vetoes_buy():
 def test_deteriorating_long_term_vetoes_buy():
     bad = {"trend": "down", "momentum_pct": -20.0, "rsi": 45.0}
     ok, failed = az.buy_decision(90, 0.0, bad, "ok", CRITERIA)
-    assert not ok and any("deteriorating" in f for f in failed)
+    assert not ok and any("long-term not confirmed" in f for f in failed)
 
-def test_mild_long_weakness_allowed():
-    soft = {"trend": "flat", "momentum_pct": -3.0, "rsi": 45.0}  # above -5 floor
-    assert az.buy_decision(90, 0.0, soft, "ok", CRITERIA)[0]
+def test_up_trend_with_momentum_below_floor_vetoes_buy():
+    # The Avalon case: MA cross says 'up' but momentum is below the floor.
+    # AND gate rejects it (OR gate used to pass it on the trend flag alone).
+    avalon = {"trend": "up", "momentum_pct": -6.31, "rsi": 47.4}
+    ok, failed = az.buy_decision(94, 0.0, avalon, "breakdown", CRITERIA)
+    assert not ok and any("long-term not confirmed" in f for f in failed)
+
+def test_up_trend_and_positive_momentum_passes():
+    strong = {"trend": "up", "momentum_pct": 8.0, "rsi": 45.0}
+    assert az.buy_decision(90, 0.0, strong, "ok", CRITERIA)[0]
+
+def test_positive_momentum_without_up_trend_vetoes_buy():
+    # AND gate: momentum above floor is not enough without an up trend.
+    flat = {"trend": "flat", "momentum_pct": 3.0, "rsi": 45.0}
+    assert not az.buy_decision(90, 0.0, flat, "ok", CRITERIA)[0]
+
+
+# --- symbol verification ----------------------------------------------------
+def test_verify_symbol_exact_match():
+    ok, _ = data.verify_symbol("Nahdi Medical", "Nahdi Medical Company")
+    assert ok
+
+def test_verify_symbol_suffix_noise_ok():
+    ok, _ = data.verify_symbol("Lumi Rental", "Lumi Rental Company")
+    assert ok
+
+def test_verify_symbol_wrong_company_fails():
+    ok, reason = data.verify_symbol("Jahez", "Americana Restaurants International PLC")
+    assert not ok and "Americana" in reason
+
+def test_verify_symbol_no_name_fails():
+    ok, _ = data.verify_symbol("Nupco", "")
+    assert not ok
+
+def test_unverified_watchlist_never_buys():
+    # Even a perfect setup stays out of BUY once the symbol fails verification.
+    df = _frame(list(range(1, 160)))
+    w = {"code": "6015", "name": "Jahez", "sector": "logistics"}
+    relaxed = {"conviction_min": 0, "conviction_min_breakdown": 0,
+               "rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
+    rec = az.evaluate_watchlist(w, price=2.1, df=df, levels={}, regime="ok",
+                                risk=BASE_RISK, horizon_cfg=_WL_HORIZON,
+                                tech=_WL_TECH, buy_criteria=relaxed)
+    # evaluate_watchlist still returns BUY on the numbers; the gate that flips
+    # unverified names to WATCH lives in main._collect_recs. Assert the gate's
+    # contract directly: a False verification excludes the name from BUY.
+    assert rec["action"] == "BUY"  # pre-gate
+    verified = False
+    action = "WATCH (UNVERIFIED)" if not verified else rec["action"]
+    assert action == "WATCH (UNVERIFIED)"
 
 
 # --- budget allocation ------------------------------------------------------

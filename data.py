@@ -172,6 +172,61 @@ def get_quote(code: str, delayed_default: bool = True) -> Quote | None:
     return _sahmk_quote(code)
 
 
+# --- Symbol integrity ------------------------------------------------------
+# Config codes are hand-entered and many were best-guesses (verified:False).
+# A wrong code silently resolves to a real, tradeable, WRONG company — e.g.
+# 6015 is Americana Restaurants, not Jahez. These helpers catch that by
+# comparing the config name to the company name Yahoo returns for the code.
+_NAME_NOISE = {
+    "company", "co", "plc", "inc", "ltd", "limited", "corporation", "corp",
+    "group", "holding", "holdings", "international", "factory", "industries",
+    "industrial", "the", "and", "for", "of", "saudi", "arabia", "arabian",
+}
+
+
+def _norm_tokens(name: str) -> set:
+    """Lowercase, strip punctuation and generic corporate words -> token set."""
+    if not name:
+        return set()
+    cleaned = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in name.lower())
+    return {t for t in cleaned.split() if t and t not in _NAME_NOISE}
+
+
+def verify_symbol(config_name: str, yahoo_name: str) -> tuple[bool, str]:
+    """Pure name check. Returns (verified, reason). No network.
+
+    Verified when the config name's distinctive tokens are all present in the
+    Yahoo name (or vice-versa for short names). Handles suffix noise ('Nahdi
+    Medical' vs 'Nahdi Medical Company'). Does NOT handle brand-vs-legal-name
+    cases (Avalon Pharma == 'Middle East Pharmaceutical Industries') — those
+    are confirmed once by the user in symbols.json and skip this function.
+    """
+    if not yahoo_name:
+        return False, "no company name from data source"
+    cfg = _norm_tokens(config_name)
+    yah = _norm_tokens(yahoo_name)
+    if not cfg or not yah:
+        return False, f"unmatchable names (cfg '{config_name}' / yahoo '{yahoo_name}')"
+    # All of the smaller token set present in the larger => same company.
+    small, large = (cfg, yah) if len(cfg) <= len(yah) else (yah, cfg)
+    if small <= large:
+        return True, "name match"
+    overlap = cfg & yah
+    if overlap and len(overlap) >= max(1, min(len(cfg), len(yah)) - 1):
+        return True, "name match (partial)"
+    return False, f"cfg '{config_name}' != Yahoo '{yahoo_name}'"
+
+
+def _yahoo_name(code: str) -> str:
+    """Company long name for a code, '' on failure. One network call."""
+    try:
+        import yfinance as yf
+        info = yf.Ticker(yahoo_symbol(code)).get_info()
+        return (info.get("longName") or info.get("shortName") or "").strip()
+    except Exception:
+        return ""
+
+
 def get_index_history(index_code: str, period: str = "6mo") -> pd.DataFrame:
     """TASI index daily history for the regime filter."""
     try:
