@@ -61,6 +61,22 @@ BUY_CRITERIA = {
     "long_mom_floor_pct":       -5.0,
 }
 
+# --- Level placement (ATR from entry) ---------------------------------------
+# The 2026-07-23 backtest found the old support/resistance levels produced a
+# median reward:risk of 0.12 — 1.3% of upside against 10.5% of risk — because
+# stop and target were referenced to support/resistance while the entry happened
+# wherever price was. A 72% win rate still lost money on that arithmetic.
+#
+# Levels are now placed a volatility-scaled distance from the entry price, so
+# reward:risk is fixed by construction: atr_target_mult / atr_stop_mult.
+# See docs/backtest-findings-2026-07-23.md.
+LEVELS = {
+    "atr_period":       14,
+    "atr_stop_mult":    1.5,   # stop this many ATRs below entry.
+    "atr_target_mult":  3.0,   # target this many ATRs above entry => R:R 2.0.
+    "atr_trim_frac":    0.6,   # take partial profit 60% of the way to target.
+}
+
 # --- Risk rules (small account, balanced) ----------------------------------
 # Every number here is yours to change. The engine reads these, no magic constants.
 RISK = {

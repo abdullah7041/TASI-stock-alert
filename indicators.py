@@ -37,6 +37,32 @@ def sma(closes, period: int) -> float:
     return float(s.iloc[-period:].mean())
 
 
+def atr(highs, lows, closes, period: int = 14) -> float:
+    """Average True Range (Wilder). NaN if there is not enough data.
+
+    True range is the widest of: today's range, today's high vs yesterday's
+    close, today's low vs yesterday's close — so it counts overnight gaps that a
+    plain high-low would miss. Used to place stops and targets a volatility-
+    scaled distance from the entry, instead of at chart levels that may sit any
+    distance away.
+    """
+    h = pd.Series(list(highs), dtype="float64")
+    low = pd.Series(list(lows), dtype="float64")
+    c = pd.Series(list(closes), dtype="float64")
+    n = min(len(h), len(low), len(c))
+    if n < period + 1:
+        return float("nan")
+    h, low, c = h.iloc[:n], low.iloc[:n], c.iloc[:n]
+
+    prev_close = c.shift(1)
+    tr = pd.concat([h - low, (h - prev_close).abs(), (low - prev_close).abs()],
+                   axis=1).max(axis=1).dropna()
+    if len(tr) < period:
+        return float("nan")
+    val = tr.ewm(alpha=1 / period, adjust=False).mean().iloc[-1]
+    return float(val) if np.isfinite(val) else float("nan")
+
+
 def support_resistance(highs, lows, closes, lookback: int = 60):
     """Nearest support (below current price) and resistance (above) from recent
     swing lows/highs. Falls back to the window min/max if no clear swing exists.

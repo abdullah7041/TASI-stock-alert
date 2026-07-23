@@ -1,0 +1,112 @@
+{
+  "1303": {
+    "price_at_derivation": 14.83,
+    "buy_zone_low": 13.57,
+    "buy_zone_high": 13.98,
+    "resistance": 15.45,
+    "atr": 0.5883,
+    "stop": 13.95,
+    "target": 16.59,
+    "trim": 15.89
+  },
+  "2320": {
+    "price_at_derivation": 60.75,
+    "buy_zone_low": 57.45,
+    "buy_zone_high": 59.17,
+    "resistance": 64.8,
+    "atr": 1.5865,
+    "stop": 58.37,
+    "target": 65.51,
+    "trim": 63.61
+  },
+  "8313": {
+    "price_at_derivation": 136.7,
+    "buy_zone_low": 133.8,
+    "buy_zone_high": 137.81,
+    "resistance": 140.0,
+    "atr": 4.5752,
+    "stop": 129.84,
+    "target": 150.43,
+    "trim": 144.94
+  },
+  "4015": {
+    "price_at_derivation": 142.4,
+    "buy_zone_low": 142.4,
+    "buy_zone_high": 146.67,
+    "resistance": 148.9,
+    "atr": 2.8412,
+    "stop": 138.14,
+    "target": 150.92,
+    "trim": 147.51
+  },
+  "4016": {
+    "price_at_derivation": 59.8,
+    "buy_zone_low": 59.1,
+    "buy_zone_high": 60.87,
+    "resistance": 60.5,
+    "atr": 1.2364,
+    "stop": 57.95,
+    "target": 63.51,
+    "trim": 62.03
+  },
+  "4164": {
+    "price_at_derivation": 91.15,
+    "buy_zone_low": 89.75,
+    "buy_zone_high": 92.44,
+    "resistance": 94.4,
+    "atr": 0.9876,
+    "stop": 89.67,
+    "target": 94.11,
+    "trim": 92.93
+  },
+  "4262": {
+    "price_at_derivation": 29.68,
+    "buy_zone_low": 29.44,
+    "buy_zone_high": 30.32,
+    "resistance": 31.82,
+    "atr": 0.6137,
+    "stop": 28.76,
+    "target": 31.52,
+    "trim": 30.78
+  },
+  "4017": {
+    "price_at_derivation": 34.48,
+    "buy_zone_low": 34.3,
+    "buy_zone_high": 35.33,
+    "resistance": 35.98,
+    "atr": 0.7756,
+    "stop": 33.32,
+    "target": 36.81,
+    "trim": 35.88
+  },
+  "6017": {
+    "price_at_derivation": 12.02,
+    "buy_zone_low": 11.97,
+    "buy_zone_high": 12.33,
+    "resistance": 12.3,
+    "atr": 0.3523,
+    "stop": 11.49,
+    "target": 13.08,
+    "trim": 12.66
+  },
+  "4263": {
+    "price_at_derivation": 164.6,
+    "buy_zone_low": 162.7,
+    "buy_zone_high": 167.58,
+    "resistance": 166.3,
+    "atr": 3.4795,
+    "stop": 159.38,
+    "target": 175.04,
+    "trim": 170.86
+  },
+  "4018": {
+    "price_at_derivation": 116.7,
+    "buy_zone_low": 115.2,
+    "buy_zone_high": 118.66,
+    "resistance": 118.4,
+    "atr": 2.3568,
+    "stop": 113.16,
+    "target": 123.77,
+    "trim": 120.94
+  }
+}

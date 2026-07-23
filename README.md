@@ -27,10 +27,12 @@ News is a keyword tally over free Google News headlines. It is an input, not a t
 - `news.py` — free news + sentiment.
 - `notify.py` — Discord delivery.
 - `main.py` — modes and orchestration.
+- `universe.py` — Tadawul ticker discovery for the backtest.
+- `backtest.py` — walk-forward validation of the BUY rules.
 - `test_core.py` — offline tests (no network).
 - `.github/workflows/tasi.yml` — the schedule.
 
-`levels.json`, `state.json`, `symbols.json` are generated at runtime and committed back by the workflow.
+`levels.json`, `state.json`, `symbols.json` are generated at runtime and committed back by the workflow. `universe.json` is generated once by the `universe` mode and committed. `.cache/` holds backtest history and features; it is gitignored and safe to delete (it just costs a re-download).
 
 ## Cost
 
@@ -75,6 +77,62 @@ Config codes are hand-entered, and a wrong code silently resolves to a real but 
 ## Monthly buy budget
 
 `BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them weighted by conviction, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
+
+## Validation (does any of this actually work?)
+
+Every BUY threshold — conviction 65/80, the 25–60 RSI band, the −5% momentum
+floor, the conviction weights — was chosen by hand and, until now, never
+checked against history. Three local modes measure them. They are slow, they
+write large caches, and they are deliberately **not** on the GitHub Actions
+schedule.
+
+```
+MODE=universe python main.py     # once, ~30 min -> universe.json
+MODE=features python main.py     # once, 30-90 min -> .cache/features.csv
+MODE=backtest python main.py     # seconds -> the report
+SWEEP=1 MODE=backtest python main.py        # BUY threshold grid
+SWEEP=levels MODE=backtest python main.py   # ATR stop/target multiplier grid
+```
+
+The `features` build checkpoints every 25 names, so if it is interrupted,
+re-running it resumes instead of starting over. Delete `.cache/features.csv` to
+force a clean rebuild — required whenever you change anything `derive_levels`
+or the indicators depend on.
+
+`universe` probes Tadawul's 4-digit code blocks on Yahoo and keeps whatever is
+listed, so the backtest runs on a few hundred names instead of your eight —
+eight names through a narrow gate produce too few BUY events to tune anything.
+`features` replays an expanding window over 5 years of adjusted daily bars,
+calling the same indicator and level functions production calls. `backtest`
+then replays the real `buy_decision` over those features and scores each signal.
+
+**What the numbers mean.** Entry is the bar *after* the signal, at its open.
+Each trade runs until it hits the derived stop or target, or times out at 120
+bars. **Expectancy** — mean return across every event, timeouts included — is
+the headline; win rate alone would describe only the trades that resolved. The
+TASI baseline row is the return of simply holding the index over the same
+windows, and a signal is only worth anything if it beats that.
+
+**What it cannot tell you.**
+
+- **News is not validated.** Historical headlines are not retrievable, so the
+  news score is neutralized to 0.0 — which passes the gate. BUY criterion #2 is
+  simply untested.
+- **Survivorship bias.** Probing Yahoo today finds only currently-listed names.
+  Companies that delisted are invisible, which flatters every result.
+- **Same-bar ambiguity.** When one daily bar spans both the stop and the target,
+  it is recorded as a stop. Daily data cannot say which came first, so the
+  pessimistic read is the honest one.
+
+Before trusting any number: the report fails loudly if two trades on the same
+name overlap, and a win rate near 90% means look-ahead leaked, not that the
+system is good.
+
+**What the first run found** (`docs/backtest-findings-2026-07-23.md`): the old
+support/resistance levels gave a median reward:risk of 0.12 — a 71.9% win rate
+that still lost money. Levels are now placed by ATR from the entry price, which
+fixed the bleed. The entry signal itself shows no measurable edge, so a high
+win rate here should always be read alongside expectancy.
 
 ## Risk rules (in config.py)
 

@@ -16,6 +16,13 @@ import pandas as pd
 import indicators as ind
 
 
+# Used when a caller does not pass config.LEVELS (older call sites, tests).
+_DEFAULT_LEVELS = {
+    "atr_period": 14, "atr_stop_mult": 1.5, "atr_target_mult": 3.0,
+    "atr_trim_frac": 0.6,
+}
+
+
 # --- Market regime ---------------------------------------------------------
 def market_regime(index_df: pd.DataFrame, index_ma: int) -> str:
     """'ok' or 'breakdown'. Breakdown = index below its MA and the MA is falling.
@@ -34,29 +41,74 @@ def market_regime(index_df: pd.DataFrame, index_ma: int) -> str:
 
 
 # --- Level derivation ------------------------------------------------------
-def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float) -> dict:
+def levels_from_atr(price: float, atr_val: float, stop_pct: float,
+                    levels_cfg: dict | None = None) -> dict:
+    """Stop / target / trim placed a volatility distance from `price`.
+
+    Split out of derive_levels so the backtest can re-place levels from a cached
+    ATR without recomputing indicators — and, more importantly, so both paths
+    run the SAME arithmetic. A backtest that reimplemented this would be tuning
+    multipliers that production does not use.
+
+    Returns {} when there is no usable ATR.
+    """
+    lc = levels_cfg or _DEFAULT_LEVELS
+    if not np.isfinite(atr_val) or atr_val <= 0 or price <= 0:
+        return {}
+    out = {}
+    # Stop: volatility distance, but never risk more than the configured cap.
+    atr_stop = price - lc["atr_stop_mult"] * atr_val
+    out["stop"] = round(max(atr_stop, price * (1 - stop_pct)), 2)
+    out["target"] = round(price + lc["atr_target_mult"] * atr_val, 2)
+    trim = price + lc["atr_trim_frac"] * (out["target"] - price)
+    if price < trim < out["target"]:
+        out["trim"] = round(trim, 2)
+    return out
+
+
+def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float,
+                  levels_cfg: dict | None = None) -> dict:
     """Propose levels from technicals so you don't hand-set them.
 
+    Stop and target are placed a volatility-scaled distance from the CURRENT
+    price — the price you would actually enter at — so reward:risk is fixed by
+    construction at atr_target_mult / atr_stop_mult.
+
+    They used to be referenced to support and resistance instead, which silently
+    assumed you entered near support. You do not: `buy_decision` fires wherever
+    price is inside an uptrend, which is usually near resistance. The
+    2026-07-23 backtest measured the consequence over 4,721 signals — median
+    1.28% of upside against 10.50% of risk, R:R 0.12, negative expectancy at a
+    71.9% win rate. Anchoring to entry is the fix.
+
+    Support and resistance still set the buy zone, which feeds the conviction
+    score. They no longer set the money levels.
+
     - buy_zone: just above nearest support (a place to add on a pullback).
-    - stop:     below support, capped by stop_pct.
-    - target:   nearest resistance above.
+    - stop:     atr_stop_mult ATRs below entry, never risking more than stop_pct.
+    - target:   atr_target_mult ATRs above entry.
+    - trim:     atr_trim_frac of the way from entry to target.
     You review these in levels.json before they go live.
     """
     if df is None or df.empty:
         return {}
+    lc = levels_cfg or _DEFAULT_LEVELS
     support, resistance = ind.support_resistance(
         df["High"], df["Low"], df["Close"], tech["sr_lookback"]
     )
     price = float(df["Close"].iloc[-1])
     out = {"price_at_derivation": round(price, 2)}
+
     if support:
         out["buy_zone_low"] = round(support, 2)
         out["buy_zone_high"] = round(support * 1.03, 2)
-        # Stop below support, but no deeper than stop_pct from the buy zone.
-        stop_by_pct = support * (1 - stop_pct)
-        out["stop"] = round(min(support * 0.97, stop_by_pct), 2)
     if resistance:
-        out["target"] = round(resistance, 2)
+        out["resistance"] = round(resistance, 2)   # context only, not a target.
+
+    a = ind.atr(df["High"], df["Low"], df["Close"], lc["atr_period"])
+    if np.isfinite(a) and a > 0:
+        out["atr"] = round(float(a), 4)
+    out.update(levels_from_atr(price, a, stop_pct, lc))   # {} if no usable ATR.
     return out
 
 

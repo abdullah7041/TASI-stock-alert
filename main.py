@@ -8,6 +8,11 @@ Modes (set via env MODE or first CLI arg):
   digest     - one pre-open summary of holdings + watchlist, sent to Discord.
   run        - the session job: check levels, send alerts on hits, dedup.
 
+Validation modes (local only, slow, never on the schedule):
+  universe   - probe Tadawul code blocks -> universe.json (~30 min, once).
+  features   - walk-forward indicators over that universe -> .cache/features.csv.
+  backtest   - replay BUY decisions and score them. SWEEP=1 for a threshold grid.
+
 Run locally:  MODE=suggest python main.py
 On GitHub Actions the workflow sets MODE.
 """
@@ -163,7 +168,7 @@ def mode_autolevels() -> int:
         if df.empty or len(df) < cfg.TECH["min_history_bars"]:
             print(f"{code} {item['name']}: skipped (insufficient history)")
             continue
-        lv = az.derive_levels(df, cfg.TECH, cfg.RISK["stop_loss_pct"])
+        lv = az.derive_levels(df, cfg.TECH, cfg.RISK["stop_loss_pct"], cfg.LEVELS)
         out[code] = {**out.get(code, {}), **lv}
         print(f"{code} {item['name']}: {lv}")
     _save(LEVELS_FILE, out)
@@ -288,12 +293,114 @@ def mode_run() -> int:
     return 0
 
 
+# --- validation modes (local only, not on the schedule) ---------------------
+# These are slow and produce large caches. They exist to answer "do these
+# thresholds actually work", which nothing else in the repo can.
+def _backtest_codes() -> list:
+    """The broad TASI universe if it has been probed, else just your own names
+    (enough to smoke-test the harness, never enough to tune on)."""
+    import universe
+    codes = universe.load()
+    if codes:
+        return codes
+    print("universe.json missing — falling back to config names only. "
+          "Run MODE=universe first for a tunable sample size.")
+    return [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST]
+
+
+def mode_universe() -> int:
+    import universe
+    print(f"probing {len(universe.candidate_codes())} candidate Tadawul codes "
+          f"(~30 min; partial results are saved after every batch)")
+    codes = universe.discover()
+    print(f"\n{len(codes)} listed names -> {universe.UNIVERSE_FILE.name}")
+    return 0
+
+
+def mode_features() -> int:
+    import backtest as bt
+    codes = _backtest_codes()
+    index_code = cfg.REGIME["index_code"]
+    print(f"loading {len(codes)} histories (adjusted, {bt.HISTORY_YEARS}y)")
+    hist = bt.load_adjusted(codes, bt.HISTORY_YEARS)
+    index_df = bt.load_adjusted([index_code], bt.HISTORY_YEARS).get(index_code)
+
+    usable = {c: d for c, d in hist.items() if d is not None and not d.empty}
+    done = bt.checkpointed_codes()
+    if done:
+        print(f"resuming: {len(done)} codes already in {bt.FEATURES_FILE.name}")
+    print(f"{len(usable)}/{len(codes)} have data. Building features "
+          f"(slow by design — it calls the same indicators production does)")
+    feat = bt.build_features(usable, index_df, bt.STEP_DAYS,
+                             checkpoint_every=25, done_codes=done)
+    print(f"\n{len(feat)} feature rows across {feat['code'].nunique()} names "
+          f"-> {bt.FEATURES_FILE}")
+    return 0
+
+
+def mode_backtest() -> int:
+    import backtest as bt
+    feat = bt.load_features()
+    if feat.empty:
+        print("no features. Run MODE=features first.")
+        return 1
+
+    codes = sorted(feat["code"].astype(str).unique())
+    hist = bt.load_adjusted(codes, bt.HISTORY_YEARS)
+    index_df = bt.load_adjusted([cfg.REGIME["index_code"]],
+                                bt.HISTORY_YEARS).get(cfg.REGIME["index_code"])
+
+    sweep_kind = os.environ.get("SWEEP", "").strip().lower()
+    if sweep_kind in ("levels", "atr"):
+        table = bt.sweep_levels(feat, hist, index_df)
+        cols = ["stop_atr", "target_atr", "rr", "events", "expectancy_pct",
+                "win_rate_pct", "payoff_ratio", "edge_vs_baseline_pct"]
+        print("\n" + table[[c for c in cols if c in table.columns]]
+              .to_string(index=False))
+        return 0
+
+    if sweep_kind:
+        table = bt.sweep(feat, hist, index_df)
+        cols = ["conviction_min", "rsi_band", "mom_floor", "events",
+                "expectancy_pct", "win_rate_pct", "timeout_pct",
+                "edge_vs_baseline_pct"]
+        print("\n" + table[[c for c in cols if c in table.columns]]
+              .to_string(index=False))
+        print("\nRead the events column first. A high expectancy on a handful "
+              "of trades is noise, not a threshold.")
+        return 0
+
+    events = bt.run(feat, hist)
+    overlaps = bt.check_no_overlap(events)
+    if overlaps:
+        print(f"FAIL: {len(overlaps)} overlapping events — the numbers below are "
+              f"contaminated. First: {overlaps[:3]}")
+        return 1
+
+    rep = bt.report(events, index_df)
+    print(f"\nBacktest over {len(codes)} names, {bt.HISTORY_YEARS}y, "
+          f"{bt.STEP_DAYS}-day step")
+    print("News is neutralized to 0.0 (no historical headlines), so BUY "
+          "criterion #2 is NOT validated here.")
+    print("Survivorship: only currently-listed names were probed.\n")
+    for k, v in rep.items():
+        print(f"  {k:<24} {v}")
+    if not events.empty:
+        bt.CACHE.mkdir(parents=True, exist_ok=True)
+        events.to_csv(bt.CACHE / "events.csv", index=False)
+        print(f"\n{len(events)} events -> {bt.CACHE / 'events.csv'}")
+    return 0
+
+
 MODES = {
     "heartbeat": mode_heartbeat,
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
     "run": mode_run,
+    "universe": mode_universe,
+    "features": mode_features,
+    "backtest": mode_backtest,
 }
 
 
