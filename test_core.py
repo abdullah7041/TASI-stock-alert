@@ -57,6 +57,20 @@ def test_trend_unknown_when_short():
     assert ind.trend([1, 2, 3], 20, 50) == "unknown"
 
 
+# --- short/long term read ---------------------------------------------------
+def test_short_term_read_has_no_confidence_key():
+    df = _frame(list(range(1, 40)))
+    out = ind.short_term_read(df, 10, 20)
+    assert "confidence" not in out
+    assert "momentum_pct" in out and "rsi" in out
+
+def test_long_term_read_has_no_confidence_key():
+    df = _frame(list(range(1, 160)))
+    out = ind.long_term_read(df, 50, 20, 50)
+    assert "confidence" not in out
+    assert "trend" in out and "momentum_pct" in out and "rsi" in out
+
+
 # --- support / resistance ---------------------------------------------------
 def test_support_below_resistance_above():
     # V shape: falls to 90 then rises to 110, current ~105.
