@@ -343,6 +343,41 @@ def test_holding_stop_triggers_sell():
                               tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
     assert rec["action"].startswith("SELL")
 
+
+def test_news_summary_none_when_no_news():
+    assert az.news_summary(None) is None
+
+def test_news_summary_shapes_result():
+    result = news.NewsResult(query="q", headlines=[{"title": "T", "link": "", "published": ""}],
+                             score=0.3, label="positive", matches=[{"positive": [], "negative": []}], ok=True)
+    summary = az.news_summary(result)
+    assert summary == {"ok": True, "label": "positive", "score": 0.3,
+                       "headlines": [{"title": "T", "link": "", "published": ""}]}
+
+def test_evaluate_holding_attaches_news():
+    df = _frame(list(range(100, 160)))
+    h = {"code": "1303", "name": "EIC", "shares": 100, "avg_cost": 120.0}
+    result = news.NewsResult(query="q", headlines=[{"title": "T", "link": "", "published": ""}],
+                             score=0.1, label="neutral", matches=[{"positive": [], "negative": []}], ok=True)
+    rec = az.evaluate_holding(h, price=110.0, df=df,
+                              levels={"stop": 115.0}, horizon_cfg={
+                                  "short_lookback_days": 10, "long_lookback_days": 50,
+                                  "short_ma": 20, "long_ma": 50},
+                              tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70},
+                              news=result)
+    assert rec["news"]["ok"] is True
+    assert rec["news"]["headlines"][0]["title"] == "T"
+
+def test_evaluate_holding_news_defaults_to_none():
+    df = _frame(list(range(100, 160)))
+    h = {"code": "1303", "name": "EIC", "shares": 100, "avg_cost": 120.0}
+    rec = az.evaluate_holding(h, price=110.0, df=df,
+                              levels={"stop": 115.0}, horizon_cfg={
+                                  "short_lookback_days": 10, "long_lookback_days": 50,
+                                  "short_ma": 20, "long_ma": 50},
+                              tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
+    assert rec["news"] is None
+
 _WL_HORIZON = {"short_lookback_days": 10, "long_lookback_days": 50,
                "short_ma": 20, "long_ma": 50}
 _WL_TECH = {"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70}

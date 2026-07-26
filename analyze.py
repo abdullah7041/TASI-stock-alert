@@ -172,9 +172,24 @@ def position_size(price: float, risk: dict) -> dict:
     }
 
 
+# --- News shaping ------------------------------------------------------------
+def news_summary(news) -> dict | None:
+    """Shape a news.NewsResult into the dict notify.py renders. Shared by both
+    evaluators so a fetch failure and a genuinely empty result render
+    identically regardless of which evaluation path found the name."""
+    if news is None:
+        return None
+    return {
+        "ok": news.ok,
+        "label": news.label,
+        "score": news.score,
+        "headlines": news.headlines,
+    }
+
+
 # --- Holdings evaluation ---------------------------------------------------
 def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict,
-                     horizon_cfg: dict, tech: dict) -> dict:
+                     horizon_cfg: dict, tech: dict, news=None) -> dict:
     """STOP / TRIM / TARGET / HOLD for a name you own, with short+long reads."""
     code = holding["code"]
     action, reason = "HOLD", []
@@ -204,6 +219,7 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
         "price": round(price, 2), "action": action, "reason": reason,
         "unrealized_pct": pnl_pct,
         "short_term": short, "long_term": long,
+        "news": news_summary(news),
     }
 
 
@@ -349,7 +365,5 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
         "distance_to_zone_pct": round(dist, 2) if not np.isnan(dist) else None,
         "sizing": sizing, "short_term": short, "long_term": long,
     }
-    if news is not None:
-        out["news"] = {"label": news.label, "score": news.score,
-                       "confidence": news.confidence, "count": len(news.headlines)}
+    out["news"] = news_summary(news)
     return out
