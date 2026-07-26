@@ -475,14 +475,40 @@ def test_format_and_build_message():
         "kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
         "action": "BUY", "reason": ["in zone"], "conviction": 72,
         "sizing": {"shares": 7, "spend": 700.0, "pct_of_cash": 23.3},
-        "short_term": {"momentum_pct": 2.1, "rsi": 55, "confidence": "low"},
-        "long_term": {"trend": "up", "momentum_pct": 8.0, "rsi": 60, "confidence": "medium"},
-        "news": {"label": "positive", "score": 0.4, "count": 5, "confidence": "low"},
+        "short_term": {"momentum_pct": 2.1, "rsi": 55},
+        "long_term": {"trend": "up", "momentum_pct": 8.0, "rsi": 60},
+        "news": {"ok": True, "label": "positive", "score": 0.4,
+                "headlines": [{"title": "Jamjoom profit rises 12%",
+                              "link": "http://x", "published": "24 Jul 2026"}]},
     }
     block = nt.format_recommendation(rec)
     assert "4015" in block and "BUY" in block and "conviction: 72" in block
+    assert "conf)" not in block  # the fake confidence suffix is gone.
+    assert "Jamjoom profit rises 12%" in block
+    assert "24 Jul 2026" in block
     msg = nt.build_message([rec], "Test header")
     assert "Test header" in msg and "Not financial advice" in msg
+
+def test_format_news_fetch_failed_renders_distinctly():
+    rec = {
+        "kind": "watchlist", "code": "1", "name": "X", "price": 1.0,
+        "action": "WATCH", "reason": [], "conviction": 0,
+        "short_term": {"momentum_pct": 0, "rsi": 50}, "long_term": {"trend": "flat", "momentum_pct": 0, "rsi": 50},
+        "news": {"ok": False, "label": "neutral", "score": 0.0, "headlines": []},
+    }
+    block = nt.format_recommendation(rec)
+    assert "fetch failed" in block
+
+def test_format_news_empty_result_renders_distinctly_from_failure():
+    rec = {
+        "kind": "watchlist", "code": "2", "name": "Y", "price": 1.0,
+        "action": "WATCH", "reason": [], "conviction": 0,
+        "short_term": {"momentum_pct": 0, "rsi": 50}, "long_term": {"trend": "flat", "momentum_pct": 0, "rsi": 50},
+        "news": {"ok": True, "label": "neutral", "score": 0.0, "headlines": []},
+    }
+    block = nt.format_recommendation(rec)
+    assert "no headlines found" in block
+    assert "fetch failed" not in block
 
 def test_build_message_empty():
     msg = nt.build_message([], "Empty")

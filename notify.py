@@ -13,9 +13,26 @@ import os
 def _fmt_reads(rec: dict) -> str:
     s = rec.get("short_term", {})
     l = rec.get("long_term", {})
-    short = f"short: mom {s.get('momentum_pct')}% RSI {s.get('rsi')} ({s.get('confidence')} conf)"
-    long = f"long: {l.get('trend')} mom {l.get('momentum_pct')}% RSI {l.get('rsi')} ({l.get('confidence')} conf)"
+    short = f"short: mom {s.get('momentum_pct')}% RSI {s.get('rsi')}"
+    long = f"long: {l.get('trend')} mom {l.get('momentum_pct')}% RSI {l.get('rsi')}"
     return f"{short}\n   {long}"
+
+
+def _fmt_news(news: dict) -> list:
+    """Three distinct renders: a failed fetch, a fetch that found nothing, and
+    a fetch with real headlines. Collapsing the first two into one 'neutral
+    0.0' line is exactly what made news look hardcoded."""
+    if news.get("ok") is False:
+        return ["   news: fetch failed"]
+    headlines = news.get("headlines") or []
+    if not headlines:
+        return [f"   news: no headlines found ({news.get('label')}, score {news.get('score')})"]
+    lines = [f"   news: {news.get('label')} (score {news.get('score')}, {len(headlines)} headlines)"]
+    for h in headlines[:3]:
+        title = h.get("title", "")
+        published = h.get("published", "")
+        lines.append(f"      \"{title}\" — {published}")
+    return lines
 
 
 def format_recommendation(rec: dict) -> str:
@@ -36,9 +53,8 @@ def format_recommendation(rec: dict) -> str:
                 f"{sz.get('budget_left_after')} SAR of monthly budget left after)")
         elif sz and sz.get("skip"):
             lines.append(f"   size: none — {sz['skip']}")
-        if rec.get("news"):
-            n = rec["news"]
-            lines.append(f"   news: {n['label']} ({n['score']}, {n['count']} items, {n['confidence']} conf)")
+    if rec.get("news"):
+        lines.extend(_fmt_news(rec["news"]))
     lines.append(f"   {_fmt_reads(rec)}")
     return "\n".join(lines)
 
