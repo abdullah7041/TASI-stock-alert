@@ -376,6 +376,31 @@ def test_sentiment_arabic():
     score, label = news.score_headlines(["ارتفاع أرباح الشركة ونمو قياسي"])
     assert score > 0
 
+def test_sentiment_phrase_capital_increase_is_positive():
+    score, label = news.score_headlines(["Company board approves capital increase plan"])
+    assert score > 0 and label == "positive"
+
+def test_sentiment_phrase_trading_suspension_is_negative():
+    score, label = news.score_headlines(["CMA orders trading suspension of the stock"])
+    assert score < 0 and label == "negative"
+
+def test_sentiment_phrase_profit_warning_is_negative():
+    score, label = news.score_headlines(["Firm issues profit warning ahead of results"])
+    assert score < 0 and label == "negative"
+
+def test_sentiment_arabic_phrase_dividend_distribution_is_positive():
+    score, label = news.score_headlines(["مجلس الإدارة يوصي بتوزيعات أرباح نقدية"])
+    assert score > 0 and label == "positive"
+
+def test_sentiment_arabic_phrase_trading_halt_is_negative():
+    score, label = news.score_headlines(["تعليق التداول في السهم بقرار من الهيئة"])
+    assert score < 0 and label == "negative"
+
+def test_sentiment_still_handles_old_single_word_lexicon():
+    # Regression: substring matching must not lose the original coverage.
+    score, label = news.score_headlines(["Shares plunge on unexpected loss"])
+    assert score < 0 and label == "negative"
+
 
 # --- notify formatting (offline) -------------------------------------------
 def test_format_and_build_message():

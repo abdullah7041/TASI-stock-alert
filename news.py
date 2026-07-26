@@ -18,18 +18,25 @@ from dataclasses import dataclass, field
 
 GOOGLE_NEWS_RSS = "https://news.google.com/rss/search"
 
-# Keyword lexicons. Deliberately small and explicit. English + Arabic.
+# Keyword/phrase lexicons. Deliberately explicit, no stemming library.
+# Substring-matched (not word-set) so multi-word market vocabulary works —
+# a word-set tally can never match a two-word phrase like "capital increase".
 POSITIVE = {
     "beat", "beats", "surge", "surges", "jump", "jumps", "rise", "rises", "gain",
     "gains", "profit", "profits", "growth", "record", "upgrade", "buy", "wins",
-    "win", "award", "dividend", "expansion", "acquire", "acquisition", "strong",
-    "ارتفاع", "أرباح", "ربح", "نمو", "صفقة", "توزيع", "ترسية", "عقد", "قياسي", "توسع",
+    "win", "award", "dividend", "dividends", "expansion", "acquire", "acquisition",
+    "strong", "buyback", "share buyback", "capital increase", "board recommends",
+    "rights issue", "signs contract", "wins contract",
+    "ارتفاع", "أرباح", "ربح", "نمو", "صفقة", "توزيع", "توزيعات أرباح", "ترسية",
+    "ترسية مشروع", "عقد", "قياسي", "توسع", "زيادة رأس المال", "توصية مجلس الإدارة",
 }
 NEGATIVE = {
     "miss", "misses", "fall", "falls", "drop", "drops", "plunge", "plunges",
     "loss", "losses", "decline", "downgrade", "sell", "cut", "cuts", "probe",
     "lawsuit", "fraud", "delay", "warning", "weak", "halt", "suspend",
-    "انخفاض", "خسارة", "خسائر", "تراجع", "هبوط", "تأجيل", "تحقيق", "غرامة", "تعليق", "إيقاف",
+    "profit warning", "trading suspension", "trading halt",
+    "انخفاض", "خسارة", "خسائر", "تراجع", "هبوط", "تأجيل", "تحقيق", "غرامة",
+    "تعليق", "إيقاف", "تعليق التداول", "إنذار أرباح",
 }
 
 
@@ -66,12 +73,17 @@ def _fetch_rss(url: str, limit: int) -> list:
 
 
 def score_headlines(titles) -> tuple[float, str]:
-    """Keyword tally over headline titles. Returns (score -1..1, label)."""
+    """Substring tally over headline titles. Returns (score -1..1, label).
+
+    Substring rather than word-set matching so both single words ("surge")
+    and multi-word Tadawul/CMA phrases ("capital increase", "trading
+    suspension") are detected without needing every inflection spelled out.
+    """
     pos = neg = 0
     for t in titles:
-        words = set(t.lower().replace(",", " ").replace(".", " ").split())
-        pos += len(words & POSITIVE)
-        neg += len(words & NEGATIVE)
+        low = t.lower()
+        pos += sum(1 for w in POSITIVE if w in low)
+        neg += sum(1 for w in NEGATIVE if w in low)
     total = pos + neg
     if total == 0:
         return 0.0, "neutral"
