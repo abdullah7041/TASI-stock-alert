@@ -402,6 +402,23 @@ def test_sentiment_still_handles_old_single_word_lexicon():
     assert score < 0 and label == "negative"
 
 
+# --- per-headline match detail (Task 3) -----------------------------------------
+def test_headline_matches_finds_positive_words():
+    m = news._headline_matches("Company profit surges to a record high")
+    assert "profit" in m["positive"]
+    assert m["negative"] == []
+
+def test_headline_matches_finds_negative_phrase():
+    m = news._headline_matches("Firm issues profit warning after weak quarter")
+    assert "profit warning" in m["negative"]
+
+def test_news_result_has_no_confidence_field():
+    import dataclasses
+    field_names = {f.name for f in dataclasses.fields(news.NewsResult)}
+    assert "confidence" not in field_names
+    assert "matches" in field_names
+
+
 # --- notify formatting (offline) -------------------------------------------
 def test_format_and_build_message():
     rec = {

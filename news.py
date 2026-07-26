@@ -46,7 +46,7 @@ class NewsResult:
     headlines: list = field(default_factory=list)   # list of {title, link, published}
     score: float = 0.0        # -1.0 .. +1.0
     label: str = "neutral"    # 'positive' / 'neutral' / 'negative'
-    confidence: str = "low"    # always low by design
+    matches: list = field(default_factory=list)  # per-headline {"positive": [...], "negative": [...]}
     ok: bool = True            # False if the fetch failed
 
 
@@ -92,6 +92,16 @@ def score_headlines(titles) -> tuple[float, str]:
     return round(score, 2), label
 
 
+def _headline_matches(title: str) -> dict:
+    """Which lexicon entries fired on this headline. Makes a surprising score
+    diagnosable instead of an opaque number."""
+    low = title.lower()
+    return {
+        "positive": sorted(w for w in POSITIVE if w in low),
+        "negative": sorted(w for w in NEGATIVE if w in low),
+    }
+
+
 def get_news(company_name: str, code: str, limit: int = 8) -> NewsResult:
     """Fetch recent headlines for a name and score them. Never raises."""
     query = f'"{company_name}" OR {code} Tadawul'
@@ -102,9 +112,12 @@ def get_news(company_name: str, code: str, limit: int = 8) -> NewsResult:
             headlines += _fetch_rss(_rss_url(company_name, "ar"), max(2, limit // 2))
         except Exception:
             pass
+        headlines = headlines[:limit]
         titles = [h["title"] for h in headlines]
         score, label = score_headlines(titles)
-        return NewsResult(query=query, headlines=headlines[:limit],
-                          score=score, label=label, ok=True)
+        matches = [_headline_matches(t) for t in titles]
+        return NewsResult(query=query, headlines=headlines, score=score,
+                          label=label, matches=matches, ok=True)
     except Exception:
-        return NewsResult(query=query, headlines=[], score=0.0, label="neutral", ok=False)
+        return NewsResult(query=query, headlines=[], score=0.0, label="neutral",
+                          matches=[], ok=False)
