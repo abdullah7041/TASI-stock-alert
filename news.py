@@ -12,11 +12,15 @@ so the rest of the system keeps working.
 
 from __future__ import annotations
 
+import json
+import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from pathlib import Path
 
 GOOGLE_NEWS_RSS = "https://news.google.com/rss/search"
+NEWS_ARCHIVE_FILE = Path(__file__).resolve().parent / "news_archive.jsonl"
 
 # Keyword/phrase lexicons. Deliberately explicit, no stemming library.
 # Substring-matched (not word-set) so multi-word market vocabulary works —
@@ -121,3 +125,28 @@ def get_news(company_name: str, code: str, limit: int = 8) -> NewsResult:
     except Exception:
         return NewsResult(query=query, headlines=[], score=0.0, label="neutral",
                           matches=[], ok=False)
+
+
+def archive_headlines(code: str, result: NewsResult,
+                      archive_path: Path = NEWS_ARCHIVE_FILE) -> None:
+    """Append every fetched headline to a JSONL log, one line per headline.
+
+    This is the only way news ever becomes testable against price outcomes:
+    backtest.py hardcodes news_score=0.0 because no headline history exists
+    yet. Every run's fetch would otherwise be thrown away. No-op when there
+    are no headlines (fetch failure or a genuinely empty result) — an empty
+    archive entry is noise, not data.
+    """
+    if not result.headlines:
+        return
+    today = time.strftime("%Y-%m-%d")
+    matches = result.matches or [{"positive": [], "negative": []}] * len(result.headlines)
+    with open(archive_path, "a", encoding="utf-8") as f:
+        for h, m in zip(result.headlines, matches):
+            f.write(json.dumps({
+                "date": today, "code": code, "title": h.get("title", ""),
+                "link": h.get("link", ""), "published": h.get("published", ""),
+                "score": result.score, "label": result.label,
+                "matched_positive": m.get("positive", []),
+                "matched_negative": m.get("negative", []),
+            }, ensure_ascii=False) + "\n")

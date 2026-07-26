@@ -7,6 +7,7 @@ evaluators. Data is synthetic so these are deterministic.
 """
 
 import io
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -651,6 +652,63 @@ def test_report_covers_all_events_not_just_resolved():
     assert rep["expectancy_pct"] == 2.0        # mean over ALL three, timeout included.
     assert rep["timeout_pct"] == 33.3          # reported, not hidden.
     assert rep["hit_target_pct"] == 33.3 and rep["hit_stop_pct"] == 33.3
+
+
+# --- archive headlines ----------------------------------------------------------
+def test_archive_headlines_writes_one_jsonl_line_per_headline():
+    import json
+    result = news.NewsResult(
+        query="q",
+        headlines=[{"title": "Firm profit rises 12%", "link": "http://x", "published": "24 Jul 2026"}],
+        score=0.5, label="positive",
+        matches=[{"positive": ["profit"], "negative": []}], ok=True)
+    path = Path(__file__).resolve().parent / "_test_archive_tmp.jsonl"
+    try:
+        if path.exists():
+            path.unlink()
+        news.archive_headlines("1234", result, archive_path=path)
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 1
+        rec = json.loads(lines[0])
+        assert rec["code"] == "1234"
+        assert rec["title"] == "Firm profit rises 12%"
+        assert rec["matched_positive"] == ["profit"]
+        assert rec["score"] == 0.5
+    finally:
+        if path.exists():
+            path.unlink()
+
+def test_archive_headlines_skips_when_no_headlines():
+    result = news.NewsResult(query="q", ok=True)  # empty headlines, default.
+    path = Path(__file__).resolve().parent / "_test_archive_tmp2.jsonl"
+    try:
+        if path.exists():
+            path.unlink()
+        news.archive_headlines("1234", result, archive_path=path)
+        assert not path.exists()
+    finally:
+        if path.exists():
+            path.unlink()
+
+def test_archive_headlines_appends_across_calls():
+    import json
+    path = Path(__file__).resolve().parent / "_test_archive_tmp3.jsonl"
+    try:
+        if path.exists():
+            path.unlink()
+        r1 = news.NewsResult(query="q", headlines=[{"title": "A", "link": "", "published": ""}],
+                             score=0.0, label="neutral", matches=[{"positive": [], "negative": []}], ok=True)
+        r2 = news.NewsResult(query="q", headlines=[{"title": "B", "link": "", "published": ""}],
+                             score=0.0, label="neutral", matches=[{"positive": [], "negative": []}], ok=True)
+        news.archive_headlines("1", r1, archive_path=path)
+        news.archive_headlines("2", r2, archive_path=path)
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 2
+        assert json.loads(lines[0])["code"] == "1"
+        assert json.loads(lines[1])["code"] == "2"
+    finally:
+        if path.exists():
+            path.unlink()
 
 
 if __name__ == "__main__":
