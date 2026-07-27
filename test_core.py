@@ -199,12 +199,12 @@ def test_unverified_watchlist_never_buys():
 
 
 # --- budget allocation ------------------------------------------------------
-def _buy(code, conviction, price):
+def _buy(code, price):
     return {"kind": "watchlist", "code": code, "name": code, "price": price,
-            "action": "BUY", "conviction": conviction}
+            "action": "BUY"}
 
 def test_allocate_whole_shares_within_budget():
-    buys = [_buy("A", 90, 33.4), _buy("B", 60, 13.7)]
+    buys = [_buy("A", 33.4), _buy("B", 13.7)]
     summary = az.allocate_budget(buys, 500.0)
     total = sum(b["sizing"]["spend"] for b in buys if not b["sizing"].get("skip"))
     for b in buys:
@@ -215,26 +215,40 @@ def test_allocate_whole_shares_within_budget():
     assert abs(summary["allocated"] - total) < 0.01
     assert abs(summary["leftover"] - (500.0 - total)) < 0.01
 
-def test_allocate_higher_conviction_gets_more():
-    buys = [_buy("A", 90, 10.0), _buy("B", 45, 10.0)]
+def test_allocate_equal_weight_same_price_gets_same_spend():
+    # The point of the change: identical prices now get identical spend, where
+    # the conviction-weighted version deliberately gave one of them more.
+    buys = [_buy("A", 10.0), _buy("B", 10.0)]
     az.allocate_budget(buys, 500.0)
     a = next(b for b in buys if b["code"] == "A")["sizing"]["spend"]
     b_ = next(b for b in buys if b["code"] == "B")["sizing"]["spend"]
-    assert a > b_
+    assert a == b_
+    assert a == 250.0
 
-def test_allocate_min_one_share_when_slice_small_but_budget_allows():
-    buys = [_buy("A", 90, 10.0), _buy("B", 10, 45.0)]  # B's slice ~45 SAR
+def test_allocate_weight_pct_is_equal_across_names():
+    buys = [_buy("A", 10.0), _buy("B", 10.0), _buy("C", 10.0)]
+    az.allocate_budget(buys, 300.0)
+    for b in buys:
+        assert b["sizing"]["weight_pct"] == 33.3
+
+def test_allocate_min_one_share_when_equal_slice_too_small_but_budget_allows():
+    # Equal slices are 250 SAR each. B at 300 does not fit its own slice, but
+    # does fit what is left of the whole budget, so the 1-share fallback gives
+    # it one. (The old version of this test drove the same fallback with a
+    # conviction disparity; price disparity is the equal-weight equivalent.)
+    buys = [_buy("B", 300.0), _buy("A", 10.0)]
     az.allocate_budget(buys, 500.0)
-    assert next(b for b in buys if b["code"] == "B")["sizing"]["shares"] >= 1
+    assert next(b for b in buys if b["code"] == "B")["sizing"]["shares"] == 1
+    assert next(b for b in buys if b["code"] == "A")["sizing"]["shares"] == 20
 
 def test_allocate_skips_share_pricier_than_budget():
-    buys = [_buy("A", 95, 600.0)]
+    buys = [_buy("A", 600.0)]
     summary = az.allocate_budget(buys, 500.0)
     assert buys[0]["sizing"]["shares"] == 0 and "skip" in buys[0]["sizing"]
     assert summary["allocated"] == 0.0 and summary["leftover"] == 500.0
 
 def test_allocate_zero_budget_skips_all():
-    buys = [_buy("A", 95, 10.0)]
+    buys = [_buy("A", 10.0)]
     az.allocate_budget(buys, 0.0)
     assert buys[0]["sizing"]["skip"] == "monthly budget exhausted"
 

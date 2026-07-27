@@ -280,33 +280,38 @@ def buy_decision(long_read: dict, criteria: dict) -> tuple[bool, list]:
 
 # --- Budget allocation ------------------------------------------------------
 def allocate_budget(buys: list, budget_sar: float) -> dict:
-    """Split the remaining monthly budget across BUY recs, weighted by
-    conviction. Mutates each rec's 'sizing' in place; returns a summary.
+    """Split the remaining monthly budget EQUALLY across BUY recs. Mutates each
+    rec's 'sizing' in place; returns a summary.
 
     Rules (transparent, in order):
-      - Candidates processed highest conviction first.
-      - Each gets slice = budget * (its conviction / total conviction), then
-        rounded DOWN to whole shares (Tadawul does not allow fractions).
+      - Equal weight: every qualifying name targets the same slice, processed
+        in the order given. This used to be weighted by conviction — which
+        backtested inverted against forward return, so weighting toward it was
+        weighting toward worse outcomes (docs/backtest-findings-2026-07-23.md).
+        With conviction gone there is nothing left to rank on, and pretending
+        otherwise would be inventing a ranking.
+      - Each gets slice = budget / len(buys), rounded DOWN to whole shares
+        (Tadawul does not allow fractions).
       - If the slice affords 0 shares but 1 share fits what is left of the
-        budget, it gets 1 share (highest conviction first).
+        budget, it gets 1 share.
       - Unspent remainder of a slice rolls to the next candidate via the
         running 'remaining' amount; whatever is left at the end stays cash.
       - Hard invariant: total spend <= budget_sar.
     """
-    summary = {"budget": round(budget_sar, 2), "allocated": 0.0, "leftover": round(budget_sar, 2)}
+    summary = {"budget": round(budget_sar, 2), "allocated": 0.0,
+               "leftover": round(budget_sar, 2)}
     if not buys or budget_sar <= 0:
         for r in buys:
             r["sizing"] = {"shares": 0, "spend": 0.0, "skip": "monthly budget exhausted"}
         return summary
 
-    candidates = sorted(buys, key=lambda r: r["conviction"], reverse=True)
-    total_conv = sum(r["conviction"] for r in candidates) or 1
+    n = len(buys)
+    equal_slice = budget_sar / n
     remaining = budget_sar
 
-    for r in candidates:
+    for r in buys:
         price = r["price"]
-        weight = r["conviction"] / total_conv
-        slice_sar = min(budget_sar * weight, remaining)
+        slice_sar = min(equal_slice, remaining)
         shares = int(slice_sar // price) if price > 0 else 0
         if shares == 0 and 0 < price <= remaining:
             shares = 1  # min viable lot for a qualified name, if budget allows.
@@ -322,7 +327,7 @@ def allocate_budget(buys: list, budget_sar: float) -> dict:
         r["sizing"] = {
             "shares": shares,
             "spend": round(spend, 2),
-            "weight_pct": round(weight * 100, 1),
+            "weight_pct": round(100.0 / n, 1),
             "budget_left_after": round(remaining, 2),
         }
 
