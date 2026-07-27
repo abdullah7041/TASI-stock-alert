@@ -321,7 +321,7 @@ def _row_to_long_read(row) -> dict:
 
 
 def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
-        tech: dict | None = None, max_hold: int = MAX_HOLD_BARS,
+        max_hold: int = MAX_HOLD_BARS,
         levels_cfg: dict | None = None) -> pd.DataFrame:
     """Replay BUY decisions and resolve each into a trade.
 
@@ -332,7 +332,6 @@ def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
     closes.
     """
     criteria = criteria or cfg.BUY_CRITERIA
-    tech = tech or cfg.TECH
     if features.empty:
         return pd.DataFrame()
 
@@ -350,20 +349,7 @@ def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
             t = int(row["t"])
             if t <= open_until:
                 continue                      # position still open on this name.
-            dist = row["distance_to_zone_pct"]
-            conviction = az.conviction_score(
-                row["trend"],
-                float(row["rsi"]) if pd.notna(row["rsi"]) else float("nan"),
-                tech,
-                float(dist) if pd.notna(dist) else float("nan"),
-            )
-            is_buy, _ = az.buy_decision(
-                conviction,
-                0.0,                          # news unavailable historically.
-                _row_to_long_read(row),
-                row["regime"],
-                criteria,
-            )
+            is_buy, _ = az.buy_decision(_row_to_long_read(row), criteria)
             if not is_buy:
                 continue
 
@@ -381,7 +367,7 @@ def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
                 continue
             open_until = t + res["bars_held"]
             events.append({"code": str(code), "date": row["date"], "t": t,
-                           "conviction": conviction, "regime": row["regime"],
+                           "regime": row["regime"],
                            "rsi": row["rsi"], "trend": row["trend"], **res})
 
     if missing and not events:

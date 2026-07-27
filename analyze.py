@@ -224,45 +224,58 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
 
 
 # --- BUY decision ----------------------------------------------------------
-def buy_decision(conviction: int, news_score: float, long_read: dict,
-                 regime: str, criteria: dict) -> tuple[bool, list]:
-    """The single place BUY is decided. Returns (is_buy, failed_checks).
+def buy_decision(long_read: dict, criteria: dict) -> tuple[bool, list]:
+    """The single place BUY is decided. Returns (is_buy, rules).
 
-    BUY fires only when ALL of these hold:
-      1. conviction >= criteria['conviction_min'] — raised to
-         criteria['conviction_min_breakdown'] when the TASI regime is
-         'breakdown' or 'unknown'. The regime raises the bar; it never blocks.
-      2. news_score >= 0 (no news / failed fetch is neutral 0.0, which passes).
-      3. long-term RSI inside criteria['rsi_recovery_band'] — recovering, not
-         capitulating and not chasing.
-      4. long-term read confirms strength: trend == 'up' AND long momentum
-         >= criteria['long_mom_floor_pct']. Both are required — an 'up' MA
-         cross with falling momentum (or positive momentum under a non-up
-         trend) is not enough. This closes the "up trend but momentum below
-         the floor" contradiction.
+    `rules` reports EVERY rule, passed or not — not just the failures — so the
+    digest can say "Rules met: 2/3" and name what is blocking. Exactly three,
+    always in this order:
+      1. rsi_band       — long RSI inside criteria['rsi_recovery_band'].
+      2. trend          — long trend == 'up'.
+      3. momentum_floor — long momentum >= criteria['long_mom_floor_pct'].
+    BUY fires only when all three pass.
+
+    Conviction and the news veto are both gone. Conviction backtested INVERTED
+    against forward return (docs/backtest-findings-2026-07-23.md is now the only
+    record of that), and it gated BUY *and* weighted the budget. News sentiment
+    has never been validated against outcomes at all — backtest.py hardcodes
+    news_score=0.0 because no historical headlines existed to check it with.
+    Two unvalidated inputs were deciding real money; the rules are stated
+    plainly now instead of being folded into a score.
     """
-    failed = []
-    cautious = regime in ("breakdown", "unknown")
-    cutoff = criteria["conviction_min_breakdown"] if cautious else criteria["conviction_min"]
-    if conviction < cutoff:
-        failed.append(f"conviction {conviction} < {cutoff}"
-                      + (" (breakdown-raised bar)" if cautious else ""))
-    if news_score < 0:
-        failed.append(f"news sentiment negative ({news_score})")
+    rules = []
+
     lo, hi = criteria["rsi_recovery_band"]
-    r = long_read.get("rsi")
-    if r is None or np.isnan(r):
-        failed.append("RSI unavailable")
-    elif not (lo <= r <= hi):
-        failed.append(f"RSI {r} outside recovery band {lo}-{hi}")
+    rsi_val = long_read.get("rsi")
+    rsi_missing = rsi_val is None or np.isnan(rsi_val)
+    rsi_ok = (not rsi_missing) and lo <= rsi_val <= hi
+    if rsi_missing:
+        rsi_plain = "RSI unavailable"
+    elif rsi_ok:
+        rsi_plain = f"RSI {rsi_val} inside {lo}-{hi}"
+    else:
+        rsi_plain = f"RSI {rsi_val} outside recovery band {lo}-{hi}"
+    rules.append({"rule": "rsi_band", "passed": rsi_ok, "actual": rsi_val,
+                  "required": f"{lo}-{hi}", "plain": rsi_plain})
+
+    trend_val = long_read.get("trend")
+    trend_ok = trend_val == "up"
+    rules.append({
+        "rule": "trend", "passed": trend_ok, "actual": trend_val, "required": "up",
+        "plain": f"trend {trend_val}" if trend_ok
+                 else f"trend {trend_val}, need up",
+    })
+
     mom = long_read.get("momentum_pct")
-    trend_up = long_read.get("trend") == "up"
-    mom_ok = mom is not None and not np.isnan(mom) and mom >= criteria["long_mom_floor_pct"]
-    if not (trend_up and mom_ok):
-        failed.append(f"long-term not confirmed (trend {long_read.get('trend')}, "
-                      f"mom {mom}% vs floor {criteria['long_mom_floor_pct']}%; "
-                      f"need trend=up AND mom>=floor)")
-    return (len(failed) == 0), failed
+    floor = criteria["long_mom_floor_pct"]
+    mom_ok = mom is not None and not np.isnan(mom) and mom >= floor
+    rules.append({
+        "rule": "momentum_floor", "passed": mom_ok, "actual": mom, "required": floor,
+        "plain": f"momentum {mom}% >= floor {floor}%" if mom_ok
+                 else f"momentum {mom}% below floor {floor}%",
+    })
+
+    return all(rule["passed"] for rule in rules), rules
 
 
 # --- Budget allocation ------------------------------------------------------
@@ -345,7 +358,8 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
     news_score = news.score if news is not None else 0.0
     criteria = buy_criteria or {"conviction_min": 65, "conviction_min_breakdown": 80,
                                 "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
-    is_buy, failed = buy_decision(conviction, news_score, long, regime, criteria)
+    is_buy, rules = buy_decision(long, criteria)
+    failed = [r["plain"] for r in rules if not r["passed"]]
 
     reason = []
     sizing = None

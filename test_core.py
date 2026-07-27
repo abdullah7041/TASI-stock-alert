@@ -106,51 +106,61 @@ def test_conviction_uptrend_beats_downtrend():
 
 
 # --- BUY decision -----------------------------------------------------------
-CRITERIA = {"conviction_min": 65, "conviction_min_breakdown": 80,
-            "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+CRITERIA = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
 GOOD_LONG = {"trend": "up", "momentum_pct": 10.0, "rsi": 45.0}
 
-def test_buy_fires_when_all_criteria_met():
-    ok, failed = az.buy_decision(90, 0.0, GOOD_LONG, "ok", CRITERIA)
-    assert ok and not failed
+def _rule(rules, name):
+    return next(r for r in rules if r["rule"] == name)
 
-def test_breakdown_raises_bar_instead_of_blocking():
-    # conviction 70 passes in 'ok' regime but not the raised breakdown bar...
-    assert az.buy_decision(70, 0.0, GOOD_LONG, "ok", CRITERIA)[0]
-    assert not az.buy_decision(70, 0.0, GOOD_LONG, "breakdown", CRITERIA)[0]
-    # ...yet a strong enough setup still fires in a breakdown (no hard veto).
-    assert az.buy_decision(85, 0.0, GOOD_LONG, "breakdown", CRITERIA)[0]
-
-def test_negative_news_vetoes_buy():
-    ok, failed = az.buy_decision(90, -0.5, GOOD_LONG, "ok", CRITERIA)
-    assert not ok and any("news" in f for f in failed)
+def test_buy_fires_when_all_rules_met():
+    ok, rules = az.buy_decision(GOOD_LONG, CRITERIA)
+    assert ok
+    assert len(rules) == 3
+    assert all(r["passed"] for r in rules)
+    assert [r["rule"] for r in rules] == ["rsi_band", "trend", "momentum_floor"]
 
 def test_rsi_outside_recovery_band_vetoes_buy():
     hot = {**GOOD_LONG, "rsi": 75.0}
-    assert not az.buy_decision(90, 0.0, hot, "ok", CRITERIA)[0]
+    ok, rules = az.buy_decision(hot, CRITERIA)
+    assert not ok
+    assert _rule(rules, "rsi_band")["passed"] is False
     capitulating = {**GOOD_LONG, "rsi": 15.0}
-    assert not az.buy_decision(90, 0.0, capitulating, "ok", CRITERIA)[0]
+    assert not az.buy_decision(capitulating, CRITERIA)[0]
+
+def test_rsi_unavailable_vetoes_buy():
+    unavailable = {**GOOD_LONG, "rsi": float("nan")}
+    ok, rules = az.buy_decision(unavailable, CRITERIA)
+    assert not ok
+    assert _rule(rules, "rsi_band")["passed"] is False
+    assert "unavailable" in _rule(rules, "rsi_band")["plain"]
 
 def test_deteriorating_long_term_vetoes_buy():
     bad = {"trend": "down", "momentum_pct": -20.0, "rsi": 45.0}
-    ok, failed = az.buy_decision(90, 0.0, bad, "ok", CRITERIA)
-    assert not ok and any("long-term not confirmed" in f for f in failed)
+    ok, rules = az.buy_decision(bad, CRITERIA)
+    assert not ok
+    assert _rule(rules, "trend")["passed"] is False
+    assert _rule(rules, "momentum_floor")["passed"] is False
 
 def test_up_trend_with_momentum_below_floor_vetoes_buy():
-    # The Avalon case: MA cross says 'up' but momentum is below the floor.
-    # AND gate rejects it (OR gate used to pass it on the trend flag alone).
+    # The Avalon case: the MA cross says 'up' but momentum is below the floor.
+    # Trend and momentum are now SEPARATE rules, so this reports 2/3 with one
+    # named blocker instead of a single combined "long-term not confirmed".
     avalon = {"trend": "up", "momentum_pct": -6.31, "rsi": 47.4}
-    ok, failed = az.buy_decision(94, 0.0, avalon, "breakdown", CRITERIA)
-    assert not ok and any("long-term not confirmed" in f for f in failed)
+    ok, rules = az.buy_decision(avalon, CRITERIA)
+    assert not ok
+    assert _rule(rules, "trend")["passed"] is True
+    assert _rule(rules, "momentum_floor")["passed"] is False
+    assert sum(1 for r in rules if r["passed"]) == 2
 
 def test_up_trend_and_positive_momentum_passes():
     strong = {"trend": "up", "momentum_pct": 8.0, "rsi": 45.0}
-    assert az.buy_decision(90, 0.0, strong, "ok", CRITERIA)[0]
+    assert az.buy_decision(strong, CRITERIA)[0]
 
 def test_positive_momentum_without_up_trend_vetoes_buy():
-    # AND gate: momentum above floor is not enough without an up trend.
     flat = {"trend": "flat", "momentum_pct": 3.0, "rsi": 45.0}
-    assert not az.buy_decision(90, 0.0, flat, "ok", CRITERIA)[0]
+    ok, rules = az.buy_decision(flat, CRITERIA)
+    assert not ok
+    assert _rule(rules, "trend")["passed"] is False
 
 
 # --- symbol verification ----------------------------------------------------
@@ -406,7 +416,11 @@ def test_watchlist_watch_when_criteria_fail_with_reason():
                                 horizon_cfg=_WL_HORIZON, tech=_WL_TECH,
                                 buy_criteria=strict)
     assert rec["action"] == "WATCH"
-    assert any("conviction" in r for r in rec["reason"])
+    # buy_decision no longer checks conviction (Task 1); this strict RSI band
+    # is what actually blocks the synthetic uptrend frame. Task 3's brief
+    # replaces this whole test with test_watchlist_watch_when_rules_fail_with_reason,
+    # which asserts the same "RSI" substring for the same reason.
+    assert any("RSI" in r for r in rec["reason"])
 
 
 # --- news sentiment (offline, no fetch) ------------------------------------
