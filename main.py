@@ -204,14 +204,13 @@ def _collect_recs(include_news: bool):
             try:
                 return w["code"], newsmod.get_news(w["name"], w["code"])
             except Exception:
-                return w["code"], None
+                return w["code"], newsmod.NewsResult(query="", ok=False)
 
         with ThreadPoolExecutor(max_workers=8) as ex:
             news_by_code = dict(ex.map(_fetch, cfg.HOLDINGS + cfg.WATCHLIST))
 
         for code, result in news_by_code.items():
-            if result is not None:
-                newsmod.archive_headlines(code, result)
+            newsmod.archive_headlines(code, result)
 
     unverified = []
     recs = []
