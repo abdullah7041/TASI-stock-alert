@@ -204,10 +204,13 @@ def _collect_recs(include_news: bool):
             try:
                 return w["code"], newsmod.get_news(w["name"], w["code"])
             except Exception:
-                return w["code"], None
+                return w["code"], newsmod.NewsResult(query="", ok=False)
 
         with ThreadPoolExecutor(max_workers=8) as ex:
-            news_by_code = dict(ex.map(_fetch, cfg.WATCHLIST))
+            news_by_code = dict(ex.map(_fetch, cfg.HOLDINGS + cfg.WATCHLIST))
+
+        for code, result in news_by_code.items():
+            newsmod.archive_headlines(code, result)
 
     unverified = []
     recs = []
@@ -217,7 +220,7 @@ def _collect_recs(include_news: bool):
             continue
         price = float(df["Close"].iloc[-1])
         rec = az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
-                                  cfg.HORIZON, cfg.TECH)
+                                  cfg.HORIZON, cfg.TECH, news_by_code.get(h["code"]))
         v = verify.get(h["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:

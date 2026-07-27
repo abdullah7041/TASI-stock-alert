@@ -7,6 +7,7 @@ evaluators. Data is synthetic so these are deterministic.
 """
 
 import io
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -54,6 +55,20 @@ def test_trend_down():
 
 def test_trend_unknown_when_short():
     assert ind.trend([1, 2, 3], 20, 50) == "unknown"
+
+
+# --- short/long term read ---------------------------------------------------
+def test_short_term_read_has_no_confidence_key():
+    df = _frame(list(range(1, 40)))
+    out = ind.short_term_read(df, 10, 20)
+    assert "confidence" not in out
+    assert "momentum_pct" in out and "rsi" in out
+
+def test_long_term_read_has_no_confidence_key():
+    df = _frame(list(range(1, 160)))
+    out = ind.long_term_read(df, 50, 20, 50)
+    assert "confidence" not in out
+    assert "trend" in out and "momentum_pct" in out and "rsi" in out
 
 
 # --- support / resistance ---------------------------------------------------
@@ -328,6 +343,41 @@ def test_holding_stop_triggers_sell():
                               tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
     assert rec["action"].startswith("SELL")
 
+
+def test_news_summary_none_when_no_news():
+    assert az.news_summary(None) is None
+
+def test_news_summary_shapes_result():
+    result = news.NewsResult(query="q", headlines=[{"title": "T", "link": "", "published": ""}],
+                             score=0.3, label="positive", matches=[{"positive": [], "negative": []}], ok=True)
+    summary = az.news_summary(result)
+    assert summary == {"ok": True, "label": "positive", "score": 0.3,
+                       "headlines": [{"title": "T", "link": "", "published": ""}]}
+
+def test_evaluate_holding_attaches_news():
+    df = _frame(list(range(100, 160)))
+    h = {"code": "1303", "name": "EIC", "shares": 100, "avg_cost": 120.0}
+    result = news.NewsResult(query="q", headlines=[{"title": "T", "link": "", "published": ""}],
+                             score=0.1, label="neutral", matches=[{"positive": [], "negative": []}], ok=True)
+    rec = az.evaluate_holding(h, price=110.0, df=df,
+                              levels={"stop": 115.0}, horizon_cfg={
+                                  "short_lookback_days": 10, "long_lookback_days": 50,
+                                  "short_ma": 20, "long_ma": 50},
+                              tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70},
+                              news=result)
+    assert rec["news"]["ok"] is True
+    assert rec["news"]["headlines"][0]["title"] == "T"
+
+def test_evaluate_holding_news_defaults_to_none():
+    df = _frame(list(range(100, 160)))
+    h = {"code": "1303", "name": "EIC", "shares": 100, "avg_cost": 120.0}
+    rec = az.evaluate_holding(h, price=110.0, df=df,
+                              levels={"stop": 115.0}, horizon_cfg={
+                                  "short_lookback_days": 10, "long_lookback_days": 50,
+                                  "short_ma": 20, "long_ma": 50},
+                              tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
+    assert rec["news"] is None
+
 _WL_HORIZON = {"short_lookback_days": 10, "long_lookback_days": 50,
                "short_ma": 20, "long_ma": 50}
 _WL_TECH = {"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70}
@@ -376,6 +426,71 @@ def test_sentiment_arabic():
     score, label = news.score_headlines(["ارتفاع أرباح الشركة ونمو قياسي"])
     assert score > 0
 
+def test_sentiment_phrase_capital_increase_is_positive():
+    score, label = news.score_headlines(["Company board approves capital increase plan"])
+    assert score > 0 and label == "positive"
+
+def test_sentiment_phrase_trading_suspension_is_negative():
+    score, label = news.score_headlines(["CMA orders trading suspension of the stock"])
+    assert score < 0 and label == "negative"
+
+def test_sentiment_phrase_profit_warning_is_negative():
+    score, label = news.score_headlines(["Firm issues profit warning ahead of results"])
+    assert score < 0 and label == "negative"
+
+def test_sentiment_arabic_phrase_dividend_distribution_is_positive():
+    score, label = news.score_headlines(["مجلس الإدارة يوصي بتوزيعات أرباح نقدية"])
+    assert score > 0 and label == "positive"
+
+def test_sentiment_arabic_phrase_trading_halt_is_negative():
+    score, label = news.score_headlines(["تعليق التداول في السهم بقرار من الهيئة"])
+    assert score < 0 and label == "negative"
+
+def test_sentiment_still_handles_old_single_word_lexicon():
+    # Regression: substring matching must not lose the original coverage.
+    score, label = news.score_headlines(["Shares plunge on unexpected loss"])
+    assert score < 0 and label == "negative"
+
+
+# --- per-headline match detail (Task 3) -----------------------------------------
+def test_headline_matches_finds_positive_words():
+    m = news._headline_matches("Company profit surges to a record high")
+    assert "profit" in m["positive"]
+    assert m["negative"] == []
+
+def test_headline_matches_finds_negative_phrase():
+    m = news._headline_matches("Firm issues profit warning after weak quarter")
+    assert "profit warning" in m["negative"]
+
+def test_news_result_has_no_confidence_field():
+    import dataclasses
+    field_names = {f.name for f in dataclasses.fields(news.NewsResult)}
+    assert "confidence" not in field_names
+    assert "matches" in field_names
+
+
+# --- word-boundary matching (final review fix) -----------------------------
+def test_sentiment_word_boundary_excludes_substring_false_positive():
+    # "rise" must not fire inside "Enterprise" (a real false positive found
+    # in production archived headlines) or "surprised".
+    score, label = news.score_headlines(["Enterprise Data Solutions reports quarterly update"])
+    assert score == 0.0 and label == "neutral"
+
+def test_sentiment_word_boundary_still_matches_whole_word():
+    score, label = news.score_headlines(["Shares rise on strong demand"])
+    assert score > 0 and label == "positive"
+
+def test_headline_matches_word_boundary_excludes_substring_false_positive():
+    m = news._headline_matches("Enterprise Data Solutions reports quarterly update")
+    assert "rise" not in m["positive"]
+
+def test_sentiment_arabic_substring_still_works_with_attached_prefix():
+    # Arabic keeps substring matching — a prefix/conjunction glued onto a
+    # root word must still be detected (this is why Arabic is NOT switched
+    # to word-boundary matching).
+    score, label = news.score_headlines(["وارتفاع الأرباح يدعم السهم"])
+    assert score > 0
+
 
 # --- notify formatting (offline) -------------------------------------------
 def test_format_and_build_message():
@@ -383,14 +498,40 @@ def test_format_and_build_message():
         "kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
         "action": "BUY", "reason": ["in zone"], "conviction": 72,
         "sizing": {"shares": 7, "spend": 700.0, "pct_of_cash": 23.3},
-        "short_term": {"momentum_pct": 2.1, "rsi": 55, "confidence": "low"},
-        "long_term": {"trend": "up", "momentum_pct": 8.0, "rsi": 60, "confidence": "medium"},
-        "news": {"label": "positive", "score": 0.4, "count": 5, "confidence": "low"},
+        "short_term": {"momentum_pct": 2.1, "rsi": 55},
+        "long_term": {"trend": "up", "momentum_pct": 8.0, "rsi": 60},
+        "news": {"ok": True, "label": "positive", "score": 0.4,
+                "headlines": [{"title": "Jamjoom profit rises 12%",
+                              "link": "http://x", "published": "24 Jul 2026"}]},
     }
     block = nt.format_recommendation(rec)
     assert "4015" in block and "BUY" in block and "conviction: 72" in block
+    assert "conf)" not in block  # the fake confidence suffix is gone.
+    assert "Jamjoom profit rises 12%" in block
+    assert "24 Jul 2026" in block
     msg = nt.build_message([rec], "Test header")
     assert "Test header" in msg and "Not financial advice" in msg
+
+def test_format_news_fetch_failed_renders_distinctly():
+    rec = {
+        "kind": "watchlist", "code": "1", "name": "X", "price": 1.0,
+        "action": "WATCH", "reason": [], "conviction": 0,
+        "short_term": {"momentum_pct": 0, "rsi": 50}, "long_term": {"trend": "flat", "momentum_pct": 0, "rsi": 50},
+        "news": {"ok": False, "label": "neutral", "score": 0.0, "headlines": []},
+    }
+    block = nt.format_recommendation(rec)
+    assert "fetch failed" in block
+
+def test_format_news_empty_result_renders_distinctly_from_failure():
+    rec = {
+        "kind": "watchlist", "code": "2", "name": "Y", "price": 1.0,
+        "action": "WATCH", "reason": [], "conviction": 0,
+        "short_term": {"momentum_pct": 0, "rsi": 50}, "long_term": {"trend": "flat", "momentum_pct": 0, "rsi": 50},
+        "news": {"ok": True, "label": "neutral", "score": 0.0, "headlines": []},
+    }
+    block = nt.format_recommendation(rec)
+    assert "no headlines found" in block
+    assert "fetch failed" not in block
 
 def test_build_message_empty():
     msg = nt.build_message([], "Empty")
@@ -609,6 +750,63 @@ def test_report_covers_all_events_not_just_resolved():
     assert rep["expectancy_pct"] == 2.0        # mean over ALL three, timeout included.
     assert rep["timeout_pct"] == 33.3          # reported, not hidden.
     assert rep["hit_target_pct"] == 33.3 and rep["hit_stop_pct"] == 33.3
+
+
+# --- archive headlines ----------------------------------------------------------
+def test_archive_headlines_writes_one_jsonl_line_per_headline():
+    import json
+    result = news.NewsResult(
+        query="q",
+        headlines=[{"title": "Firm profit rises 12%", "link": "http://x", "published": "24 Jul 2026"}],
+        score=0.5, label="positive",
+        matches=[{"positive": ["profit"], "negative": []}], ok=True)
+    path = Path(__file__).resolve().parent / "_test_archive_tmp.jsonl"
+    try:
+        if path.exists():
+            path.unlink()
+        news.archive_headlines("1234", result, archive_path=path)
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 1
+        rec = json.loads(lines[0])
+        assert rec["code"] == "1234"
+        assert rec["title"] == "Firm profit rises 12%"
+        assert rec["matched_positive"] == ["profit"]
+        assert rec["score"] == 0.5
+    finally:
+        if path.exists():
+            path.unlink()
+
+def test_archive_headlines_skips_when_no_headlines():
+    result = news.NewsResult(query="q", ok=True)  # empty headlines, default.
+    path = Path(__file__).resolve().parent / "_test_archive_tmp2.jsonl"
+    try:
+        if path.exists():
+            path.unlink()
+        news.archive_headlines("1234", result, archive_path=path)
+        assert not path.exists()
+    finally:
+        if path.exists():
+            path.unlink()
+
+def test_archive_headlines_appends_across_calls():
+    import json
+    path = Path(__file__).resolve().parent / "_test_archive_tmp3.jsonl"
+    try:
+        if path.exists():
+            path.unlink()
+        r1 = news.NewsResult(query="q", headlines=[{"title": "A", "link": "", "published": ""}],
+                             score=0.0, label="neutral", matches=[{"positive": [], "negative": []}], ok=True)
+        r2 = news.NewsResult(query="q", headlines=[{"title": "B", "link": "", "published": ""}],
+                             score=0.0, label="neutral", matches=[{"positive": [], "negative": []}], ok=True)
+        news.archive_headlines("1", r1, archive_path=path)
+        news.archive_headlines("2", r2, archive_path=path)
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 2
+        assert json.loads(lines[0])["code"] == "1"
+        assert json.loads(lines[1])["code"] == "2"
+    finally:
+        if path.exists():
+            path.unlink()
 
 
 if __name__ == "__main__":

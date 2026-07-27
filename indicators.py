@@ -125,11 +125,10 @@ def pct_change(closes, days: int) -> float:
 
 
 def short_term_read(df: pd.DataFrame, lookback: int, short_ma: int) -> dict:
-    """Short-horizon momentum read. Lower confidence on delayed/daily data."""
+    """Short-horizon momentum read."""
     closes = df["Close"]
     return {
         "horizon": "short",
-        "confidence": "low",  # honest: short-term on free data is weak.
         "momentum_pct": round(pct_change(closes, lookback), 2),
         "rsi": round(rsi(closes), 1),
         "above_ma": bool(float(closes.iloc[-1]) > sma(closes, short_ma))
@@ -138,11 +137,10 @@ def short_term_read(df: pd.DataFrame, lookback: int, short_ma: int) -> dict:
 
 
 def long_term_read(df: pd.DataFrame, lookback: int, short_ma: int, long_ma: int) -> dict:
-    """Long-horizon swing read. This is the reliable one on daily data."""
+    """Long-horizon swing read. This is the more reliable one on daily data."""
     closes = df["Close"]
     return {
         "horizon": "long",
-        "confidence": "medium",  # technicals confirm timing, they do not predict.
         "trend": trend(closes, short_ma, long_ma),
         "momentum_pct": round(pct_change(closes, lookback), 2),
         "rsi": round(rsi(closes), 1),
