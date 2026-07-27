@@ -118,9 +118,10 @@ windows, and a signal is only worth anything if it beats that.
 
 **What it cannot tell you.**
 
-- **News is not validated.** Historical headlines are not retrievable, so the
-  news score is neutralized to 0.0 — which passes the gate. BUY criterion #2 is
-  simply untested.
+- **News is not backtested at all.** There is no news rule to validate — news
+  is shown as context in the digest and gates nothing (see "When BUY fires"
+  above). Historical headlines are not retrievable, so this backtest never
+  attempts to score them.
 - **Survivorship bias.** Probing Yahoo today finds only currently-listed names.
   Companies that delisted are invisible, which flatters every result.
 - **Same-bar ambiguity.** When one daily bar spans both the stop and the target,

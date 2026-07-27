@@ -14,14 +14,14 @@ Two stages, because tuning means re-running:
     features  slow, once   -> .cache/features.csv   (indicators per code/date)
     run       fast, often  -> events                (decisions + outcomes)
 
-No look-ahead, enforced in four places:
+No look-ahead, enforced in three places:
   1. levels come from the sliced history, never from levels.json
-  2. regime comes from the index sliced to the same date
-  3. entry is the NEXT bar's open, never the decision bar's close
-  4. outcomes read bars strictly after the decision bar
+  2. entry is the NEXT bar's open, never the decision bar's close
+  3. outcomes read bars strictly after the decision bar
 
-What this cannot validate: the news criterion (historical headlines are not
-retrievable, so news_score is neutralized to 0.0, which passes the gate).
+News is not backtested: there is no news rule to validate (news gates
+nothing, in production or here). `regime` is recorded per event for context
+but, like news, does not feed buy_decision — it no longer raises any bar.
 """
 
 from __future__ import annotations
