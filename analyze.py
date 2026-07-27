@@ -338,49 +338,54 @@ def allocate_budget(buys: list, budget_sar: float) -> dict:
 
 # --- Watchlist evaluation --------------------------------------------------
 def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
-                       regime: str, risk: dict, horizon_cfg: dict, tech: dict,
+                       risk: dict, horizon_cfg: dict, tech: dict,
                        news=None, buy_criteria: dict | None = None) -> dict:
-    """Criteria-based BUY/WATCH call for a name you might buy.
+    """Rule-checklist BUY/WATCH call for a name you might buy.
 
-    The buy zone (levels.json) is no longer a gate — proximity to it feeds the
-    conviction score. The actual BUY decision lives in buy_decision() above.
+    Every rule from buy_decision() is reported, passed or not, so the digest can
+    show "Rules met: 2/3" and name the blockers — instead of a conviction score
+    that compressed three independent facts into one unfalsifiable number.
+
     Sizing is NOT attached here; the caller pools all BUYs and runs
     allocate_budget() so the monthly cap is respected across names.
+
+    `regime` is no longer a parameter: it only ever fed the conviction cutoff,
+    which is gone. The market regime is still computed once per run and shown
+    in the digest header.
     """
     code = item["code"]
     low = levels.get("buy_zone_low")
+    high = levels.get("buy_zone_high")
 
     ref_level = low if low is not None else price
     dist = (price - ref_level) / ref_level * 100 if ref_level else float("nan")
 
-    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"], horizon_cfg["short_ma"])
+    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"],
+                                horizon_cfg["short_ma"])
     long = ind.long_term_read(df, horizon_cfg["long_lookback_days"],
                               horizon_cfg["short_ma"], horizon_cfg["long_ma"])
 
-    conviction = conviction_score(long.get("trend"), long.get("rsi"), tech, dist) \
-        if not df.empty else 0
-
-    news_score = news.score if news is not None else 0.0
-    criteria = buy_criteria or {"conviction_min": 65, "conviction_min_breakdown": 80,
-                                "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+    criteria = buy_criteria or {"rsi_recovery_band": (25, 60),
+                                "long_mom_floor_pct": -5.0}
     is_buy, rules = buy_decision(long, criteria)
-    failed = [r["plain"] for r in rules if not r["passed"]]
 
     reason = []
     sizing = None
     if is_buy:
         action = "BUY"
-        reason.append(f"all BUY criteria met (conviction {conviction}, regime {regime})")
+        reason.append("all rules met")
     else:
         action = "WATCH"
-        reason.extend(failed)
+        reason.extend(r["plain"] for r in rules if not r["passed"])
 
-    high = levels.get("buy_zone_high")
     out = {
         "kind": "watchlist",
         "code": code, "name": item.get("name", code),
         "price": round(price, 2), "action": action, "reason": reason,
-        "conviction": conviction, "buy_zone": [low, high],
+        "rules": rules,
+        "rules_met": sum(1 for r in rules if r["passed"]),
+        "rules_total": len(rules),
+        "buy_zone": [low, high],
         "distance_to_zone_pct": round(dist, 2) if not np.isnan(dist) else None,
         "sizing": sizing, "short_term": short, "long_term": long,
     }

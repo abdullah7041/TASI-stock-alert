@@ -44,12 +44,12 @@ def format_recommendation(rec: dict) -> str:
     if rec["kind"] == "holding" and rec.get("unrealized_pct") is not None:
         lines.append(f"   P/L: {rec['unrealized_pct']}%")
     if rec["kind"] == "watchlist":
-        lines.append(f"   conviction: {rec.get('conviction')}/100")
+        lines.append(f"   Rules met: {rec.get('rules_met')}/{rec.get('rules_total')}")
         sz = rec.get("sizing")
         if sz and not sz.get("skip"):
             lines.append(
                 f"   size: BUY {sz['shares']} sh x {rec['price']} = {sz['spend']} SAR "
-                f"({sz.get('weight_pct')}% conviction weight; "
+                f"(equal weight across qualifying names; "
                 f"{sz.get('budget_left_after')} SAR of monthly budget left after)")
         elif sz and sz.get("skip"):
             lines.append(f"   size: none — {sz['skip']}")

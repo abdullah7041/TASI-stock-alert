@@ -184,9 +184,8 @@ def test_unverified_watchlist_never_buys():
     # Even a perfect setup stays out of BUY once the symbol fails verification.
     df = _frame(list(range(1, 160)))
     w = {"code": "6015", "name": "Jahez", "sector": "logistics"}
-    relaxed = {"conviction_min": 0, "conviction_min_breakdown": 0,
-               "rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
-    rec = az.evaluate_watchlist(w, price=2.1, df=df, levels={}, regime="ok",
+    relaxed = {"rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
+    rec = az.evaluate_watchlist(w, price=2.1, df=df, levels={},
                                 risk=BASE_RISK, horizon_cfg=_WL_HORIZON,
                                 tech=_WL_TECH, buy_criteria=relaxed)
     # evaluate_watchlist still returns BUY on the numbers; the gate that flips
@@ -406,34 +405,31 @@ _WL_HORIZON = {"short_lookback_days": 10, "long_lookback_days": 50,
                "short_ma": 20, "long_ma": 50}
 _WL_TECH = {"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70}
 
-def test_watchlist_buy_fires_via_criteria_no_zone_needed():
+def test_watchlist_buy_fires_via_rules_no_zone_needed():
     # Wide-open criteria isolate the wiring: no buy zone, uptrend frame -> BUY.
     df = _frame(list(range(1, 160)))
     w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
-    relaxed = {"conviction_min": 0, "conviction_min_breakdown": 0,
-               "rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
+    relaxed = {"rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
     rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={},
-                                regime="ok", risk=BASE_RISK,
-                                horizon_cfg=_WL_HORIZON, tech=_WL_TECH,
-                                buy_criteria=relaxed)
+                                risk=BASE_RISK, horizon_cfg=_WL_HORIZON,
+                                tech=_WL_TECH, buy_criteria=relaxed)
     assert rec["action"] == "BUY"
     assert rec["sizing"] is None  # sizing happens later, pooled per run.
-    assert 0 <= rec["conviction"] <= 100
+    assert rec["rules_total"] == 3
+    assert rec["rules_met"] == 3
+    assert "conviction" not in rec
 
-def test_watchlist_watch_when_criteria_fail_with_reason():
+def test_watchlist_watch_when_rules_fail_with_reason():
+    # A rising synthetic frame gives RSI 100 (all gains), so a narrow band
+    # fails exactly one of the three rules: 2/3, with RSI named as the blocker.
     df = _frame(list(range(1, 160)))
     w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
-    strict = {"conviction_min": 101, "conviction_min_breakdown": 101,
-              "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+    strict = {"rsi_recovery_band": (25, 26), "long_mom_floor_pct": -5.0}
     rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={},
-                                regime="breakdown", risk=BASE_RISK,
-                                horizon_cfg=_WL_HORIZON, tech=_WL_TECH,
-                                buy_criteria=strict)
+                                risk=BASE_RISK, horizon_cfg=_WL_HORIZON,
+                                tech=_WL_TECH, buy_criteria=strict)
     assert rec["action"] == "WATCH"
-    # buy_decision no longer checks conviction (Task 1); this strict RSI band
-    # is what actually blocks the synthetic uptrend frame. Task 3's brief
-    # replaces this whole test with test_watchlist_watch_when_rules_fail_with_reason,
-    # which asserts the same "RSI" substring for the same reason.
+    assert rec["rules_met"] == 2 and rec["rules_total"] == 3
     assert any("RSI" in r for r in rec["reason"])
 
 
@@ -524,7 +520,7 @@ def test_sentiment_arabic_substring_still_works_with_attached_prefix():
 def test_format_and_build_message():
     rec = {
         "kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
-        "action": "BUY", "reason": ["in zone"], "conviction": 72,
+        "action": "BUY", "reason": ["in zone"], "rules_met": 3, "rules_total": 3,
         "sizing": {"shares": 7, "spend": 700.0, "pct_of_cash": 23.3},
         "short_term": {"momentum_pct": 2.1, "rsi": 55},
         "long_term": {"trend": "up", "momentum_pct": 8.0, "rsi": 60},
@@ -533,7 +529,8 @@ def test_format_and_build_message():
                               "link": "http://x", "published": "24 Jul 2026"}]},
     }
     block = nt.format_recommendation(rec)
-    assert "4015" in block and "BUY" in block and "conviction: 72" in block
+    assert "4015" in block and "BUY" in block and "Rules met: 3/3" in block
+    assert "conviction" not in block
     assert "conf)" not in block  # the fake confidence suffix is gone.
     assert "Jamjoom profit rises 12%" in block
     assert "24 Jul 2026" in block
@@ -543,7 +540,7 @@ def test_format_and_build_message():
 def test_format_news_fetch_failed_renders_distinctly():
     rec = {
         "kind": "watchlist", "code": "1", "name": "X", "price": 1.0,
-        "action": "WATCH", "reason": [], "conviction": 0,
+        "action": "WATCH", "reason": [], "rules_met": 0, "rules_total": 3,
         "short_term": {"momentum_pct": 0, "rsi": 50}, "long_term": {"trend": "flat", "momentum_pct": 0, "rsi": 50},
         "news": {"ok": False, "label": "neutral", "score": 0.0, "headlines": []},
     }
@@ -553,7 +550,7 @@ def test_format_news_fetch_failed_renders_distinctly():
 def test_format_news_empty_result_renders_distinctly_from_failure():
     rec = {
         "kind": "watchlist", "code": "2", "name": "Y", "price": 1.0,
-        "action": "WATCH", "reason": [], "conviction": 0,
+        "action": "WATCH", "reason": [], "rules_met": 0, "rules_total": 3,
         "short_term": {"momentum_pct": 0, "rsi": 50}, "long_term": {"trend": "flat", "momentum_pct": 0, "rsi": 50},
         "news": {"ok": True, "label": "neutral", "score": 0.0, "headlines": []},
     }

@@ -233,7 +233,7 @@ def _collect_recs(include_news: bool):
             continue
         price = float(df["Close"].iloc[-1])
         rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
-                                    regime, cfg.RISK, cfg.HORIZON, cfg.TECH,
+                                    cfg.RISK, cfg.HORIZON, cfg.TECH,
                                     news_by_code.get(w["code"]), cfg.BUY_CRITERIA)
         v = verify.get(w["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
