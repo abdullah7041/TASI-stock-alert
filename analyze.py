@@ -112,66 +112,6 @@ def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float,
     return out
 
 
-# --- Conviction ------------------------------------------------------------
-def conviction_score(tr: str, r: float, tech: dict,
-                     distance_to_level_pct: float) -> int:
-    """0-100. Blends long-term trend, RSI position, and how close price is to the
-    actionable level. Higher = stronger setup. Transparent, no black box.
-
-    Takes the already-computed trend label and RSI value so indicators are
-    calculated once per name, not once per consumer."""
-    score = 50.0
-
-    score += {"up": 20, "flat": 0, "down": -20, "unknown": -5}.get(tr, 0)
-
-    if r is not None and not np.isnan(r):
-        if r < tech["rsi_oversold"]:
-            score += 15           # oversold into support = better entry.
-        elif r > tech["rsi_overbought"]:
-            score -= 15           # overbought = chasing.
-        else:
-            score += (50 - abs(r - 50)) * 0.2  # mild bonus for mid-range.
-
-    # Closer to the level = more actionable now.
-    if not np.isnan(distance_to_level_pct):
-        d = abs(distance_to_level_pct)
-        score += 15 if d <= 1 else 8 if d <= 3 else 0 if d <= 6 else -8
-
-    return int(max(0, min(100, round(score))))
-
-
-# --- Position sizing -------------------------------------------------------
-def position_size(price: float, risk: dict) -> dict:
-    """How many shares to buy given cash and risk rules. Transparent math.
-
-    Returns shares, spend, and a `skip` reason if the trade fails a rule.
-    """
-    cash = risk["deployable_cash"]
-    investable = cash * (1 - risk["cash_buffer_pct"])
-    target_spend = min(investable * risk["position_pct"],
-                       cash * risk["max_single_pct"])
-    if price <= 0 or target_spend <= 0:
-        return {"shares": 0, "spend": 0.0, "skip": "no cash / bad price"}
-
-    shares = int(target_spend // price)
-    if shares < 1:
-        return {"shares": 0, "spend": 0.0,
-                "skip": f"one share ({price:.2f}) exceeds target spend ({target_spend:.0f})"}
-
-    spend = shares * price
-    commission = max(spend * risk["commission_rate"], risk["min_commission"])
-    if commission > spend * risk["commission_floor_pct"]:
-        return {"shares": 0, "spend": 0.0,
-                "skip": "round-trip commission over floor; lot too small"}
-
-    return {
-        "shares": shares,
-        "spend": round(spend, 2),
-        "commission": round(commission, 2),
-        "pct_of_cash": round(spend / cash * 100, 1),
-    }
-
-
 # --- News shaping ------------------------------------------------------------
 def news_summary(news) -> dict | None:
     """Shape a news.NewsResult into the dict notify.py renders. Shared by both

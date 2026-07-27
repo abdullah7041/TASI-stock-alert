@@ -96,15 +96,6 @@ def test_regime_unknown_when_empty():
     assert az.market_regime(pd.DataFrame(), 50) == "unknown"
 
 
-# --- conviction -------------------------------------------------------------
-def test_conviction_uptrend_beats_downtrend():
-    cfg_t = {"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70}
-    up_score = az.conviction_score("up", 55.0, cfg_t, 0.5)
-    down_score = az.conviction_score("down", 55.0, cfg_t, 0.5)
-    assert up_score > down_score
-    assert 0 <= up_score <= 100 and 0 <= down_score <= 100
-
-
 # --- BUY decision -----------------------------------------------------------
 CRITERIA = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
 GOOD_LONG = {"trend": "up", "momentum_pct": 10.0, "rsi": 45.0}
@@ -252,26 +243,11 @@ def test_allocate_zero_budget_skips_all():
     assert buys[0]["sizing"]["skip"] == "monthly budget exhausted"
 
 
-# --- position sizing --------------------------------------------------------
 BASE_RISK = {
     "deployable_cash": 3000.0, "max_positions": 5, "position_pct": 0.25,
     "stop_loss_pct": 0.09, "max_single_pct": 0.35, "cash_buffer_pct": 0.12,
     "commission_rate": 0.00155, "min_commission": 0.0, "commission_floor_pct": 0.01,
 }
-
-def test_position_size_buys_whole_shares():
-    r = az.position_size(20.0, BASE_RISK)
-    assert r["shares"] >= 1
-    assert r["spend"] <= 3000 * 0.35 + 0.001
-    assert r["shares"] * 20.0 == r["spend"]
-
-def test_position_size_skips_when_share_too_expensive():
-    r = az.position_size(5000.0, BASE_RISK)  # one share > target spend
-    assert r["shares"] == 0 and "skip" in r
-
-def test_position_size_respects_single_name_cap():
-    r = az.position_size(1.0, {**BASE_RISK, "position_pct": 0.99})
-    assert r["spend"] <= 3000 * 0.35 + 1
 
 
 # --- level derivation -------------------------------------------------------
