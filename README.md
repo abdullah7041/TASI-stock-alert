@@ -7,8 +7,8 @@ It automates your rules. It does not place orders and it is not financial advice
 ## What each run does
 
 1. Pulls daily history and a delayed quote for every holding and watchlist name (Yahoo Finance, free).
-2. Checks the TASI index. If the index is breaking down, it suppresses BUY signals.
-3. Holdings: alerts on STOP, TRIM, or TARGET hits. Watchlist: alerts on BUY-zone hits with a 0-100 conviction score and position sizing from your cash.
+2. Checks the TASI index and reports the market regime in the digest header. The regime is context, not a gate — it no longer changes any per-name decision.
+3. Holdings: alerts on STOP, TRIM, or TARGET hits. Watchlist: reports how many of the three BUY rules each name meets, and equal-weight position sizing from your monthly budget.
 4. Every alert carries two reads: a long-term swing read and a short-term momentum read. Neither carries a confidence label; the short-term read is inherently noisier because it runs on delayed daily data.
 5. De-dupes so you get one alert per level per day.
 
@@ -61,14 +61,17 @@ Set a holding `target` in `levels.json` just below its current price, run mode `
 
 ## When BUY fires (the exact criteria)
 
-A watchlist name becomes **BUY** only when ALL four hold (enforced in one place: `analyze.buy_decision`):
+A watchlist name becomes **BUY** only when ALL THREE hold (enforced in one place: `analyze.buy_decision`):
 
-1. **Conviction** ≥ `BUY_CRITERIA["conviction_min"]` (65). When the TASI regime is `breakdown` or `unknown`, the bar rises to `conviction_min_breakdown` (80) — the regime **raises the bar, it never blocks outright**.
-2. **News** sentiment score ≥ 0. No news or a failed fetch counts as neutral (0.0) and passes.
-3. **RSI** inside `rsi_recovery_band` (25–60) — recovering, not capitulating, not chasing.
-4. **Long-term read confirms strength**: long trend is `up` **AND** long momentum ≥ `long_mom_floor_pct` (−5%). Both are required — an `up` MA cross with falling momentum is not enough.
+1. **RSI** inside `rsi_recovery_band` (25–60) — recovering, not capitulating, not chasing.
+2. **Trend** is `up` (the 20/50-day MA cross).
+3. **Momentum** ≥ `long_mom_floor_pct` (−5%) over the long lookback.
 
-The buy zone from `levels.json` is no longer a gate — distance to it feeds the conviction score instead. All thresholds live in `BUY_CRITERIA` in `config.py`.
+Trend and momentum are separate rules on purpose: an `up` MA cross with falling momentum meets one and fails the other, and the digest says so — `Rules met: 2/3` — rather than hiding both behind a single verdict.
+
+There is **no conviction score**. It was deleted, not tuned: a walk-forward backtest over 3,733 events found its buckets *inverted* against forward return, while it was gating BUY and weighting the budget (see `docs/backtest-findings-2026-07-23.md`). There is **no news rule** either — news has never been validated against outcomes, so it is shown as context and gates nothing.
+
+The buy zone from `levels.json` is not a gate; distance to it is reported as context. All thresholds live in `BUY_CRITERIA` in `config.py`.
 
 ## Symbol verification (why a name might say UNVERIFIED)
 
@@ -76,12 +79,12 @@ Config codes are hand-entered, and a wrong code silently resolves to a real but 
 
 ## Monthly buy budget
 
-`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them weighted by conviction, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
+`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them **equally**, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
 
 ## Validation (does any of this actually work?)
 
-Every BUY threshold — conviction 65/80, the 25–60 RSI band, the −5% momentum
-floor, the conviction weights — was chosen by hand and, until now, never
+Every BUY threshold — the 25–60 RSI band, the −5% momentum
+floor — was chosen by hand and, until now, never
 checked against history. Three local modes measure them. They are slow, they
 write large caches, and they are deliberately **not** on the GitHub Actions
 schedule.

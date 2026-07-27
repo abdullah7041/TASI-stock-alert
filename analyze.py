@@ -81,8 +81,9 @@ def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float,
     1.28% of upside against 10.50% of risk, R:R 0.12, negative expectancy at a
     71.9% win rate. Anchoring to entry is the fix.
 
-    Support and resistance still set the buy zone, which feeds the conviction
-    score. They no longer set the money levels.
+    Support and resistance still set the buy zone, which is reported as context
+    (distance_to_zone_pct). They no longer set the money levels, and they do not
+    feed any BUY rule.
 
     - buy_zone: just above nearest support (a place to add on a pullback).
     - stop:     atr_stop_mult ATRs below entry, never risking more than stop_pct.

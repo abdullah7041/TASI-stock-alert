@@ -2,8 +2,8 @@
 Offline unit tests. No network. Run: python -m pytest -q  (or python test_core.py)
 
 Covers the logic that decisions depend on: RSI, trend, support/resistance,
-regime filter, conviction, position sizing, level derivation, and the two
-evaluators. Data is synthetic so these are deterministic.
+regime detection, the BUY rule checklist, budget allocation, level derivation,
+and the two evaluators. Data is synthetic so these are deterministic.
 """
 
 import io
