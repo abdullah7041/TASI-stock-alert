@@ -463,7 +463,6 @@ def check_no_overlap(events: pd.DataFrame) -> list:
 
 # --- threshold sweep --------------------------------------------------------
 DEFAULT_GRID = {
-    "conviction_min": [50, 55, 60, 65, 70, 75],
     "rsi_recovery_band": [(25, 60), (30, 60), (25, 70), (35, 65), (0, 100)],
     "long_mom_floor_pct": [-15.0, -10.0, -5.0, 0.0, 5.0],
 }
@@ -471,25 +470,25 @@ DEFAULT_GRID = {
 
 def sweep(features: pd.DataFrame, hist: dict, index_df=None,
           grid: dict | None = None, base: dict | None = None) -> pd.DataFrame:
-    """Grid over the BUY thresholds. Event count sits beside every row — a
-    three-trade cell with a 100% win rate is noise, and the table must make that
-    obvious rather than sorting it to the top."""
+    """Grid over the surviving BUY thresholds. Event count sits beside every row
+    — a three-trade cell with a 100% win rate is noise, and the table must make
+    that obvious rather than sorting it to the top.
+
+    Two axes, not three: the conviction_min axis is gone with conviction.
+    """
     grid = grid or DEFAULT_GRID
     base = dict(base or cfg.BUY_CRITERIA)
     rows = []
-    for cmin in grid["conviction_min"]:
-        for band in grid["rsi_recovery_band"]:
-            for floor in grid["long_mom_floor_pct"]:
-                crit = {**base, "conviction_min": cmin,
-                        "conviction_min_breakdown": max(cmin, base["conviction_min_breakdown"]),
-                        "rsi_recovery_band": band, "long_mom_floor_pct": floor}
-                ev = run(features, hist, crit)
-                rep = report(ev, index_df)
-                # Defaults first, so an all-zero-event grid still has the
-                # columns to sort on instead of raising a confusing KeyError.
-                rows.append({"conviction_min": cmin, "rsi_band": f"{band[0]}-{band[1]}",
-                             "mom_floor": floor, "events": 0, "expectancy_pct": None,
-                             "win_rate_pct": None, "timeout_pct": None, **rep})
+    for band in grid["rsi_recovery_band"]:
+        for floor in grid["long_mom_floor_pct"]:
+            crit = {**base, "rsi_recovery_band": band, "long_mom_floor_pct": floor}
+            ev = run(features, hist, crit)
+            rep = report(ev, index_df)
+            # Defaults first, so an all-zero-event grid still has the
+            # columns to sort on instead of raising a confusing KeyError.
+            rows.append({"rsi_band": f"{band[0]}-{band[1]}",
+                         "mom_floor": floor, "events": 0, "expectancy_pct": None,
+                         "win_rate_pct": None, "timeout_pct": None, **rep})
     return pd.DataFrame(rows).sort_values("expectancy_pct", ascending=False,
                                           na_position="last")
 

@@ -46,17 +46,17 @@ BUDGET = {
 }
 
 # --- BUY criteria ------------------------------------------------------------
-# A watchlist name becomes BUY only when ALL of these hold (see
-# analyze.buy_decision for the single place this is enforced):
-#   1. conviction >= conviction_min  (conviction_min_breakdown when TASI regime
-#      is 'breakdown' or 'unknown' — regime RAISES the bar, it never blocks).
-#   2. news sentiment score >= 0 (no news / failed fetch counts as neutral 0).
-#   3. RSI inside rsi_recovery_band — not capitulating, not chasing.
-#   4. long-term read not actively deteriorating: long trend == 'up' OR
-#      long momentum >= long_mom_floor_pct.
+# A watchlist name becomes BUY only when ALL THREE hold (enforced in one place:
+# analyze.buy_decision, which reports every rule, passed or not):
+#   1. RSI inside rsi_recovery_band — recovering, not capitulating, not chasing.
+#   2. long-term trend == 'up'.
+#   3. long-term momentum >= long_mom_floor_pct.
+# There is no conviction score and no regime-raised bar: conviction backtested
+# INVERTED against forward return and was deleted rather than tuned (see
+# docs/backtest-findings-2026-07-23.md). There is no news rule either — news
+# has never been validated against outcomes, so it is shown as context and
+# gates nothing.
 BUY_CRITERIA = {
-    "conviction_min":           65,
-    "conviction_min_breakdown": 80,
     "rsi_recovery_band":        (25, 60),
     "long_mom_floor_pct":       -5.0,
 }

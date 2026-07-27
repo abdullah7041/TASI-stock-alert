@@ -364,7 +364,7 @@ def mode_backtest() -> int:
 
     if sweep_kind:
         table = bt.sweep(feat, hist, index_df)
-        cols = ["conviction_min", "rsi_band", "mom_floor", "events",
+        cols = ["rsi_band", "mom_floor", "events",
                 "expectancy_pct", "win_rate_pct", "timeout_pct",
                 "edge_vs_baseline_pct"]
         print("\n" + table[[c for c in cols if c in table.columns]]
@@ -383,8 +383,6 @@ def mode_backtest() -> int:
     rep = bt.report(events, index_df)
     print(f"\nBacktest over {len(codes)} names, {bt.HISTORY_YEARS}y, "
           f"{bt.STEP_DAYS}-day step")
-    print("News is neutralized to 0.0 (no historical headlines), so BUY "
-          "criterion #2 is NOT validated here.")
     print("Survivorship: only currently-listed names were probed.\n")
     for k, v in rep.items():
         print(f"  {k:<24} {v}")
