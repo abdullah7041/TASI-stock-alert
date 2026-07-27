@@ -9,14 +9,14 @@ It automates your rules. It does not place orders and it is not financial advice
 1. Pulls daily history and a delayed quote for every holding and watchlist name (Yahoo Finance, free).
 2. Checks the TASI index. If the index is breaking down, it suppresses BUY signals.
 3. Holdings: alerts on STOP, TRIM, or TARGET hits. Watchlist: alerts on BUY-zone hits with a 0-100 conviction score and position sizing from your cash.
-4. Every alert carries two reads: a long-term swing read (medium confidence) and a short-term momentum read (low confidence, by design, because it runs on delayed daily data).
+4. Every alert carries two reads: a long-term swing read and a short-term momentum read. Neither carries a confidence label; the short-term read is inherently noisier because it runs on delayed daily data.
 5. De-dupes so you get one alert per level per day.
 
 ## What it does not do
 
-Short-term signals are labeled low-confidence on purpose. Delayed daily data is fine for 6-12 month swing decisions. It is not a day-trading engine. If you want reliable intraday signals, that needs licensed realtime data (SAHMK Starter, 149 SAR/mo) and is a later upgrade.
+Short-term signals are noisier by nature, not because of any label attached to them. Delayed daily data is fine for 6-12 month swing decisions. It is not a day-trading engine. If you want reliable intraday signals, that needs licensed realtime data (SAHMK Starter, 149 SAR/mo) and is a later upgrade.
 
-News is a keyword tally over free Google News headlines. It is an input, not a trigger, and it is labeled low-confidence. Do not act on it alone.
+News is an auditable keyword/phrase tally over free Google News headlines — word-boundary matching for English (so "rise" doesn't fire inside "Enterprise"), plain substring for Arabic (where prefixes/conjunctions attach directly to root words). It is shown in the digest as real headlines, not a bare confidence-labeled number. It is an input, not a trigger. Do not act on it alone.
 
 ## Files
 

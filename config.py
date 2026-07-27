@@ -92,8 +92,9 @@ RISK = {
 }
 
 # --- Horizons --------------------------------------------------------------
-# The engine reports BOTH a short-term and a long-term read, each labeled with a
-# confidence. Short-term on free (delayed/daily) data is lower confidence by design.
+# The engine reports BOTH a short-term and a long-term read; neither carries a
+# confidence label. Short-term on free (delayed/daily) data is inherently noisier
+# than the long-term read, by design.
 HORIZON = {
     "short_lookback_days": 10,     # recent momentum window.
     "long_lookback_days":  120,    # swing / trend window (~6 months of trading days).
