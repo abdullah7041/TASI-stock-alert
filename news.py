@@ -2,17 +2,21 @@
 Free news + sentiment layer.
 
 Source: Google News RSS. No API key, works for Arabic and English queries.
-This is the weakest, cheapest signal. It is an INPUT, never a trigger. Every
-result is labeled low-confidence and the sentiment is a simple keyword tally,
-not a model. Do not trade on this alone.
+This is the weakest, cheapest signal. It is an INPUT, never a trigger. There
+is no confidence label: the sentiment is an auditable keyword/phrase tally
+(word-boundary matching for English, plain substring for Arabic), not a
+model, and every headline's matched terms are exposed via `matches` so a
+score is never an opaque number. Do not trade on this alone.
 
-If the fetch fails (network, rate limit), it returns an empty, neutral result
-so the rest of the system keeps working.
+If the fetch fails (network, rate limit), `ok` is False and the result is
+empty/neutral, distinguishing "nothing happened" from "we couldn't check" so
+the rest of the system keeps working either way.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -76,18 +80,42 @@ def _fetch_rss(url: str, limit: int) -> list:
     return items
 
 
+_WORD_BOUNDARY_CACHE: dict = {}
+
+
+def _contains(word: str, low: str) -> bool:
+    """Whether lexicon entry `word` is present in the lowercased text `low`.
+
+    ASCII entries are word-boundary anchored so "rise" doesn't fire inside
+    "Enterprise" or "surprised" (measured false positives in real archived
+    headlines). Arabic entries stay plain substring because Arabic attaches
+    prefixes/conjunctions directly to root words with no boundary a regex
+    \\b would recognize.
+    """
+    if word.isascii():
+        pattern = _WORD_BOUNDARY_CACHE.get(word)
+        if pattern is None:
+            pattern = re.compile(r'\b' + re.escape(word) + r'\b')
+            _WORD_BOUNDARY_CACHE[word] = pattern
+        return bool(pattern.search(low))
+    return word in low
+
+
 def score_headlines(titles) -> tuple[float, str]:
     """Substring tally over headline titles. Returns (score -1..1, label).
 
     Substring rather than word-set matching so both single words ("surge")
     and multi-word Tadawul/CMA phrases ("capital increase", "trading
     suspension") are detected without needing every inflection spelled out.
+    ASCII entries are word-boundary anchored via `_contains` to avoid false
+    positives like "rise" inside "Enterprise"; Arabic entries stay plain
+    substring (see `_contains` docstring).
     """
     pos = neg = 0
     for t in titles:
         low = t.lower()
-        pos += sum(1 for w in POSITIVE if w in low)
-        neg += sum(1 for w in NEGATIVE if w in low)
+        pos += sum(1 for w in POSITIVE if _contains(w, low))
+        neg += sum(1 for w in NEGATIVE if _contains(w, low))
     total = pos + neg
     if total == 0:
         return 0.0, "neutral"
@@ -101,8 +129,8 @@ def _headline_matches(title: str) -> dict:
     diagnosable instead of an opaque number."""
     low = title.lower()
     return {
-        "positive": sorted(w for w in POSITIVE if w in low),
-        "negative": sorted(w for w in NEGATIVE if w in low),
+        "positive": sorted(w for w in POSITIVE if _contains(w, low)),
+        "negative": sorted(w for w in NEGATIVE if _contains(w, low)),
     }
 
 

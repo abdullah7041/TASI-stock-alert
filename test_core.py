@@ -469,6 +469,29 @@ def test_news_result_has_no_confidence_field():
     assert "matches" in field_names
 
 
+# --- word-boundary matching (final review fix) -----------------------------
+def test_sentiment_word_boundary_excludes_substring_false_positive():
+    # "rise" must not fire inside "Enterprise" (a real false positive found
+    # in production archived headlines) or "surprised".
+    score, label = news.score_headlines(["Enterprise Data Solutions reports quarterly update"])
+    assert score == 0.0 and label == "neutral"
+
+def test_sentiment_word_boundary_still_matches_whole_word():
+    score, label = news.score_headlines(["Shares rise on strong demand"])
+    assert score > 0 and label == "positive"
+
+def test_headline_matches_word_boundary_excludes_substring_false_positive():
+    m = news._headline_matches("Enterprise Data Solutions reports quarterly update")
+    assert "rise" not in m["positive"]
+
+def test_sentiment_arabic_substring_still_works_with_attached_prefix():
+    # Arabic keeps substring matching — a prefix/conjunction glued onto a
+    # root word must still be detected (this is why Arabic is NOT switched
+    # to word-boundary matching).
+    score, label = news.score_headlines(["وارتفاع الأرباح يدعم السهم"])
+    assert score > 0
+
+
 # --- notify formatting (offline) -------------------------------------------
 def test_format_and_build_message():
     rec = {
