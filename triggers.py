@@ -17,6 +17,8 @@ claim being made is scoped honestly.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -126,11 +128,15 @@ def trend_trigger(closes, short_ma: int, long_ma: int,
                   max_pct: float = MAX_SEARCH_PCT) -> dict:
     """Bounded forward scan for the nearest NEXT-bar close that flips trend
     to 'up'. Not a closed-form inversion — trend requires BOTH the short MA
-    above the long MA AND the long MA rising, and appending one bar does not
-    move the qualifying-price set monotonically, so bisection is not valid
-    here (checked and rejected before implementation). A linear scan from
-    the current price upward is correct by construction: the first
-    ascending price where the predicate holds is the nearest one.
+    above the long MA AND the long MA rising, a two-part predicate over the
+    appended price. Uses a forward scan rather than solving for the
+    closed-form threshold: it does not require deriving or trusting that
+    closed form, and stays correct if indicators.trend()'s definition ever
+    changes to something non-monotonic in the future. (For the current
+    definition, the qualifying set happens to be a single threshold in the
+    appended price — but this code does not depend on that fact.) A linear
+    scan from the current price upward is correct by construction: the
+    first ascending price where the predicate holds is the nearest one.
     """
     s = pd.Series(list(closes), dtype="float64").dropna()
     if len(s) < long_ma + 2:
@@ -144,14 +150,26 @@ def trend_trigger(closes, short_ma: int, long_ma: int,
         return {"rule": "trend", "trigger_price": None, "pct_away": None,
                 "reachable": False, "plain": "trend already up"}
 
+    def is_up(p: float) -> bool:
+        candidate = pd.concat([s, pd.Series([p])], ignore_index=True)
+        return ind.trend(candidate, short_ma, long_ma) == "up"
+
     step = max(now * 0.001, 0.01)
     hi_p = now * (1 + max_pct / 100.0)
     price = now
     while price <= hi_p:
         price += step
-        candidate = pd.concat([s, pd.Series([price])], ignore_index=True)
-        if ind.trend(candidate, short_ma, long_ma) == "up":
-            trigger = round(price, 2)
+        if is_up(price):
+            # price is a scan step, not necessarily a "clean" 2-decimal
+            # price a real quote could take. Round UP to the nearest cent
+            # (never down) and re-verify: naively round()-ing the raw scan
+            # price to 2dp can round it DOWN past the actual qualifying
+            # boundary, reporting a trigger that would NOT actually flip
+            # trend if that exact price were appended tomorrow.
+            candidate_trigger = math.ceil(price * 100) / 100
+            while not is_up(candidate_trigger):
+                candidate_trigger += 0.01
+            trigger = round(candidate_trigger, 2)
             pct_away = round((trigger - now) / now * 100.0, 2)
             return {"rule": "trend", "trigger_price": trigger,
                     "pct_away": pct_away, "reachable": True,
