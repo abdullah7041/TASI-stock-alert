@@ -178,3 +178,25 @@ def trend_trigger(closes, short_ma: int, long_ma: int,
     return {"rule": "trend", "trigger_price": None, "pct_away": None,
             "reachable": False,
             "plain": f"not reachable within ±{max_pct:.0f}% next bar"}
+
+
+def compute_triggers(df, rules: list, horizon_cfg: dict, criteria: dict) -> list:
+    """For every FAILING rule in `rules` (analyze.buy_decision's output),
+    compute its trigger price. Passed rules produce nothing — there is
+    nothing to flip.
+    """
+    closes = df["Close"]
+    out = []
+    for r in rules:
+        if r["passed"]:
+            continue
+        if r["rule"] == "momentum_floor":
+            out.append(momentum_trigger(closes, horizon_cfg["long_lookback_days"],
+                                        criteria["long_mom_floor_pct"]))
+        elif r["rule"] == "rsi_band":
+            lo, hi = criteria["rsi_recovery_band"]
+            out.append(rsi_trigger(closes, RSI_PERIOD, lo, hi))
+        elif r["rule"] == "trend":
+            out.append(trend_trigger(closes, horizon_cfg["short_ma"],
+                                     horizon_cfg["long_ma"]))
+    return out

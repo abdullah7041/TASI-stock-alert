@@ -35,6 +35,19 @@ def _fmt_news(news: dict) -> list:
     return lines
 
 
+def _fmt_trigger(triggers: list) -> str | None:
+    """One line: the nearest reachable trigger, or an honest 'none within
+    reach' if triggers exist but none are close enough to compute, or None
+    if there's nothing failing to show (a BUY)."""
+    if not triggers:
+        return None
+    reachable = [t for t in triggers if t.get("reachable")]
+    if not reachable:
+        return "   Trigger (next bar): none within reach"
+    nearest = min(reachable, key=lambda t: abs(t["pct_away"]))
+    return f"   Trigger (next bar): {nearest['plain']}"
+
+
 def format_recommendation(rec: dict) -> str:
     """One block per name."""
     head = f"**{rec['code']} {rec['name']}** @ {rec['price']}  ->  **{rec['action']}**"
@@ -45,6 +58,9 @@ def format_recommendation(rec: dict) -> str:
         lines.append(f"   P/L: {rec['unrealized_pct']}%")
     if rec["kind"] == "watchlist":
         lines.append(f"   Rules met: {rec.get('rules_met')}/{rec.get('rules_total')}")
+        trigger_line = _fmt_trigger(rec.get("triggers") or [])
+        if trigger_line:
+            lines.append(trigger_line)
         sz = rec.get("sizing")
         if sz and not sz.get("skip"):
             lines.append(

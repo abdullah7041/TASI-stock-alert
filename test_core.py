@@ -903,6 +903,89 @@ def test_archive_headlines_appends_across_calls():
             path.unlink()
 
 
+# --- trigger prices wired into evaluate_watchlist / notify -----------------
+def test_compute_triggers_only_for_failing_rules():
+    rules = [
+        {"rule": "rsi_band", "passed": True, "actual": 45.0, "required": "25-60", "plain": "ok"},
+        {"rule": "trend", "passed": False, "actual": "down", "required": "up", "plain": "trend down, need up"},
+        {"rule": "momentum_floor", "passed": True, "actual": 2.0, "required": -5.0, "plain": "ok"},
+    ]
+    df = _frame(list(range(1, 160)))  # from the existing test fixture helper
+    horizon_cfg = {"long_lookback_days": 120, "short_ma": 20, "long_ma": 50}
+    criteria = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+    result = trig.compute_triggers(df, rules, horizon_cfg, criteria)
+    assert len(result) == 1
+    assert result[0]["rule"] == "trend"
+
+def test_compute_triggers_empty_when_all_rules_pass():
+    rules = [
+        {"rule": "rsi_band", "passed": True, "actual": 45.0, "required": "25-60", "plain": "ok"},
+        {"rule": "trend", "passed": True, "actual": "up", "required": "up", "plain": "ok"},
+        {"rule": "momentum_floor", "passed": True, "actual": 2.0, "required": -5.0, "plain": "ok"},
+    ]
+    df = _frame(list(range(1, 160)))
+    horizon_cfg = {"long_lookback_days": 120, "short_ma": 20, "long_ma": 50}
+    criteria = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+    assert trig.compute_triggers(df, rules, horizon_cfg, criteria) == []
+
+def test_evaluate_watchlist_includes_triggers_key():
+    df = _frame(list(range(200, 89, -1)) + list(range(90, 110)))  # falling then flat-ish
+    w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
+    strict = {"rsi_recovery_band": (25, 26), "long_mom_floor_pct": -5.0}
+    rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={}, risk=BASE_RISK,
+                                horizon_cfg=_WL_HORIZON, tech=_WL_TECH,
+                                buy_criteria=strict)
+    assert "triggers" in rec
+    assert isinstance(rec["triggers"], list)
+    if rec["action"] == "WATCH":
+        failing_rule_names = {r["rule"] for r in rec["rules"] if not r["passed"]}
+        trigger_rule_names = {t["rule"] for t in rec["triggers"]}
+        assert trigger_rule_names == failing_rule_names
+
+def test_format_recommendation_renders_nearest_trigger():
+    rec = {
+        "kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+        "action": "WATCH", "reason": ["momentum below floor"],
+        "rules_met": 2, "rules_total": 3,
+        "triggers": [
+            {"rule": "momentum_floor", "trigger_price": 105.0, "pct_away": 5.0,
+             "reachable": True, "plain": "6-mo momentum clears -5.0% at 105.00 (+5.0% away)"},
+            {"rule": "rsi_band", "trigger_price": 98.0, "pct_away": -2.0,
+             "reachable": True, "plain": "RSI clears the 25-60 band at 98.00 (-2.0% away)"},
+        ],
+        "short_term": {"momentum_pct": 0, "rsi": 50},
+        "long_term": {"trend": "up", "momentum_pct": 0, "rsi": 50},
+    }
+    block = nt.format_recommendation(rec)
+    assert "Trigger (next bar): RSI clears the 25-60 band at 98.00 (-2.0% away)" in block
+    assert "momentum clears" not in block  # the farther one is not shown
+
+def test_format_recommendation_shows_none_within_reach_when_no_trigger_reachable():
+    rec = {
+        "kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+        "action": "WATCH", "reason": ["trend down"], "rules_met": 1, "rules_total": 3,
+        "triggers": [
+            {"rule": "trend", "trigger_price": None, "pct_away": None,
+             "reachable": False, "plain": "not reachable within ±25% next bar"},
+        ],
+        "short_term": {"momentum_pct": 0, "rsi": 50},
+        "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50},
+    }
+    block = nt.format_recommendation(rec)
+    assert "Trigger (next bar): none within reach" in block
+
+def test_format_recommendation_no_trigger_line_when_buy():
+    rec = {
+        "kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+        "action": "BUY", "reason": ["all rules met"], "rules_met": 3, "rules_total": 3,
+        "triggers": [],
+        "short_term": {"momentum_pct": 0, "rsi": 50},
+        "long_term": {"trend": "up", "momentum_pct": 0, "rsi": 50},
+    }
+    block = nt.format_recommendation(rec)
+    assert "Trigger" not in block
+
+
 if __name__ == "__main__":
     import sys
     fns = [f for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]

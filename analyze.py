@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 import indicators as ind
+import triggers as trig
 
 
 # Used when a caller does not pass config.LEVELS (older call sites, tests).
@@ -309,6 +310,7 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
     criteria = buy_criteria or {"rsi_recovery_band": (25, 60),
                                 "long_mom_floor_pct": -5.0}
     is_buy, rules = buy_decision(long, criteria)
+    triggers = trig.compute_triggers(df, rules, horizon_cfg, criteria)
 
     reason = []
     sizing = None
@@ -326,6 +328,7 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
         "rules": rules,
         "rules_met": sum(1 for r in rules if r["passed"]),
         "rules_total": len(rules),
+        "triggers": triggers,
         "buy_zone": [low, high],
         "distance_to_zone_pct": round(dist, 2) if not np.isnan(dist) else None,
         "sizing": sizing, "short_term": short, "long_term": long,
