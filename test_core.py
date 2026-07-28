@@ -18,6 +18,7 @@ import backtest as bt
 import data
 import news
 import notify as nt
+import history as hist
 
 
 def _frame(closes, highs=None, lows=None):
@@ -221,6 +222,114 @@ def test_trend_trigger_unreachable_within_bound():
     closes = [200 - i * 3 for i in range(60)]
     t = trig.trend_trigger(closes, 20, 50, max_pct=25.0)
     assert t["reachable"] is False
+
+
+# --- history: snapshots, deltas, streaks ------------------------------------
+def test_record_snapshot_appends_new_day():
+    h = hist.record_snapshot({}, "4015", "2026-07-27", {"price": 100.0, "rsi": 50.0,
+                              "trend": "up", "rules_met": 2, "blocking": ["momentum_floor"]})
+    assert h["4015"] == [{"date": "2026-07-27", "price": 100.0, "rsi": 50.0,
+                          "trend": "up", "rules_met": 2, "blocking": ["momentum_floor"]}]
+
+def test_record_snapshot_same_day_rerun_replaces_not_appends():
+    h = hist.record_snapshot({}, "4015", "2026-07-27", {"price": 100.0, "rsi": 50.0,
+                              "trend": "up", "rules_met": 2, "blocking": []})
+    h2 = hist.record_snapshot(h, "4015", "2026-07-27", {"price": 101.0, "rsi": 51.0,
+                               "trend": "up", "rules_met": 3, "blocking": []})
+    assert len(h2["4015"]) == 1
+    assert h2["4015"][0]["price"] == 101.0
+
+def test_record_snapshot_caps_at_90_entries():
+    h = {}
+    for i in range(95):
+        h = hist.record_snapshot(h, "4015", f"2026-01-{i:03d}", {"price": float(i),
+                                  "rsi": 50.0, "trend": "up", "rules_met": 1, "blocking": []})
+    assert len(h["4015"]) == 90
+    assert h["4015"][0]["date"] == "2026-01-005"  # oldest 5 dropped
+    assert h["4015"][-1]["date"] == "2026-01-094"
+
+def test_record_snapshot_does_not_mutate_input():
+    original = {}
+    hist.record_snapshot(original, "4015", "2026-07-27", {"price": 1.0, "rsi": None,
+                          "trend": "flat", "rules_met": None, "blocking": None})
+    assert original == {}
+
+def test_compute_delta_none_on_first_run():
+    assert hist.compute_delta({}, "4015", "2026-07-27",
+                               {"price": 100.0, "rsi": 50.0, "trend": "up",
+                                "rules_met": 2, "blocking": []}) is None
+
+def test_compute_delta_price_rsi_rules_met_and_flip():
+    h = {"4015": [{"date": "2026-07-27", "price": 100.0, "rsi": 40.0, "trend": "down",
+                   "rules_met": 1, "blocking": ["trend", "momentum_floor"]}]}
+    d = hist.compute_delta(h, "4015", "2026-07-28",
+                           {"price": 105.0, "rsi": 45.0, "trend": "up",
+                            "rules_met": 2, "blocking": ["momentum_floor"]})
+    assert d["price_pct"] == 5.0
+    assert d["rsi_delta"] == 5.0
+    assert d["rules_met_delta"] == 1
+    assert d["flipped"] == ["trend"]  # trend rule passed today, was blocking yesterday
+    assert d["trend_flipped"] is True
+
+def test_compute_delta_no_change_is_zero_not_none():
+    h = {"4015": [{"date": "2026-07-27", "price": 100.0, "rsi": 40.0, "trend": "down",
+                   "rules_met": 1, "blocking": ["trend"]}]}
+    d = hist.compute_delta(h, "4015", "2026-07-28",
+                           {"price": 100.0, "rsi": 40.0, "trend": "down",
+                            "rules_met": 1, "blocking": ["trend"]})
+    assert d["price_pct"] == 0.0
+    assert d["rsi_delta"] == 0.0
+    assert d["rules_met_delta"] == 0
+    assert d["flipped"] == []
+    assert d["trend_flipped"] is False
+
+def test_compute_delta_ignores_todays_own_entry_same_day_rerun():
+    # Simulates a second digest run on the same day: history already has
+    # TODAY's entry (from the first run) alongside yesterday's. The delta
+    # must still be computed against yesterday, not today's own entry.
+    h = {"4015": [{"date": "2026-07-27", "price": 100.0, "rsi": 40.0, "trend": "down",
+                   "rules_met": 1, "blocking": ["trend"]},
+                  {"date": "2026-07-28", "price": 105.0, "rsi": 45.0, "trend": "up",
+                   "rules_met": 2, "blocking": []}]}
+    d = hist.compute_delta(h, "4015", "2026-07-28",
+                           {"price": 105.0, "rsi": 45.0, "trend": "up",
+                            "rules_met": 2, "blocking": []})
+    assert d["price_pct"] == 5.0  # vs the 07-27 entry, not the 07-28 one
+
+def test_compute_delta_holding_has_no_rules_met_or_blocking():
+    h = {"1303": [{"date": "2026-07-27", "price": 15.0, "rsi": 50.0, "trend": "down",
+                   "rules_met": None, "blocking": None}]}
+    d = hist.compute_delta(h, "1303", "2026-07-28",
+                           {"price": 15.2, "rsi": 51.0, "trend": "down",
+                            "rules_met": None, "blocking": None})
+    assert d["rules_met_delta"] is None
+    assert d["flipped"] == []
+    assert d["trend_flipped"] is False
+
+def test_compute_streak_first_day_is_one():
+    s = hist.compute_streak({}, "4015", "2026-07-28", "trend", "up")
+    assert s == {"days": 1, "started": "2026-07-28"}
+
+def test_compute_streak_counts_consecutive_matching_days():
+    h = {"4015": [{"date": "2026-07-25", "trend": "up"},
+                  {"date": "2026-07-26", "trend": "up"},
+                  {"date": "2026-07-27", "trend": "down"}]}
+    s = hist.compute_streak(h, "4015", "2026-07-28", "trend", "down")
+    assert s == {"days": 2, "started": "2026-07-27"}
+
+def test_compute_streak_breaks_on_first_mismatch():
+    h = {"4015": [{"date": "2026-07-24", "trend": "down"},
+                  {"date": "2026-07-25", "trend": "up"},
+                  {"date": "2026-07-26", "trend": "up"},
+                  {"date": "2026-07-27", "trend": "up"}]}
+    s = hist.compute_streak(h, "4015", "2026-07-28", "trend", "up")
+    assert s == {"days": 4, "started": "2026-07-25"}
+
+def test_compute_streak_ignores_todays_own_entry():
+    h = {"4015": [{"date": "2026-07-27", "trend": "up"},
+                  {"date": "2026-07-28", "trend": "up"}]}  # same-day rerun artifact
+    s = hist.compute_streak(h, "4015", "2026-07-28", "trend", "up")
+    assert s["days"] == 2  # 07-27 + today, NOT 07-27 + 07-28 + today
 
 
 # --- BUY decision -----------------------------------------------------------
