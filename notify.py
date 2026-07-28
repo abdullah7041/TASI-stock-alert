@@ -48,10 +48,54 @@ def _fmt_trigger(triggers: list) -> str | None:
     return f"   Trigger (next bar): {nearest['plain']}"
 
 
+def _ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        return f"{n}th"
+    return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }"
+
+
+_TREND_PHRASE = {"up": "above its 50-day average", "down": "below its 50-day average",
+                 "flat": "near its 50-day average"}
+
+
+def _fmt_trend_streak(streak: dict, trend: str) -> str:
+    phrase = _TREND_PHRASE.get(trend, "trend unknown")
+    return f"   Trend: {phrase}, {_ordinal(streak['days'])} day (flipped {streak['started']})"
+
+
+def _is_changed(delta: dict | None) -> bool:
+    if delta is None:
+        return False
+    return bool(delta["flipped"]) or (delta["rules_met_delta"] or 0) != 0 or delta["trend_flipped"]
+
+
 def format_recommendation(rec: dict) -> str:
-    """One block per name."""
-    head = f"**{rec['code']} {rec['name']}** @ {rec['price']}  ->  **{rec['action']}**"
+    """One block per name. Marks changed names with a leading arrow, shows
+    the day-over-day price move in the header, and collapses names with no
+    change and no news to one summary line -- attention goes to what's new."""
+    delta = rec.get("delta")
+    changed = _is_changed(delta)
+    news_headlines = bool((rec.get("news") or {}).get("headlines"))
+    collapse = (delta is not None) and (not changed) and (not news_headlines)
+
+    arrow = "▲ " if changed else ""
+    price_suffix = ""
+    if delta is not None and delta.get("price_pct") is not None:
+        price_suffix = f" ({delta['price_pct']:+.1f}% today)"
+    head = f"{arrow}**{rec['code']} {rec['name']}** @ {rec['price']}{price_suffix}  ->  **{rec['action']}**"
     lines = [head]
+
+    streak = rec.get("trend_streak")
+    trend = rec.get("long_term", {}).get("trend")
+    streak_line = _fmt_trend_streak(streak, trend) if streak else None
+
+    if collapse:
+        news_note = "No news" if not rec.get("news") else _fmt_news(rec["news"])[0].strip()
+        lines.append(f"{streak_line.strip()}. {news_note}." if streak_line else f"{news_note}.")
+        if rec["kind"] == "holding" and rec.get("unrealized_pct") is not None:
+            lines.append(f"   P/L: {rec['unrealized_pct']}%")
+        return "\n".join(lines)
+
     for r in rec.get("reason", []):
         lines.append(f"   - {r}")
     if rec["kind"] == "holding" and rec.get("unrealized_pct") is not None:
@@ -69,6 +113,8 @@ def format_recommendation(rec: dict) -> str:
                 f"{sz.get('budget_left_after')} SAR of monthly budget left after)")
         elif sz and sz.get("skip"):
             lines.append(f"   size: none — {sz['skip']}")
+    if streak_line:
+        lines.append(streak_line)
     if rec.get("news"):
         lines.extend(_fmt_news(rec["news"]))
     lines.append(f"   {_fmt_reads(rec)}")

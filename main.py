@@ -30,12 +30,14 @@ import data as dat
 import analyze as az
 import notify as nt
 import indicators as ind
+import history as histmod
 
 HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
 LEVELS_FILE = HERE / "levels.json"
 STATE_FILE = HERE / "state.json"
 BUDGET_FILE = HERE / "budget_state.json"
+HISTORY_FILE = HERE / "history.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -116,6 +118,17 @@ def _verify_symbols(items: list) -> dict:
     if changed:
         _save(SYMBOLS_FILE, store)
     return result
+
+
+def _snapshot_for(rec: dict) -> dict:
+    lt = rec.get("long_term", {})
+    blocking = None
+    rules_met = None
+    if rec["kind"] == "watchlist":
+        rules_met = rec.get("rules_met")
+        blocking = sorted(r["rule"] for r in rec.get("rules", []) if not r["passed"])
+    return {"price": rec["price"], "rsi": lt.get("rsi"), "trend": lt.get("trend"),
+            "rules_met": rules_met, "blocking": blocking}
 
 
 def _budget_record(buys: list) -> None:
@@ -243,6 +256,16 @@ def _collect_recs(include_news: bool):
             rec["reason"] = [f"symbol UNVERIFIED: {v.get('reason')} — fix the code in config.py"]
             unverified.append((w["code"], w["name"], v.get("yahoo_name", "")))
         recs.append(rec)
+
+    snapshot_history = _load(HISTORY_FILE, {})
+    today = _today()
+    for rec in recs:
+        snap = _snapshot_for(rec)
+        rec["delta"] = histmod.compute_delta(snapshot_history, rec["code"], today, snap)
+        rec["trend_streak"] = histmod.compute_streak(snapshot_history, rec["code"], today,
+                                                      "trend", snap["trend"])
+        snapshot_history = histmod.record_snapshot(snapshot_history, rec["code"], today, snap)
+    _save(HISTORY_FILE, snapshot_history)
 
     # Pool all BUYs (verified only — unverified were re-tagged above) and size
     # them from what is left of this month's budget.

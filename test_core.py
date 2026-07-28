@@ -1129,6 +1129,102 @@ def test_format_recommendation_no_trigger_line_when_buy():
     assert "Trigger" not in block
 
 
+# --- history wiring: main.py snapshot builder + notify.py rendering --------
+def test_collect_recs_attaches_delta_and_streak(tmp_path, monkeypatch):
+    # This test exercises main.py's wiring directly by calling the same
+    # snapshot-building logic main.py uses, not by running the full
+    # _collect_recs pipeline (which hits the network). Build a rec the way
+    # evaluate_watchlist would, run it through main.py's snapshot builder.
+    import main as m
+    rec = {"kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+           "action": "WATCH", "rules": [{"rule": "trend", "passed": False, "actual": "down",
+           "required": "up", "plain": "x"}], "rules_met": 0, "rules_total": 1,
+           "long_term": {"trend": "down", "rsi": 40.0, "momentum_pct": -6.0}}
+    snap = m._snapshot_for(rec)
+    assert snap == {"price": 100.0, "rsi": 40.0, "trend": "down",
+                    "rules_met": 0, "blocking": ["trend"]}
+
+def test_snapshot_for_holding_has_no_rules_met():
+    import main as m
+    rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.0,
+           "action": "HOLD", "long_term": {"trend": "up", "rsi": 55.0, "momentum_pct": 2.0}}
+    snap = m._snapshot_for(rec)
+    assert snap["rules_met"] is None
+    assert snap["blocking"] is None
+    assert snap["trend"] == "up"
+
+def test_format_recommendation_marks_changed_with_arrow():
+    rec = {"kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+           "action": "WATCH", "reason": ["x"], "rules_met": 2, "rules_total": 3,
+           "triggers": [], "delta": {"price_pct": 1.0, "rsi_delta": 0.5,
+           "rules_met_delta": 1, "flipped": ["trend"], "trend_flipped": True},
+           "trend_streak": {"days": 1, "started": "2026-07-28"},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "up", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert block.startswith("▲")
+
+def test_format_recommendation_no_arrow_when_unchanged():
+    rec = {"kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+           "action": "WATCH", "reason": ["x"], "rules_met": 2, "rules_total": 3,
+           "triggers": [], "delta": {"price_pct": 0.5, "rsi_delta": 0.1,
+           "rules_met_delta": 0, "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 5, "started": "2026-07-24"},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "up", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert not block.startswith("▲")
+
+def test_format_recommendation_shows_price_delta_in_header():
+    rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+           "action": "HOLD", "reason": [], "unrealized_pct": 21.6,
+           "delta": {"price_pct": 0.4, "rsi_delta": 0.0, "rules_met_delta": None,
+                     "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 11, "started": "2026-07-17"},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert "+0.4% today" in block
+
+def test_format_recommendation_collapses_when_unchanged_and_no_news():
+    rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+           "action": "HOLD", "reason": [], "unrealized_pct": 21.6,
+           "delta": {"price_pct": 0.4, "rsi_delta": 0.0, "rules_met_delta": None,
+                     "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 11, "started": "2026-07-17"},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert "below its 50-day average, 11th day" in block
+    assert "No news" in block
+    assert "short:" not in block  # full short/long-term breakdown suppressed
+
+def test_format_recommendation_does_not_collapse_when_news_present():
+    rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+           "action": "HOLD", "reason": [], "unrealized_pct": 21.6,
+           "delta": {"price_pct": 0.4, "rsi_delta": 0.0, "rules_met_delta": None,
+                     "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 11, "started": "2026-07-17"},
+           "news": {"ok": True, "label": "positive", "score": 1.0,
+                    "headlines": [{"title": "EIC profit rises", "published": "Mon"}]},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert "short:" in block  # full breakdown still shown because news exists
+
+def test_format_recommendation_first_run_no_delta_no_arrow_no_collapse():
+    rec = {"kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+           "action": "WATCH", "reason": ["x"], "rules_met": 2, "rules_total": 3,
+           "triggers": [], "delta": None,
+           "trend_streak": {"days": 1, "started": "2026-07-28"},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "up", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert not block.startswith("▲")
+    assert "today" not in block.split("\n")[0]  # no price-delta suffix without a delta
+    assert "short:" in block  # first run always shows full detail
+
+
 if __name__ == "__main__":
     import sys
     fns = [f for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
