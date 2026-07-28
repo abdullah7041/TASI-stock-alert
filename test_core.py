@@ -46,6 +46,19 @@ def test_rsi_midrange_between_0_and_100():
     assert 0 <= r <= 100
 
 
+def test_wilder_gain_loss_matches_rsi_derivation():
+    closes = [10, 10.5, 10.2, 10.8, 10.6, 11.0, 10.9, 11.3, 11.1, 11.5,
+             11.4, 11.8, 11.6, 12.0, 11.9, 12.3]
+    avg_gain, avg_loss = ind.wilder_gain_loss(closes, 14)
+    assert not np.isnan(avg_gain) and not np.isnan(avg_loss)
+    derived_rsi = 100.0 - 100.0 / (1.0 + avg_gain / avg_loss)
+    assert abs(derived_rsi - ind.rsi(closes, 14)) < 1e-9
+
+def test_wilder_gain_loss_insufficient_data_is_nan():
+    avg_gain, avg_loss = ind.wilder_gain_loss([10, 11, 12], 14)
+    assert np.isnan(avg_gain) and np.isnan(avg_loss)
+
+
 # --- trend ------------------------------------------------------------------
 def test_trend_up():
     assert ind.trend(list(range(1, 120)), 20, 50) == "up"

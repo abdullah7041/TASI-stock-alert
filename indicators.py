@@ -11,18 +11,31 @@ import numpy as np
 import pandas as pd
 
 
-def rsi(closes, period: int = 14) -> float:
-    """Wilder's RSI on the last `period` window. Returns 0-100, or float('nan')
-    if there is not enough data."""
+def wilder_gain_loss(closes, period: int = 14) -> tuple[float, float]:
+    """The smoothed avg_gain/avg_loss Wilder's RSI is built from. Exposed so
+    triggers.py can invert RSI using the EXACT same smoothing rsi() uses — a
+    second implementation of the same math would validate different numbers
+    than the ones that actually decide anything. Returns (nan, nan) if there
+    is not enough data.
+    """
     s = pd.Series(list(closes), dtype="float64").dropna()
     if len(s) < period + 1:
-        return float("nan")
+        return float("nan"), float("nan")
     delta = s.diff().dropna()
     gain = delta.clip(lower=0.0)
     loss = -delta.clip(upper=0.0)
     # Wilder smoothing via exponential moving average with alpha = 1/period.
     avg_gain = gain.ewm(alpha=1 / period, adjust=False).mean().iloc[-1]
     avg_loss = loss.ewm(alpha=1 / period, adjust=False).mean().iloc[-1]
+    return float(avg_gain), float(avg_loss)
+
+
+def rsi(closes, period: int = 14) -> float:
+    """Wilder's RSI on the last `period` window. Returns 0-100, or float('nan')
+    if there is not enough data."""
+    avg_gain, avg_loss = wilder_gain_loss(closes, period)
+    if np.isnan(avg_gain):
+        return float("nan")
     if avg_loss == 0:
         return 100.0
     rs = avg_gain / avg_loss
