@@ -76,7 +76,7 @@ def format_recommendation(rec: dict) -> str:
     delta = rec.get("delta")
     changed = _is_changed(delta)
     news_headlines = bool((rec.get("news") or {}).get("headlines"))
-    collapse = (delta is not None) and (not changed) and (not news_headlines)
+    collapse = (delta is not None) and (not changed) and (not news_headlines) and (rec["action"] in ("HOLD", "WATCH"))
 
     arrow = "▲ " if changed else ""
     price_suffix = ""

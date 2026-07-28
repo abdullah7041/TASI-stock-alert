@@ -1212,6 +1212,31 @@ def test_format_recommendation_does_not_collapse_when_news_present():
     block = nt.format_recommendation(rec)
     assert "short:" in block  # full breakdown still shown because news exists
 
+def test_format_recommendation_buy_never_collapses_even_when_unchanged():
+    rec = {"kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
+           "action": "BUY", "reason": ["all rules met"], "rules_met": 3, "rules_total": 3,
+           "triggers": [],
+           "delta": {"price_pct": 0.2, "rsi_delta": 0.1, "rules_met_delta": 0,
+                     "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 4, "started": "2026-07-25"},
+           "sizing": {"shares": 12, "spend": 1200.0, "budget_left_after": 300.0, "skip": None},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "up", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert "size: BUY" in block  # sizing line survives despite delta/news saying "unchanged"
+
+def test_format_recommendation_sell_stop_never_collapses_even_when_unchanged():
+    rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 14.50,
+           "action": "SELL (STOP)", "reason": ["price 14.50 <= stop 15.00"],
+           "unrealized_pct": -3.3,
+           "delta": {"price_pct": -0.1, "rsi_delta": 0.0, "rules_met_delta": None,
+                     "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 2, "started": "2026-07-27"},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert "price 14.50 <= stop 15.00" in block  # reason survives despite delta saying "unchanged"
+
 def test_format_recommendation_first_run_no_delta_no_arrow_no_collapse():
     rec = {"kind": "watchlist", "code": "4015", "name": "Jamjoom", "price": 100.0,
            "action": "WATCH", "reason": ["x"], "rules_met": 2, "rules_total": 3,
