@@ -73,6 +73,26 @@ There is **no conviction score**. It was deleted, not tuned: a walk-forward back
 
 The buy zone from `levels.json` is not a gate; distance to it is reported as context. All thresholds live in `BUY_CRITERIA` in `config.py`.
 
+## Trigger prices (what would have to be true)
+
+For every rule a watchlist name is currently failing, the digest computes
+the price that would flip it on the very next bar, and shows the nearest
+one: `Trigger (next bar): RSI clears the 25-60 band at 54.10 (-8.2% away)`.
+
+This is scoped honestly: it is a next-bar estimate. Momentum and RSI solve
+exactly for what price would need to land tomorrow, using today's other
+inputs (the 120-day-old reference price, today's smoothed RSI inputs). If
+price drifts there over several days instead of one, the rolling windows
+will have moved and the rule may not flip at that exact number — that is a
+property of the math, not a bug. The trend rule has no closed-form inverse
+(it depends on two rolling means, not one number), so it is found by
+scanning forward in small steps, bounded at ±25% — if nothing within that
+range flips it, the digest says so (`none within reach`) rather than
+guessing further out.
+
+This is what replaces a verdict with a falsifiable claim: check tomorrow
+whether the stated price did what was claimed.
+
 ## Symbol verification (why a name might say UNVERIFIED)
 
 Config codes are hand-entered, and a wrong code silently resolves to a real but **different** company — e.g. `6015` labeled "Jahez" is actually Americana Restaurants. Each run compares your config name to the company name the data source returns and caches the result in `symbols.json`. A mismatch marks the name **UNVERIFIED**: it is shown but **excluded from BUY and the budget**, and listed in the digest footer so you can fix the code against Tadawul (the authority). Brand-vs-legal-name cases (Avalon Pharma = "Middle East Pharmaceutical Industries") are confirmed once by setting `verified: true` for that code in `symbols.json`.
