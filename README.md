@@ -80,15 +80,22 @@ the price that would flip it on the very next bar, and shows the nearest
 one: `Trigger (next bar): RSI clears the 25-60 band at 54.10 (-8.2% away)`.
 
 This is scoped honestly: it is a next-bar estimate. Momentum and RSI solve
-exactly for what price would need to land tomorrow, using today's other
-inputs (the 120-day-old reference price, today's smoothed RSI inputs). If
-price drifts there over several days instead of one, the rolling windows
-will have moved and the rule may not flip at that exact number — that is a
+exactly for what price would need to land tomorrow, using the other inputs
+as they will stand on that bar (the close the momentum lookback will point
+at once tomorrow's bar is appended — one bar later than today's reference,
+because the window shifts — and today's smoothed RSI inputs). If price
+drifts there over several days instead of one, the rolling windows will
+have moved and the rule may not flip at that exact number — that is a
 property of the math, not a bug. The trend rule has no closed-form inverse
 (it depends on two rolling means, not one number), so it is found by
-scanning forward in small steps, bounded at ±25% — if nothing within that
-range flips it, the digest says so (`none within reach`) rather than
-guessing further out.
+scanning forward in small steps.
+
+Every stated price is a real 2-decimal quote that has been checked by
+appending it and re-running the actual indicator, so it is the smallest
+qualifying cent rather than a rounded-off approximation. All three rules
+are bounded at ±25% from today's close — if a rule would need a bigger
+single-bar move than that, the digest says so (`none within reach`) rather
+than quoting a number nobody should act on.
 
 This is what replaces a verdict with a falsifiable claim: check tomorrow
 whether the stated price did what was claimed.

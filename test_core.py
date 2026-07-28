@@ -113,15 +113,42 @@ def test_regime_unknown_when_empty():
 import triggers as trig
 
 def test_momentum_trigger_exact_arithmetic():
-    # 121 bars: index -121 (the "old" reference for a 120-day lookback) is
-    # 100.0, current close is 90.0. Floor -5% -> trigger = 100 * 0.95 = 95.0.
+    # 121 bars. The reference bar is the one pct_change will USE once the new
+    # bar is appended: on the longer series that is iloc[-121], which is
+    # iloc[-120] = 95.0 of today's series -- NOT today's own iloc[-121]
+    # (100.0). Floor -5% -> trigger = 95.0 * 0.95 = 90.25.
     closes = [100.0] + [95.0] * 119 + [90.0]
     t = trig.momentum_trigger(closes, 120, -5.0)
     assert t["rule"] == "momentum_floor"
     assert t["reachable"] is True
-    assert abs(t["trigger_price"] - 95.0) < 0.01
-    # (95 - 90) / 90 * 100 = 5.5555...
-    assert abs(t["pct_away"] - 5.56) < 0.01
+    assert abs(t["trigger_price"] - 90.25) < 0.005
+    # (90.25 - 90) / 90 * 100 = 0.2777...
+    assert abs(t["pct_away"] - 0.28) < 0.01
+
+def test_momentum_trigger_round_trips_through_indicators_pct_change():
+    # The real proof, matching the RSI/trend trigger tests: append the trigger
+    # as the next bar and check the REAL indicators.pct_change() -- the same
+    # call buy_decision's momentum rule is fed from -- actually clears the
+    # floor. And that the cent below does NOT: the reported price is the
+    # smallest 2-decimal quote that qualifies, not merely one that qualifies.
+    closes = [100.0 - i * 0.05 for i in range(150)]  # slow decline
+    assert ind.pct_change(closes, 120) < -5.0  # the rule is failing today
+    t = trig.momentum_trigger(closes, 120, -5.0)
+    assert t["reachable"] is True
+    assert ind.pct_change(closes + [t["trigger_price"]], 120) >= -5.0
+    below = round(t["trigger_price"] - 0.01, 2)
+    assert ind.pct_change(closes + [below], 120) < -5.0
+
+def test_momentum_trigger_beyond_max_search_is_unreachable():
+    # Down ~40% over the lookback: getting momentum back to -5% on one bar is
+    # a huge jump. The price is still reported (it is informative), but
+    # reachable must be False -- momentum used to claim True unconditionally.
+    closes = [100.0 - i * 0.4 for i in range(150)]
+    t = trig.momentum_trigger(closes, 120, -5.0)
+    assert t["trigger_price"] is not None
+    assert abs(t["pct_away"]) > trig.MAX_SEARCH_PCT
+    assert t["reachable"] is False
+    assert "beyond" in t["plain"]
 
 def test_momentum_trigger_insufficient_history_is_unreachable():
     t = trig.momentum_trigger([100.0] * 50, 120, -5.0)
@@ -131,8 +158,12 @@ def test_momentum_trigger_insufficient_history_is_unreachable():
 def test_rsi_trigger_round_trips_through_indicators_rsi():
     # A falling series -> RSI well below the recovery band's low edge (25).
     # Compute the trigger, append it as the NEXT bar, and confirm the
-    # resulting RSI actually lands at (near) 25 -- this is the real proof,
-    # not just that the algebra is self-consistent.
+    # resulting RSI actually lands at 25 -- this is the real proof, not just
+    # that the algebra is self-consistent. The assertion is directional
+    # (>= 25, and the cent below falls short) rather than a two-sided
+    # tolerance, because the reported price is quantised to a real cent and
+    # the safe-direction rounding deliberately lives on the far side of the
+    # edge. That pair is strictly stronger than any symmetric band.
     closes = [20 - i * 0.15 for i in range(30)]  # steadily falling
     current_rsi = ind.rsi(closes, 14)
     assert current_rsi < 25  # below the band, as the test assumes
@@ -141,7 +172,10 @@ def test_rsi_trigger_round_trips_through_indicators_rsi():
     assert t["reachable"] is True
     appended = closes + [t["trigger_price"]]
     landed_rsi = ind.rsi(appended, 14)
-    assert abs(landed_rsi - 25) < 0.5  # closed-form inversion, tight tolerance
+    assert landed_rsi >= 25            # the band edge is actually reached
+    assert landed_rsi - 25 < 0.05      # and only just: no wasted overshoot
+    below = closes + [round(t["trigger_price"] - 0.01, 2)]
+    assert ind.rsi(below, 14) < 25     # the cent below does not get there
 
 def test_rsi_trigger_already_in_band_is_unreachable():
     # Oscillating series sits RSI at a stable mid value, inside (25, 60).
