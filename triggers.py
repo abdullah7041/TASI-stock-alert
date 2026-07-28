@@ -120,3 +120,43 @@ def rsi_trigger(closes, period: int, lo: float, hi: float) -> dict:
     return {"rule": "rsi_band", "trigger_price": round(trigger, 2),
             "pct_away": round(pct_away, 2), "reachable": reachable,
             "plain": plain}
+
+
+def trend_trigger(closes, short_ma: int, long_ma: int,
+                  max_pct: float = MAX_SEARCH_PCT) -> dict:
+    """Bounded forward scan for the nearest NEXT-bar close that flips trend
+    to 'up'. Not a closed-form inversion — trend requires BOTH the short MA
+    above the long MA AND the long MA rising, and appending one bar does not
+    move the qualifying-price set monotonically, so bisection is not valid
+    here (checked and rejected before implementation). A linear scan from
+    the current price upward is correct by construction: the first
+    ascending price where the predicate holds is the nearest one.
+    """
+    s = pd.Series(list(closes), dtype="float64").dropna()
+    if len(s) < long_ma + 2:
+        return {"rule": "trend", "trigger_price": None, "pct_away": None,
+                "reachable": False, "plain": "not enough history"}
+    now = float(s.iloc[-1])
+    if now <= 0:
+        return {"rule": "trend", "trigger_price": None, "pct_away": None,
+                "reachable": False, "plain": "not enough history"}
+    if ind.trend(s, short_ma, long_ma) == "up":
+        return {"rule": "trend", "trigger_price": None, "pct_away": None,
+                "reachable": False, "plain": "trend already up"}
+
+    step = max(now * 0.001, 0.01)
+    hi_p = now * (1 + max_pct / 100.0)
+    price = now
+    while price <= hi_p:
+        price += step
+        candidate = pd.concat([s, pd.Series([price])], ignore_index=True)
+        if ind.trend(candidate, short_ma, long_ma) == "up":
+            trigger = round(price, 2)
+            pct_away = round((trigger - now) / now * 100.0, 2)
+            return {"rule": "trend", "trigger_price": trigger,
+                    "pct_away": pct_away, "reachable": True,
+                    "plain": f"trend flips up at {trigger} "
+                             f"({pct_away:+.1f}% away)"}
+    return {"rule": "trend", "trigger_price": None, "pct_away": None,
+            "reachable": False,
+            "plain": f"not reachable within ±{max_pct:.0f}% next bar"}

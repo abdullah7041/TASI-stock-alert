@@ -157,6 +157,37 @@ def test_rsi_trigger_beyond_max_search_is_unreachable():
     if not t["reachable"]:
         assert t["trigger_price"] is not None  # informative even when out of reach
 
+def test_trend_trigger_flips_down_to_up_and_no_smaller_price_does():
+    # A steadily falling series: trend is "down". Find the trigger, confirm
+    # appending it flips trend to "up", AND confirm the immediately-preceding
+    # scan step does NOT flip it -- this is the actual guarantee a forward
+    # scan gives that bisection would not: the trigger is the SMALLEST
+    # qualifying price, not just A qualifying price.
+    closes = [100 - i * 0.04 for i in range(60)]
+    assert ind.trend(closes, 20, 50) in ("down", "flat")
+    t = trig.trend_trigger(closes, 20, 50)
+    assert t["rule"] == "trend"
+    assert t["reachable"] is True
+    appended_at_trigger = closes + [t["trigger_price"]]
+    assert ind.trend(appended_at_trigger, 20, 50) == "up"
+    step = max(closes[-1] * 0.001, 0.01)
+    just_below = closes + [t["trigger_price"] - step]
+    assert ind.trend(just_below, 20, 50) != "up"
+
+def test_trend_trigger_already_up_is_unreachable():
+    closes = [50 + i * 0.5 for i in range(60)]  # steadily rising
+    assert ind.trend(closes, 20, 50) == "up"
+    t = trig.trend_trigger(closes, 20, 50)
+    assert t["reachable"] is False
+    assert t["trigger_price"] is None
+
+def test_trend_trigger_unreachable_within_bound():
+    # A long MA falling hard enough that no single next bar within +25%
+    # can make it rise -- genuinely out of reach, not a scan bug.
+    closes = [200 - i * 3 for i in range(60)]
+    t = trig.trend_trigger(closes, 20, 50, max_pct=25.0)
+    assert t["reachable"] is False
+
 
 # --- BUY decision -----------------------------------------------------------
 CRITERIA = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
