@@ -100,6 +100,20 @@ than quoting a number nobody should act on.
 This is what replaces a verdict with a falsifiable claim: check tomorrow
 whether the stated price did what was claimed.
 
+## Day-over-day deltas and streaks
+
+Every name gets a snapshot recorded once per digest run (`history.json`, capped
+at 90 days per name). From the previous day's snapshot the digest computes: the
+price move, the RSI move, whether any BUY rule flipped pass/fail, and how many
+consecutive days the current trend has held.
+
+Names where nothing changed (no rule flipped, `rules_met` steady, trend the
+same) and that have no fresh news collapse to one line — the digest's
+attention goes to what changed, not what didn't. A leading `▲` marks a name
+that did change. Running the digest more than once on the same day is safe:
+the second run compares against yesterday, not against the first run's own
+snapshot, so deltas and streaks come out identical both times.
+
 ## Symbol verification (why a name might say UNVERIFIED)
 
 Config codes are hand-entered, and a wrong code silently resolves to a real but **different** company — e.g. `6015` labeled "Jahez" is actually Americana Restaurants. Each run compares your config name to the company name the data source returns and caches the result in `symbols.json`. A mismatch marks the name **UNVERIFIED**: it is shown but **excluded from BUY and the budget**, and listed in the digest footer so you can fix the code against Tadawul (the authority). Brand-vs-legal-name cases (Avalon Pharma = "Middle East Pharmaceutical Industries") are confirmed once by setting `verified: true` for that code in `symbols.json`.
