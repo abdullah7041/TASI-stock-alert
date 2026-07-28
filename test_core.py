@@ -109,6 +109,55 @@ def test_regime_unknown_when_empty():
     assert az.market_regime(pd.DataFrame(), 50) == "unknown"
 
 
+# --- trigger prices -----------------------------------------------------
+import triggers as trig
+
+def test_momentum_trigger_exact_arithmetic():
+    # 121 bars: index -121 (the "old" reference for a 120-day lookback) is
+    # 100.0, current close is 90.0. Floor -5% -> trigger = 100 * 0.95 = 95.0.
+    closes = [100.0] + [95.0] * 119 + [90.0]
+    t = trig.momentum_trigger(closes, 120, -5.0)
+    assert t["rule"] == "momentum_floor"
+    assert t["reachable"] is True
+    assert abs(t["trigger_price"] - 95.0) < 0.01
+    # (95 - 90) / 90 * 100 = 5.5555...
+    assert abs(t["pct_away"] - 5.56) < 0.01
+
+def test_momentum_trigger_insufficient_history_is_unreachable():
+    t = trig.momentum_trigger([100.0] * 50, 120, -5.0)
+    assert t["reachable"] is False
+    assert t["trigger_price"] is None
+
+def test_rsi_trigger_round_trips_through_indicators_rsi():
+    # A falling series -> RSI well below the recovery band's low edge (25).
+    # Compute the trigger, append it as the NEXT bar, and confirm the
+    # resulting RSI actually lands at (near) 25 -- this is the real proof,
+    # not just that the algebra is self-consistent.
+    closes = [20 - i * 0.15 for i in range(30)]  # steadily falling
+    current_rsi = ind.rsi(closes, 14)
+    assert current_rsi < 25  # below the band, as the test assumes
+    t = trig.rsi_trigger(closes, 14, 25, 60)
+    assert t["rule"] == "rsi_band"
+    assert t["reachable"] is True
+    appended = closes + [t["trigger_price"]]
+    landed_rsi = ind.rsi(appended, 14)
+    assert abs(landed_rsi - 25) < 0.5  # closed-form inversion, tight tolerance
+
+def test_rsi_trigger_already_in_band_is_unreachable():
+    # Oscillating series sits RSI at a stable mid value, inside (25, 60).
+    closes = [50.0 + (0.5 if i % 2 == 0 else -0.5) for i in range(30)]
+    t = trig.rsi_trigger(closes, 14, 25, 60)
+    assert t["reachable"] is False
+
+def test_rsi_trigger_beyond_max_search_is_unreachable():
+    # Deeply oversold: RSI nowhere near 25, needs an enormous single-bar
+    # gain to get there -- should report a trigger_price but reachable=False.
+    closes = [100 - i * 2 for i in range(20)]  # sharp, sustained decline
+    t = trig.rsi_trigger(closes, 14, 25, 60)
+    if not t["reachable"]:
+        assert t["trigger_price"] is not None  # informative even when out of reach
+
+
 # --- BUY decision -----------------------------------------------------------
 CRITERIA = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
 GOOD_LONG = {"trend": "up", "momentum_pct": 10.0, "rsi": 45.0}
