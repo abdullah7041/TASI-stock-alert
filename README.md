@@ -114,6 +114,26 @@ that did change. Running the digest more than once on the same day is safe:
 the second run compares against yesterday, not against the first run's own
 snapshot, so deltas and streaks come out identical both times.
 
+## Tadawul disclosures
+
+Every name — holding or watchlist — is checked against Argaam's aggregate
+Tadawul disclosures feed (official company announcements: earnings,
+dividends, capital increases, board recommendations), fetched once per
+digest run and matched locally by company name. This is a higher-signal
+source than the news headlines Stage A added — these are the company's own
+regulatory filings, not press coverage. Same honesty rule as news: a feed
+outage renders `disclosures: fetch failed`, distinct from `disclosures: none
+found` for a real fetch that had nothing for that name.
+
+## `max_positions` is now enforced
+
+`RISK["max_positions"]` used to be configured and silently ignored. It now
+caps concurrent open names: existing holdings plus this run's newly-qualifying
+BUYs cannot exceed it. A BUY that would push past the cap still appears in
+the digest with its rules and trigger — it is just not sized, with a stated
+reason (`size: none — max_positions cap (5) reached ...`), the same pattern
+already used when a name's price exceeds what's left of the monthly budget.
+
 ## Symbol verification (why a name might say UNVERIFIED)
 
 Config codes are hand-entered, and a wrong code silently resolves to a real but **different** company — e.g. `6015` labeled "Jahez" is actually Americana Restaurants. Each run compares your config name to the company name the data source returns and caches the result in `symbols.json`. A mismatch marks the name **UNVERIFIED**: it is shown but **excluded from BUY and the budget**, and listed in the digest footer so you can fix the code against Tadawul (the authority). Brand-vs-legal-name cases (Avalon Pharma = "Middle East Pharmaceutical Industries") are confirmed once by setting `verified: true` for that code in `symbols.json`.
