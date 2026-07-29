@@ -31,6 +31,7 @@ import analyze as az
 import notify as nt
 import indicators as ind
 import history as histmod
+import disclosures as discl
 
 HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
@@ -225,6 +226,8 @@ def _collect_recs(include_news: bool):
         for code, result in news_by_code.items():
             newsmod.archive_headlines(code, result)
 
+    all_disclosures, disclosures_ok = discl.fetch_all()
+
     unverified = []
     recs = []
     for h in cfg.HOLDINGS:
@@ -232,8 +235,9 @@ def _collect_recs(include_news: bool):
         if df is None or df.empty:
             continue
         price = float(df["Close"].iloc[-1])
+        disc = discl.match_company(all_disclosures, disclosures_ok, h["name"])
         rec = az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
-                                  cfg.HORIZON, cfg.TECH, news_by_code.get(h["code"]))
+                                  cfg.HORIZON, cfg.TECH, news_by_code.get(h["code"]), disc)
         v = verify.get(h["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:
@@ -245,9 +249,10 @@ def _collect_recs(include_news: bool):
         if df is None or df.empty:
             continue
         price = float(df["Close"].iloc[-1])
+        disc = discl.match_company(all_disclosures, disclosures_ok, w["name"])
         rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
                                     cfg.RISK, cfg.HORIZON, cfg.TECH,
-                                    news_by_code.get(w["code"]), cfg.BUY_CRITERIA)
+                                    news_by_code.get(w["code"]), cfg.BUY_CRITERIA, disc)
         v = verify.get(w["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:

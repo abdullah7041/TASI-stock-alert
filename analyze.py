@@ -15,6 +15,7 @@ import pandas as pd
 
 import indicators as ind
 import triggers as trig
+import disclosures as discl
 
 
 # Used when a caller does not pass config.LEVELS (older call sites, tests).
@@ -129,9 +130,19 @@ def news_summary(news) -> dict | None:
     }
 
 
+def disclosures_summary(disclosures) -> dict | None:
+    """Shape a disclosures.DisclosureResult into the dict notify.py renders.
+    Mirrors news_summary exactly -- same reasoning: a fetch failure and a
+    genuinely empty result must render identically regardless of which
+    evaluation path found the name."""
+    if disclosures is None:
+        return None
+    return {"ok": disclosures.ok, "items": disclosures.items}
+
+
 # --- Holdings evaluation ---------------------------------------------------
 def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict,
-                     horizon_cfg: dict, tech: dict, news=None) -> dict:
+                     horizon_cfg: dict, tech: dict, news=None, disclosures=None) -> dict:
     """STOP / TRIM / TARGET / HOLD for a name you own, with short+long reads."""
     code = holding["code"]
     action, reason = "HOLD", []
@@ -163,6 +174,7 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
         "unrealized_pct": pnl_pct,
         "short_term": short, "long_term": long,
         "news": news_summary(news),
+        "disclosures": disclosures_summary(disclosures),
     }
 
 
@@ -303,7 +315,7 @@ def allocate_budget(buys: list, budget_sar: float,
 # --- Watchlist evaluation --------------------------------------------------
 def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
                        risk: dict, horizon_cfg: dict, tech: dict,
-                       news=None, buy_criteria: dict | None = None) -> dict:
+                       news=None, buy_criteria: dict | None = None, disclosures=None) -> dict:
     """Rule-checklist BUY/WATCH call for a name you might buy.
 
     Every rule from buy_decision() is reported, passed or not, so the digest can
@@ -356,4 +368,5 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
         "sizing": sizing, "short_term": short, "long_term": long,
     }
     out["news"] = news_summary(news)
+    out["disclosures"] = disclosures_summary(disclosures)
     return out

@@ -35,6 +35,20 @@ def _fmt_news(news: dict) -> list:
     return lines
 
 
+def _fmt_disclosures(disclosures: dict) -> list:
+    """Same three-way distinction as _fmt_news: a failed fetch, a fetch that
+    found nothing for this name, and a fetch with real matches."""
+    if disclosures.get("ok") is False:
+        return ["   disclosures: fetch failed"]
+    items = disclosures.get("items") or []
+    if not items:
+        return ["   disclosures: none found"]
+    lines = [f"   disclosures: {len(items)} recent"]
+    for it in items[:2]:
+        lines.append(f"      \"{it.get('title', '')}\" — {it.get('published', '')}")
+    return lines
+
+
 def _fmt_trigger(triggers: list) -> str | None:
     """One line: the nearest reachable trigger, or an honest 'none within
     reach' if triggers exist but none are close enough to compute, or None
@@ -76,7 +90,9 @@ def format_recommendation(rec: dict) -> str:
     delta = rec.get("delta")
     changed = _is_changed(delta)
     news_headlines = bool((rec.get("news") or {}).get("headlines"))
-    collapse = (delta is not None) and (not changed) and (not news_headlines) and (rec["action"] in ("HOLD", "WATCH"))
+    disclosure_items = bool((rec.get("disclosures") or {}).get("items"))
+    collapse = (delta is not None) and (not changed) and (not news_headlines) \
+        and (not disclosure_items) and (rec["action"] in ("HOLD", "WATCH"))
 
     arrow = "▲ " if changed else ""
     price_suffix = ""
@@ -117,6 +133,8 @@ def format_recommendation(rec: dict) -> str:
         lines.append(streak_line)
     if rec.get("news"):
         lines.extend(_fmt_news(rec["news"]))
+    if rec.get("disclosures"):
+        lines.extend(_fmt_disclosures(rec["disclosures"]))
     lines.append(f"   {_fmt_reads(rec)}")
     return "\n".join(lines)
 

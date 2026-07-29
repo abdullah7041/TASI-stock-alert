@@ -19,6 +19,7 @@ import data
 import news
 import notify as nt
 import history as hist
+import disclosures as discl
 
 
 def _frame(closes, highs=None, lows=None):
@@ -643,6 +644,56 @@ def test_evaluate_holding_news_defaults_to_none():
                                   "short_ma": 20, "long_ma": 50},
                               tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
     assert rec["news"] is None
+
+def test_disclosures_summary_none_when_no_disclosures():
+    assert az.disclosures_summary(None) is None
+
+def test_disclosures_summary_shapes_result():
+    d = discl.DisclosureResult(items=[{"title": "x", "link": "y", "published": "z"}], ok=True)
+    s = az.disclosures_summary(d)
+    assert s == {"ok": True, "items": [{"title": "x", "link": "y", "published": "z"}]}
+
+def test_evaluate_holding_attaches_disclosures():
+    df = _frame(list(range(1, 60)))
+    d = discl.DisclosureResult(items=[{"title": "EIC dividend announced", "link": "x", "published": "Mon"}], ok=True)
+    rec = az.evaluate_holding({"code": "1303", "name": "EIC", "shares": 10, "avg_cost": 10.0},
+                              price=12.0, df=df, levels={}, horizon_cfg=_WL_HORIZON,
+                              tech=_WL_TECH, disclosures=d)
+    assert rec["disclosures"]["ok"] is True
+    assert len(rec["disclosures"]["items"]) == 1
+
+def test_evaluate_watchlist_disclosures_defaults_to_none():
+    df = _frame(list(range(1, 160)))
+    rec = az.evaluate_watchlist({"code": "4015", "name": "Jamjoom"}, price=100.0, df=df,
+                                levels={}, risk=BASE_RISK, horizon_cfg=_WL_HORIZON, tech=_WL_TECH)
+    assert rec["disclosures"] is None
+
+def test_format_disclosures_fetch_failed_renders_distinctly():
+    block = nt._fmt_disclosures({"ok": False, "items": []})
+    assert block == ["   disclosures: fetch failed"]
+
+def test_format_disclosures_empty_renders_distinctly_from_failure():
+    block = nt._fmt_disclosures({"ok": True, "items": []})
+    assert block == ["   disclosures: none found"]
+
+def test_format_disclosures_shows_items():
+    block = nt._fmt_disclosures({"ok": True, "items": [
+        {"title": "Jamjoom board recommends dividend", "link": "x", "published": "Mon"}]})
+    assert any("Jamjoom board recommends dividend" in line for line in block)
+
+def test_format_recommendation_does_not_collapse_when_disclosures_present():
+    rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+           "action": "HOLD", "reason": [], "unrealized_pct": 21.6,
+           "delta": {"price_pct": 0.4, "rsi_delta": 0.0, "rules_met_delta": None,
+                     "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 11, "started": "2026-07-17"},
+           "disclosures": {"ok": True, "items": [{"title": "EIC dividend announced",
+                           "link": "x", "published": "Mon"}]},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert "EIC dividend announced" in block
+    assert "short:" in block  # full detail shown, not collapsed
 
 _WL_HORIZON = {"short_lookback_days": 10, "long_lookback_days": 50,
                "short_ma": 20, "long_ma": 50}
