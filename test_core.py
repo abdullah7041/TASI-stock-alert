@@ -759,6 +759,50 @@ def test_sentiment_arabic_substring_still_works_with_attached_prefix():
     assert score > 0
 
 
+# --- disclosures: Tadawul aggregate feed fetch and filter ------------------
+def test_match_company_filters_by_name_substring():
+    import disclosures as discl
+    items = [
+        {"title": "Al Rasheed upsides SAB facilities by SAR 100M", "link": "x", "published": "Mon"},
+        {"title": "MIS awarded SAR 179.8M project by KSMC", "link": "y", "published": "Tue"},
+        {"title": "Jamjoom Pharma board recommends dividend", "link": "z", "published": "Wed"},
+    ]
+    result = discl.match_company(items, True, "Jamjoom Pharma")
+    assert len(result.items) == 1
+    assert result.items[0]["title"] == "Jamjoom Pharma board recommends dividend"
+    assert result.ok is True
+
+def test_match_company_case_insensitive():
+    import disclosures as discl
+    items = [{"title": "jamjoom pharma reports Q2 profit", "link": "x", "published": "Mon"}]
+    result = discl.match_company(items, True, "Jamjoom Pharma")
+    assert len(result.items) == 1
+
+def test_match_company_no_matches_is_empty_not_failed():
+    import disclosures as discl
+    items = [{"title": "Some Other Co announces something", "link": "x", "published": "Mon"}]
+    result = discl.match_company(items, True, "Jamjoom Pharma")
+    assert result.items == []
+    assert result.ok is True  # the FEED fetch succeeded; this name just has no hits
+
+def test_match_company_propagates_fetch_failure():
+    import disclosures as discl
+    result = discl.match_company([], False, "Jamjoom Pharma")
+    assert result.items == []
+    assert result.ok is False
+
+def test_fetch_all_never_raises_on_bad_url(monkeypatch):
+    import disclosures as discl
+    # Simulate a network failure without hitting the real network.
+    import news as newsmod
+    def _boom(*a, **k):
+        raise ConnectionError("simulated failure")
+    monkeypatch.setattr(newsmod, "_fetch_rss", _boom)
+    items, ok = discl.fetch_all()
+    assert items == []
+    assert ok is False
+
+
 # --- notify formatting (offline) -------------------------------------------
 def test_format_and_build_message():
     rec = {
