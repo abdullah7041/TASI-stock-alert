@@ -14,14 +14,14 @@ Two stages, because tuning means re-running:
     features  slow, once   -> .cache/features.csv   (indicators per code/date)
     run       fast, often  -> events                (decisions + outcomes)
 
-No look-ahead, enforced in four places:
+No look-ahead, enforced in three places:
   1. levels come from the sliced history, never from levels.json
-  2. regime comes from the index sliced to the same date
-  3. entry is the NEXT bar's open, never the decision bar's close
-  4. outcomes read bars strictly after the decision bar
+  2. entry is the NEXT bar's open, never the decision bar's close
+  3. outcomes read bars strictly after the decision bar
 
-What this cannot validate: the news criterion (historical headlines are not
-retrievable, so news_score is neutralized to 0.0, which passes the gate).
+News is not backtested: there is no news rule to validate (news gates
+nothing, in production or here). `regime` is recorded per event for context
+but, like news, does not feed buy_decision — it no longer raises any bar.
 """
 
 from __future__ import annotations
@@ -321,7 +321,7 @@ def _row_to_long_read(row) -> dict:
 
 
 def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
-        tech: dict | None = None, max_hold: int = MAX_HOLD_BARS,
+        max_hold: int = MAX_HOLD_BARS,
         levels_cfg: dict | None = None) -> pd.DataFrame:
     """Replay BUY decisions and resolve each into a trade.
 
@@ -332,7 +332,6 @@ def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
     closes.
     """
     criteria = criteria or cfg.BUY_CRITERIA
-    tech = tech or cfg.TECH
     if features.empty:
         return pd.DataFrame()
 
@@ -350,20 +349,7 @@ def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
             t = int(row["t"])
             if t <= open_until:
                 continue                      # position still open on this name.
-            dist = row["distance_to_zone_pct"]
-            conviction = az.conviction_score(
-                row["trend"],
-                float(row["rsi"]) if pd.notna(row["rsi"]) else float("nan"),
-                tech,
-                float(dist) if pd.notna(dist) else float("nan"),
-            )
-            is_buy, _ = az.buy_decision(
-                conviction,
-                0.0,                          # news unavailable historically.
-                _row_to_long_read(row),
-                row["regime"],
-                criteria,
-            )
+            is_buy, _ = az.buy_decision(_row_to_long_read(row), criteria)
             if not is_buy:
                 continue
 
@@ -381,7 +367,7 @@ def run(features: pd.DataFrame, hist: dict, criteria: dict | None = None,
                 continue
             open_until = t + res["bars_held"]
             events.append({"code": str(code), "date": row["date"], "t": t,
-                           "conviction": conviction, "regime": row["regime"],
+                           "regime": row["regime"],
                            "rsi": row["rsi"], "trend": row["trend"], **res})
 
     if missing and not events:
@@ -477,7 +463,6 @@ def check_no_overlap(events: pd.DataFrame) -> list:
 
 # --- threshold sweep --------------------------------------------------------
 DEFAULT_GRID = {
-    "conviction_min": [50, 55, 60, 65, 70, 75],
     "rsi_recovery_band": [(25, 60), (30, 60), (25, 70), (35, 65), (0, 100)],
     "long_mom_floor_pct": [-15.0, -10.0, -5.0, 0.0, 5.0],
 }
@@ -485,25 +470,25 @@ DEFAULT_GRID = {
 
 def sweep(features: pd.DataFrame, hist: dict, index_df=None,
           grid: dict | None = None, base: dict | None = None) -> pd.DataFrame:
-    """Grid over the BUY thresholds. Event count sits beside every row — a
-    three-trade cell with a 100% win rate is noise, and the table must make that
-    obvious rather than sorting it to the top."""
+    """Grid over the surviving BUY thresholds. Event count sits beside every row
+    — a three-trade cell with a 100% win rate is noise, and the table must make
+    that obvious rather than sorting it to the top.
+
+    Two axes, not three: the conviction_min axis is gone with conviction.
+    """
     grid = grid or DEFAULT_GRID
     base = dict(base or cfg.BUY_CRITERIA)
     rows = []
-    for cmin in grid["conviction_min"]:
-        for band in grid["rsi_recovery_band"]:
-            for floor in grid["long_mom_floor_pct"]:
-                crit = {**base, "conviction_min": cmin,
-                        "conviction_min_breakdown": max(cmin, base["conviction_min_breakdown"]),
-                        "rsi_recovery_band": band, "long_mom_floor_pct": floor}
-                ev = run(features, hist, crit)
-                rep = report(ev, index_df)
-                # Defaults first, so an all-zero-event grid still has the
-                # columns to sort on instead of raising a confusing KeyError.
-                rows.append({"conviction_min": cmin, "rsi_band": f"{band[0]}-{band[1]}",
-                             "mom_floor": floor, "events": 0, "expectancy_pct": None,
-                             "win_rate_pct": None, "timeout_pct": None, **rep})
+    for band in grid["rsi_recovery_band"]:
+        for floor in grid["long_mom_floor_pct"]:
+            crit = {**base, "rsi_recovery_band": band, "long_mom_floor_pct": floor}
+            ev = run(features, hist, crit)
+            rep = report(ev, index_df)
+            # Defaults first, so an all-zero-event grid still has the
+            # columns to sort on instead of raising a confusing KeyError.
+            rows.append({"rsi_band": f"{band[0]}-{band[1]}",
+                         "mom_floor": floor, "events": 0, "expectancy_pct": None,
+                         "win_rate_pct": None, "timeout_pct": None, **rep})
     return pd.DataFrame(rows).sort_values("expectancy_pct", ascending=False,
                                           na_position="last")
 

@@ -7,16 +7,16 @@ It automates your rules. It does not place orders and it is not financial advice
 ## What each run does
 
 1. Pulls daily history and a delayed quote for every holding and watchlist name (Yahoo Finance, free).
-2. Checks the TASI index. If the index is breaking down, it suppresses BUY signals.
-3. Holdings: alerts on STOP, TRIM, or TARGET hits. Watchlist: alerts on BUY-zone hits with a 0-100 conviction score and position sizing from your cash.
-4. Every alert carries two reads: a long-term swing read (medium confidence) and a short-term momentum read (low confidence, by design, because it runs on delayed daily data).
+2. Checks the TASI index and reports the market regime in the digest header. The regime is context, not a gate — it no longer changes any per-name decision.
+3. Holdings: alerts on STOP, TRIM, or TARGET hits. Watchlist: reports how many of the three BUY rules each name meets, and equal-weight position sizing from your monthly budget.
+4. Every alert carries two reads: a long-term swing read and a short-term momentum read. Neither carries a confidence label; the short-term read is inherently noisier because it runs on delayed daily data.
 5. De-dupes so you get one alert per level per day.
 
 ## What it does not do
 
-Short-term signals are labeled low-confidence on purpose. Delayed daily data is fine for 6-12 month swing decisions. It is not a day-trading engine. If you want reliable intraday signals, that needs licensed realtime data (SAHMK Starter, 149 SAR/mo) and is a later upgrade.
+Short-term signals are noisier by nature, not because of any label attached to them. Delayed daily data is fine for 6-12 month swing decisions. It is not a day-trading engine. If you want reliable intraday signals, that needs licensed realtime data (SAHMK Starter, 149 SAR/mo) and is a later upgrade.
 
-News is a keyword tally over free Google News headlines. It is an input, not a trigger, and it is labeled low-confidence. Do not act on it alone.
+News is an auditable keyword/phrase tally over free Google News headlines — word-boundary matching for English (so "rise" doesn't fire inside "Enterprise"), plain substring for Arabic (where prefixes/conjunctions attach directly to root words). It is shown in the digest as real headlines, not a bare confidence-labeled number. It is an input, not a trigger. Do not act on it alone.
 
 ## Files
 
@@ -61,14 +61,58 @@ Set a holding `target` in `levels.json` just below its current price, run mode `
 
 ## When BUY fires (the exact criteria)
 
-A watchlist name becomes **BUY** only when ALL four hold (enforced in one place: `analyze.buy_decision`):
+A watchlist name becomes **BUY** only when ALL THREE hold (enforced in one place: `analyze.buy_decision`):
 
-1. **Conviction** ≥ `BUY_CRITERIA["conviction_min"]` (65). When the TASI regime is `breakdown` or `unknown`, the bar rises to `conviction_min_breakdown` (80) — the regime **raises the bar, it never blocks outright**.
-2. **News** sentiment score ≥ 0. No news or a failed fetch counts as neutral (0.0) and passes.
-3. **RSI** inside `rsi_recovery_band` (25–60) — recovering, not capitulating, not chasing.
-4. **Long-term read confirms strength**: long trend is `up` **AND** long momentum ≥ `long_mom_floor_pct` (−5%). Both are required — an `up` MA cross with falling momentum is not enough.
+1. **RSI** inside `rsi_recovery_band` (25–60) — recovering, not capitulating, not chasing.
+2. **Trend** is `up` (the 20/50-day MA cross).
+3. **Momentum** ≥ `long_mom_floor_pct` (−5%) over the long lookback.
 
-The buy zone from `levels.json` is no longer a gate — distance to it feeds the conviction score instead. All thresholds live in `BUY_CRITERIA` in `config.py`.
+Trend and momentum are separate rules on purpose: an `up` MA cross with falling momentum meets one and fails the other, and the digest says so — `Rules met: 2/3` — rather than hiding both behind a single verdict.
+
+There is **no conviction score**. It was deleted, not tuned: a walk-forward backtest over 3,733 events found its buckets *inverted* against forward return, while it was gating BUY and weighting the budget (see `docs/backtest-findings-2026-07-23.md`). There is **no news rule** either — news has never been validated against outcomes, so it is shown as context and gates nothing.
+
+The buy zone from `levels.json` is not a gate; distance to it is reported as context. All thresholds live in `BUY_CRITERIA` in `config.py`.
+
+## Trigger prices (what would have to be true)
+
+For every rule a watchlist name is currently failing, the digest computes
+the price that would flip it on the very next bar, and shows the nearest
+one: `Trigger (next bar): RSI clears the 25-60 band at 54.10 (-8.2% away)`.
+
+This is scoped honestly: it is a next-bar estimate. Momentum and RSI solve
+exactly for what price would need to land tomorrow, using the other inputs
+as they will stand on that bar (the close the momentum lookback will point
+at once tomorrow's bar is appended — one bar later than today's reference,
+because the window shifts — and today's smoothed RSI inputs). If price
+drifts there over several days instead of one, the rolling windows will
+have moved and the rule may not flip at that exact number — that is a
+property of the math, not a bug. The trend rule has no closed-form inverse
+(it depends on two rolling means, not one number), so it is found by
+scanning forward in small steps.
+
+Every stated price is a real 2-decimal quote that has been checked by
+appending it and re-running the actual indicator, so it is the smallest
+qualifying cent rather than a rounded-off approximation. All three rules
+are bounded at ±25% from today's close — if a rule would need a bigger
+single-bar move than that, the digest says so (`none within reach`) rather
+than quoting a number nobody should act on.
+
+This is what replaces a verdict with a falsifiable claim: check tomorrow
+whether the stated price did what was claimed.
+
+## Day-over-day deltas and streaks
+
+Every name gets a snapshot recorded once per digest run (`history.json`, capped
+at 90 days per name). From the previous day's snapshot the digest computes: the
+price move, the RSI move, whether any BUY rule flipped pass/fail, and how many
+consecutive days the current trend has held.
+
+Names where nothing changed (no rule flipped, `rules_met` steady, trend the
+same) and that have no fresh news collapse to one line — the digest's
+attention goes to what changed, not what didn't. A leading `▲` marks a name
+that did change. Running the digest more than once on the same day is safe:
+the second run compares against yesterday, not against the first run's own
+snapshot, so deltas and streaks come out identical both times.
 
 ## Symbol verification (why a name might say UNVERIFIED)
 
@@ -76,12 +120,12 @@ Config codes are hand-entered, and a wrong code silently resolves to a real but 
 
 ## Monthly buy budget
 
-`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them weighted by conviction, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
+`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them **equally**, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
 
 ## Validation (does any of this actually work?)
 
-Every BUY threshold — conviction 65/80, the 25–60 RSI band, the −5% momentum
-floor, the conviction weights — was chosen by hand and, until now, never
+Every BUY threshold — the 25–60 RSI band, the −5% momentum
+floor — was chosen by hand and, until now, never
 checked against history. Three local modes measure them. They are slow, they
 write large caches, and they are deliberately **not** on the GitHub Actions
 schedule.
@@ -115,9 +159,10 @@ windows, and a signal is only worth anything if it beats that.
 
 **What it cannot tell you.**
 
-- **News is not validated.** Historical headlines are not retrievable, so the
-  news score is neutralized to 0.0 — which passes the gate. BUY criterion #2 is
-  simply untested.
+- **News is not backtested at all.** There is no news rule to validate — news
+  is shown as context in the digest and gates nothing (see "When BUY fires"
+  above). Historical headlines are not retrievable, so this backtest never
+  attempts to score them.
 - **Survivorship bias.** Probing Yahoo today finds only currently-listed names.
   Companies that delisted are invisible, which flatters every result.
 - **Same-bar ambiguity.** When one daily bar spans both the stop and the target,

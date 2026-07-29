@@ -30,12 +30,14 @@ import data as dat
 import analyze as az
 import notify as nt
 import indicators as ind
+import history as histmod
 
 HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
 LEVELS_FILE = HERE / "levels.json"
 STATE_FILE = HERE / "state.json"
 BUDGET_FILE = HERE / "budget_state.json"
+HISTORY_FILE = HERE / "history.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -116,6 +118,17 @@ def _verify_symbols(items: list) -> dict:
     if changed:
         _save(SYMBOLS_FILE, store)
     return result
+
+
+def _snapshot_for(rec: dict) -> dict:
+    lt = rec.get("long_term", {})
+    blocking = None
+    rules_met = None
+    if rec["kind"] == "watchlist":
+        rules_met = rec.get("rules_met")
+        blocking = sorted(r["rule"] for r in rec.get("rules", []) if not r["passed"])
+    return {"price": rec["price"], "rsi": lt.get("rsi"), "trend": lt.get("trend"),
+            "rules_met": rules_met, "blocking": blocking}
 
 
 def _budget_record(buys: list) -> None:
@@ -204,10 +217,13 @@ def _collect_recs(include_news: bool):
             try:
                 return w["code"], newsmod.get_news(w["name"], w["code"])
             except Exception:
-                return w["code"], None
+                return w["code"], newsmod.NewsResult(query="", ok=False)
 
         with ThreadPoolExecutor(max_workers=8) as ex:
-            news_by_code = dict(ex.map(_fetch, cfg.WATCHLIST))
+            news_by_code = dict(ex.map(_fetch, cfg.HOLDINGS + cfg.WATCHLIST))
+
+        for code, result in news_by_code.items():
+            newsmod.archive_headlines(code, result)
 
     unverified = []
     recs = []
@@ -217,7 +233,7 @@ def _collect_recs(include_news: bool):
             continue
         price = float(df["Close"].iloc[-1])
         rec = az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
-                                  cfg.HORIZON, cfg.TECH)
+                                  cfg.HORIZON, cfg.TECH, news_by_code.get(h["code"]))
         v = verify.get(h["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:
@@ -230,7 +246,7 @@ def _collect_recs(include_news: bool):
             continue
         price = float(df["Close"].iloc[-1])
         rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
-                                    regime, cfg.RISK, cfg.HORIZON, cfg.TECH,
+                                    cfg.RISK, cfg.HORIZON, cfg.TECH,
                                     news_by_code.get(w["code"]), cfg.BUY_CRITERIA)
         v = verify.get(w["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
@@ -240,6 +256,16 @@ def _collect_recs(include_news: bool):
             rec["reason"] = [f"symbol UNVERIFIED: {v.get('reason')} — fix the code in config.py"]
             unverified.append((w["code"], w["name"], v.get("yahoo_name", "")))
         recs.append(rec)
+
+    snapshot_history = _load(HISTORY_FILE, {})
+    today = _today()
+    for rec in recs:
+        snap = _snapshot_for(rec)
+        rec["delta"] = histmod.compute_delta(snapshot_history, rec["code"], today, snap)
+        rec["trend_streak"] = histmod.compute_streak(snapshot_history, rec["code"], today,
+                                                      "trend", snap["trend"])
+        snapshot_history = histmod.record_snapshot(snapshot_history, rec["code"], today, snap)
+    _save(HISTORY_FILE, snapshot_history)
 
     # Pool all BUYs (verified only — unverified were re-tagged above) and size
     # them from what is left of this month's budget.
@@ -361,7 +387,7 @@ def mode_backtest() -> int:
 
     if sweep_kind:
         table = bt.sweep(feat, hist, index_df)
-        cols = ["conviction_min", "rsi_band", "mom_floor", "events",
+        cols = ["rsi_band", "mom_floor", "events",
                 "expectancy_pct", "win_rate_pct", "timeout_pct",
                 "edge_vs_baseline_pct"]
         print("\n" + table[[c for c in cols if c in table.columns]]
@@ -380,8 +406,6 @@ def mode_backtest() -> int:
     rep = bt.report(events, index_df)
     print(f"\nBacktest over {len(codes)} names, {bt.HISTORY_YEARS}y, "
           f"{bt.STEP_DAYS}-day step")
-    print("News is neutralized to 0.0 (no historical headlines), so BUY "
-          "criterion #2 is NOT validated here.")
     print("Survivorship: only currently-listed names were probed.\n")
     for k, v in rep.items():
         print(f"  {k:<24} {v}")

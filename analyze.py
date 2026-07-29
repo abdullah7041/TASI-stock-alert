@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 import indicators as ind
+import triggers as trig
 
 
 # Used when a caller does not pass config.LEVELS (older call sites, tests).
@@ -81,8 +82,9 @@ def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float,
     1.28% of upside against 10.50% of risk, R:R 0.12, negative expectancy at a
     71.9% win rate. Anchoring to entry is the fix.
 
-    Support and resistance still set the buy zone, which feeds the conviction
-    score. They no longer set the money levels.
+    Support and resistance still set the buy zone, which is reported as context
+    (distance_to_zone_pct). They no longer set the money levels, and they do not
+    feed any BUY rule.
 
     - buy_zone: just above nearest support (a place to add on a pullback).
     - stop:     atr_stop_mult ATRs below entry, never risking more than stop_pct.
@@ -112,69 +114,24 @@ def derive_levels(df: pd.DataFrame, tech: dict, stop_pct: float,
     return out
 
 
-# --- Conviction ------------------------------------------------------------
-def conviction_score(tr: str, r: float, tech: dict,
-                     distance_to_level_pct: float) -> int:
-    """0-100. Blends long-term trend, RSI position, and how close price is to the
-    actionable level. Higher = stronger setup. Transparent, no black box.
-
-    Takes the already-computed trend label and RSI value so indicators are
-    calculated once per name, not once per consumer."""
-    score = 50.0
-
-    score += {"up": 20, "flat": 0, "down": -20, "unknown": -5}.get(tr, 0)
-
-    if r is not None and not np.isnan(r):
-        if r < tech["rsi_oversold"]:
-            score += 15           # oversold into support = better entry.
-        elif r > tech["rsi_overbought"]:
-            score -= 15           # overbought = chasing.
-        else:
-            score += (50 - abs(r - 50)) * 0.2  # mild bonus for mid-range.
-
-    # Closer to the level = more actionable now.
-    if not np.isnan(distance_to_level_pct):
-        d = abs(distance_to_level_pct)
-        score += 15 if d <= 1 else 8 if d <= 3 else 0 if d <= 6 else -8
-
-    return int(max(0, min(100, round(score))))
-
-
-# --- Position sizing -------------------------------------------------------
-def position_size(price: float, risk: dict) -> dict:
-    """How many shares to buy given cash and risk rules. Transparent math.
-
-    Returns shares, spend, and a `skip` reason if the trade fails a rule.
-    """
-    cash = risk["deployable_cash"]
-    investable = cash * (1 - risk["cash_buffer_pct"])
-    target_spend = min(investable * risk["position_pct"],
-                       cash * risk["max_single_pct"])
-    if price <= 0 or target_spend <= 0:
-        return {"shares": 0, "spend": 0.0, "skip": "no cash / bad price"}
-
-    shares = int(target_spend // price)
-    if shares < 1:
-        return {"shares": 0, "spend": 0.0,
-                "skip": f"one share ({price:.2f}) exceeds target spend ({target_spend:.0f})"}
-
-    spend = shares * price
-    commission = max(spend * risk["commission_rate"], risk["min_commission"])
-    if commission > spend * risk["commission_floor_pct"]:
-        return {"shares": 0, "spend": 0.0,
-                "skip": "round-trip commission over floor; lot too small"}
-
+# --- News shaping ------------------------------------------------------------
+def news_summary(news) -> dict | None:
+    """Shape a news.NewsResult into the dict notify.py renders. Shared by both
+    evaluators so a fetch failure and a genuinely empty result render
+    identically regardless of which evaluation path found the name."""
+    if news is None:
+        return None
     return {
-        "shares": shares,
-        "spend": round(spend, 2),
-        "commission": round(commission, 2),
-        "pct_of_cash": round(spend / cash * 100, 1),
+        "ok": news.ok,
+        "label": news.label,
+        "score": news.score,
+        "headlines": news.headlines,
     }
 
 
 # --- Holdings evaluation ---------------------------------------------------
 def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict,
-                     horizon_cfg: dict, tech: dict) -> dict:
+                     horizon_cfg: dict, tech: dict, news=None) -> dict:
     """STOP / TRIM / TARGET / HOLD for a name you own, with short+long reads."""
     code = holding["code"]
     action, reason = "HOLD", []
@@ -204,80 +161,99 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
         "price": round(price, 2), "action": action, "reason": reason,
         "unrealized_pct": pnl_pct,
         "short_term": short, "long_term": long,
+        "news": news_summary(news),
     }
 
 
 # --- BUY decision ----------------------------------------------------------
-def buy_decision(conviction: int, news_score: float, long_read: dict,
-                 regime: str, criteria: dict) -> tuple[bool, list]:
-    """The single place BUY is decided. Returns (is_buy, failed_checks).
+def buy_decision(long_read: dict, criteria: dict) -> tuple[bool, list]:
+    """The single place BUY is decided. Returns (is_buy, rules).
 
-    BUY fires only when ALL of these hold:
-      1. conviction >= criteria['conviction_min'] — raised to
-         criteria['conviction_min_breakdown'] when the TASI regime is
-         'breakdown' or 'unknown'. The regime raises the bar; it never blocks.
-      2. news_score >= 0 (no news / failed fetch is neutral 0.0, which passes).
-      3. long-term RSI inside criteria['rsi_recovery_band'] — recovering, not
-         capitulating and not chasing.
-      4. long-term read confirms strength: trend == 'up' AND long momentum
-         >= criteria['long_mom_floor_pct']. Both are required — an 'up' MA
-         cross with falling momentum (or positive momentum under a non-up
-         trend) is not enough. This closes the "up trend but momentum below
-         the floor" contradiction.
+    `rules` reports EVERY rule, passed or not — not just the failures — so the
+    digest can say "Rules met: 2/3" and name what is blocking. Exactly three,
+    always in this order:
+      1. rsi_band       — long RSI inside criteria['rsi_recovery_band'].
+      2. trend          — long trend == 'up'.
+      3. momentum_floor — long momentum >= criteria['long_mom_floor_pct'].
+    BUY fires only when all three pass.
+
+    Conviction and the news veto are both gone. Conviction backtested INVERTED
+    against forward return (docs/backtest-findings-2026-07-23.md is now the only
+    record of that), and it gated BUY *and* weighted the budget. News sentiment
+    has never been validated against outcomes at all — backtest.py hardcodes
+    news_score=0.0 because no historical headlines existed to check it with.
+    Two unvalidated inputs were deciding real money; the rules are stated
+    plainly now instead of being folded into a score.
     """
-    failed = []
-    cautious = regime in ("breakdown", "unknown")
-    cutoff = criteria["conviction_min_breakdown"] if cautious else criteria["conviction_min"]
-    if conviction < cutoff:
-        failed.append(f"conviction {conviction} < {cutoff}"
-                      + (" (breakdown-raised bar)" if cautious else ""))
-    if news_score < 0:
-        failed.append(f"news sentiment negative ({news_score})")
+    rules = []
+
     lo, hi = criteria["rsi_recovery_band"]
-    r = long_read.get("rsi")
-    if r is None or np.isnan(r):
-        failed.append("RSI unavailable")
-    elif not (lo <= r <= hi):
-        failed.append(f"RSI {r} outside recovery band {lo}-{hi}")
+    rsi_val = long_read.get("rsi")
+    rsi_missing = rsi_val is None or np.isnan(rsi_val)
+    rsi_ok = (not rsi_missing) and lo <= rsi_val <= hi
+    if rsi_missing:
+        rsi_plain = "RSI unavailable"
+    elif rsi_ok:
+        rsi_plain = f"RSI {rsi_val} inside {lo}-{hi}"
+    else:
+        rsi_plain = f"RSI {rsi_val} outside recovery band {lo}-{hi}"
+    rules.append({"rule": "rsi_band", "passed": rsi_ok, "actual": rsi_val,
+                  "required": f"{lo}-{hi}", "plain": rsi_plain})
+
+    trend_val = long_read.get("trend")
+    trend_ok = trend_val == "up"
+    rules.append({
+        "rule": "trend", "passed": trend_ok, "actual": trend_val, "required": "up",
+        "plain": f"trend {trend_val}" if trend_ok
+                 else f"trend {trend_val}, need up",
+    })
+
     mom = long_read.get("momentum_pct")
-    trend_up = long_read.get("trend") == "up"
-    mom_ok = mom is not None and not np.isnan(mom) and mom >= criteria["long_mom_floor_pct"]
-    if not (trend_up and mom_ok):
-        failed.append(f"long-term not confirmed (trend {long_read.get('trend')}, "
-                      f"mom {mom}% vs floor {criteria['long_mom_floor_pct']}%; "
-                      f"need trend=up AND mom>=floor)")
-    return (len(failed) == 0), failed
+    floor = criteria["long_mom_floor_pct"]
+    mom_ok = mom is not None and not np.isnan(mom) and mom >= floor
+    rules.append({
+        "rule": "momentum_floor", "passed": mom_ok, "actual": mom, "required": floor,
+        "plain": f"momentum {mom}% >= floor {floor}%" if mom_ok
+                 else f"momentum {mom}% below floor {floor}%",
+    })
+
+    return all(rule["passed"] for rule in rules), rules
 
 
 # --- Budget allocation ------------------------------------------------------
 def allocate_budget(buys: list, budget_sar: float) -> dict:
-    """Split the remaining monthly budget across BUY recs, weighted by
-    conviction. Mutates each rec's 'sizing' in place; returns a summary.
+    """Split the remaining monthly budget EQUALLY across BUY recs. Mutates each
+    rec's 'sizing' in place; returns a summary.
 
     Rules (transparent, in order):
-      - Candidates processed highest conviction first.
-      - Each gets slice = budget * (its conviction / total conviction), then
-        rounded DOWN to whole shares (Tadawul does not allow fractions).
+      - Equal weight: every qualifying name targets the same slice, processed
+        in the order given. This used to be weighted by conviction — which
+        backtested inverted against forward return, so weighting toward it was
+        weighting toward worse outcomes (docs/backtest-findings-2026-07-23.md).
+        With conviction gone there is nothing left to rank on, and pretending
+        otherwise would be inventing a ranking.
+      - Each gets slice = budget / len(buys), rounded DOWN to whole shares
+        (Tadawul does not allow fractions).
       - If the slice affords 0 shares but 1 share fits what is left of the
-        budget, it gets 1 share (highest conviction first).
+        budget, it gets 1 share.
       - Unspent remainder of a slice rolls to the next candidate via the
         running 'remaining' amount; whatever is left at the end stays cash.
       - Hard invariant: total spend <= budget_sar.
     """
-    summary = {"budget": round(budget_sar, 2), "allocated": 0.0, "leftover": round(budget_sar, 2)}
+    summary = {"budget": round(budget_sar, 2), "allocated": 0.0,
+               "leftover": round(budget_sar, 2)}
     if not buys or budget_sar <= 0:
         for r in buys:
             r["sizing"] = {"shares": 0, "spend": 0.0, "skip": "monthly budget exhausted"}
         return summary
 
-    candidates = sorted(buys, key=lambda r: r["conviction"], reverse=True)
-    total_conv = sum(r["conviction"] for r in candidates) or 1
+    n = len(buys)
+    equal_slice = budget_sar / n
     remaining = budget_sar
 
-    for r in candidates:
+    for r in buys:
         price = r["price"]
-        weight = r["conviction"] / total_conv
-        slice_sar = min(budget_sar * weight, remaining)
+        slice_sar = min(equal_slice, remaining)
         shares = int(slice_sar // price) if price > 0 else 0
         if shares == 0 and 0 < price <= remaining:
             shares = 1  # min viable lot for a qualified name, if budget allows.
@@ -293,7 +269,7 @@ def allocate_budget(buys: list, budget_sar: float) -> dict:
         r["sizing"] = {
             "shares": shares,
             "spend": round(spend, 2),
-            "weight_pct": round(weight * 100, 1),
+            "weight_pct": round(100.0 / n, 1),
             "budget_left_after": round(remaining, 2),
         }
 
@@ -304,52 +280,58 @@ def allocate_budget(buys: list, budget_sar: float) -> dict:
 
 # --- Watchlist evaluation --------------------------------------------------
 def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
-                       regime: str, risk: dict, horizon_cfg: dict, tech: dict,
+                       risk: dict, horizon_cfg: dict, tech: dict,
                        news=None, buy_criteria: dict | None = None) -> dict:
-    """Criteria-based BUY/WATCH call for a name you might buy.
+    """Rule-checklist BUY/WATCH call for a name you might buy.
 
-    The buy zone (levels.json) is no longer a gate — proximity to it feeds the
-    conviction score. The actual BUY decision lives in buy_decision() above.
+    Every rule from buy_decision() is reported, passed or not, so the digest can
+    show "Rules met: 2/3" and name the blockers — instead of a conviction score
+    that compressed three independent facts into one unfalsifiable number.
+
     Sizing is NOT attached here; the caller pools all BUYs and runs
     allocate_budget() so the monthly cap is respected across names.
+
+    `regime` is no longer a parameter: it only ever fed the conviction cutoff,
+    which is gone. The market regime is still computed once per run and shown
+    in the digest header.
     """
     code = item["code"]
     low = levels.get("buy_zone_low")
+    high = levels.get("buy_zone_high")
 
     ref_level = low if low is not None else price
     dist = (price - ref_level) / ref_level * 100 if ref_level else float("nan")
 
-    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"], horizon_cfg["short_ma"])
+    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"],
+                                horizon_cfg["short_ma"])
     long = ind.long_term_read(df, horizon_cfg["long_lookback_days"],
                               horizon_cfg["short_ma"], horizon_cfg["long_ma"])
 
-    conviction = conviction_score(long.get("trend"), long.get("rsi"), tech, dist) \
-        if not df.empty else 0
-
-    news_score = news.score if news is not None else 0.0
-    criteria = buy_criteria or {"conviction_min": 65, "conviction_min_breakdown": 80,
-                                "rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
-    is_buy, failed = buy_decision(conviction, news_score, long, regime, criteria)
+    criteria = buy_criteria or {"rsi_recovery_band": (25, 60),
+                                "long_mom_floor_pct": -5.0}
+    is_buy, rules = buy_decision(long, criteria)
+    triggers = trig.compute_triggers(df, rules, horizon_cfg, criteria)
 
     reason = []
     sizing = None
     if is_buy:
         action = "BUY"
-        reason.append(f"all BUY criteria met (conviction {conviction}, regime {regime})")
+        reason.append("all rules met")
     else:
         action = "WATCH"
-        reason.extend(failed)
+        reason.extend(r["plain"] for r in rules if not r["passed"])
 
-    high = levels.get("buy_zone_high")
     out = {
         "kind": "watchlist",
         "code": code, "name": item.get("name", code),
         "price": round(price, 2), "action": action, "reason": reason,
-        "conviction": conviction, "buy_zone": [low, high],
+        "rules": rules,
+        "rules_met": sum(1 for r in rules if r["passed"]),
+        "rules_total": len(rules),
+        "triggers": triggers,
+        "buy_zone": [low, high],
         "distance_to_zone_pct": round(dist, 2) if not np.isnan(dist) else None,
         "sizing": sizing, "short_term": short, "long_term": long,
     }
-    if news is not None:
-        out["news"] = {"label": news.label, "score": news.score,
-                       "confidence": news.confidence, "count": len(news.headlines)}
+    out["news"] = news_summary(news)
     return out
