@@ -31,14 +31,6 @@ import indicators as ind
 
 MAX_SEARCH_PCT = 25.0   # give up beyond ±25% from the current price.
 
-# RSI trigger inverts whatever period actually produced the "current RSI" a
-# rule dict reports. indicators.long_term_read() calls ind.rsi(closes) with
-# NO period argument (defaults to 14) because config.TECH["rsi_period"] is
-# not threaded through yet (a known, separately deferred bug — Stage E).
-# When that's fixed, this constant must be threaded the same way, in the
-# same change.
-RSI_PERIOD = 14
-
 
 def _verified_price(raw: float, reference: float, rising: bool, holds,
                     max_pct: float = MAX_SEARCH_PCT) -> float | None:
@@ -264,10 +256,13 @@ def trend_trigger(closes, short_ma: int, long_ma: int,
             "plain": f"not reachable within ±{max_pct:.0f}% next bar"}
 
 
-def compute_triggers(df, rules: list, horizon_cfg: dict, criteria: dict) -> list:
+def compute_triggers(df, rules: list, horizon_cfg: dict, criteria: dict, rsi_period: int) -> list:
     """For every FAILING rule in `rules` (analyze.buy_decision's output),
     compute its trigger price. Passed rules produce nothing — there is
-    nothing to flip.
+    nothing to flip. `rsi_period` must match whatever period actually
+    produced the "current RSI" the rule dict reports (analyze.py threads
+    tech["rsi_period"] through to indicators.long_term_read AND here, in the
+    same change, so the two never disagree about what RSI means).
     """
     closes = df["Close"]
     out = []
@@ -279,7 +274,7 @@ def compute_triggers(df, rules: list, horizon_cfg: dict, criteria: dict) -> list
                                         criteria["long_mom_floor_pct"]))
         elif r["rule"] == "rsi_band":
             lo, hi = criteria["rsi_recovery_band"]
-            out.append(rsi_trigger(closes, RSI_PERIOD, lo, hi))
+            out.append(rsi_trigger(closes, rsi_period, lo, hi))
         elif r["rule"] == "trend":
             out.append(trend_trigger(closes, horizon_cfg["short_ma"],
                                      horizon_cfg["long_ma"]))

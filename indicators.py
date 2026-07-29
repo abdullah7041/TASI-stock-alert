@@ -137,24 +137,25 @@ def pct_change(closes, days: int) -> float:
     return (new - old) / old * 100.0
 
 
-def short_term_read(df: pd.DataFrame, lookback: int, short_ma: int) -> dict:
+def short_term_read(df: pd.DataFrame, lookback: int, short_ma: int, rsi_period: int = 14) -> dict:
     """Short-horizon momentum read."""
     closes = df["Close"]
     return {
         "horizon": "short",
         "momentum_pct": round(pct_change(closes, lookback), 2),
-        "rsi": round(rsi(closes), 1),
+        "rsi": round(rsi(closes, rsi_period), 1),
         "above_ma": bool(float(closes.iloc[-1]) > sma(closes, short_ma))
         if not np.isnan(sma(closes, short_ma)) else None,
     }
 
 
-def long_term_read(df: pd.DataFrame, lookback: int, short_ma: int, long_ma: int) -> dict:
+def long_term_read(df: pd.DataFrame, lookback: int, short_ma: int, long_ma: int,
+                   rsi_period: int = 14) -> dict:
     """Long-horizon swing read. This is the more reliable one on daily data."""
     closes = df["Close"]
     return {
         "horizon": "long",
         "trend": trend(closes, short_ma, long_ma),
         "momentum_pct": round(pct_change(closes, lookback), 2),
-        "rsi": round(rsi(closes), 1),
+        "rsi": round(rsi(closes, rsi_period), 1),
     }

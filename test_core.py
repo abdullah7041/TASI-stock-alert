@@ -1047,6 +1047,30 @@ def test_archive_headlines_appends_across_calls():
 
 
 # --- trigger prices wired into evaluate_watchlist / notify -----------------
+def test_short_term_read_honors_configured_rsi_period():
+    # Oscillating data: will have different RSI for periods 7 vs 14
+    df = _frame([10 + (i % 7) - 3 for i in range(60)])
+    default = ind.short_term_read(df, 10, 20)
+    custom = ind.short_term_read(df, 10, 20, rsi_period=7)
+    assert default["rsi"] != custom["rsi"]  # different smoothing window -> different value
+
+def test_long_term_read_honors_configured_rsi_period():
+    # Oscillating data: will have different RSI for periods 7 vs 14
+    df = _frame([50 + (i % 9) - 4 for i in range(160)])
+    default = ind.long_term_read(df, 120, 20, 50)
+    custom = ind.long_term_read(df, 120, 20, 50, rsi_period=7)
+    assert default["rsi"] != custom["rsi"]
+
+def test_compute_triggers_uses_passed_rsi_period_not_hardcoded():
+    rules = [{"rule": "rsi_band", "passed": False, "actual": 15.0,
+             "required": "25-60", "plain": "x"}]
+    df = _frame([20 - i * 0.15 for i in range(30)])
+    horizon_cfg = {"long_lookback_days": 120, "short_ma": 20, "long_ma": 50}
+    criteria = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
+    trigger_14 = trig.compute_triggers(df, rules, horizon_cfg, criteria, 14)[0]
+    trigger_7 = trig.compute_triggers(df, rules, horizon_cfg, criteria, 7)[0]
+    assert trigger_14["trigger_price"] != trigger_7["trigger_price"]
+
 def test_compute_triggers_only_for_failing_rules():
     rules = [
         {"rule": "rsi_band", "passed": True, "actual": 45.0, "required": "25-60", "plain": "ok"},
@@ -1056,7 +1080,7 @@ def test_compute_triggers_only_for_failing_rules():
     df = _frame(list(range(1, 160)))  # from the existing test fixture helper
     horizon_cfg = {"long_lookback_days": 120, "short_ma": 20, "long_ma": 50}
     criteria = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
-    result = trig.compute_triggers(df, rules, horizon_cfg, criteria)
+    result = trig.compute_triggers(df, rules, horizon_cfg, criteria, 14)
     assert len(result) == 1
     assert result[0]["rule"] == "trend"
 
@@ -1069,7 +1093,7 @@ def test_compute_triggers_empty_when_all_rules_pass():
     df = _frame(list(range(1, 160)))
     horizon_cfg = {"long_lookback_days": 120, "short_ma": 20, "long_ma": 50}
     criteria = {"rsi_recovery_band": (25, 60), "long_mom_floor_pct": -5.0}
-    assert trig.compute_triggers(df, rules, horizon_cfg, criteria) == []
+    assert trig.compute_triggers(df, rules, horizon_cfg, criteria, 14) == []
 
 def test_evaluate_watchlist_includes_triggers_key():
     df = _frame(list(range(200, 89, -1)) + list(range(90, 110)))  # falling then flat-ish

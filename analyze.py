@@ -149,9 +149,10 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
         action = "TRIM"
         reason.append(f"price {price:.2f} >= trim {trim:.2f}")
 
-    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"], horizon_cfg["short_ma"])
+    short = ind.short_term_read(df, horizon_cfg["short_lookback_days"], horizon_cfg["short_ma"],
+                                tech["rsi_period"])
     long = ind.long_term_read(df, horizon_cfg["long_lookback_days"],
-                              horizon_cfg["short_ma"], horizon_cfg["long_ma"])
+                              horizon_cfg["short_ma"], horizon_cfg["long_ma"], tech["rsi_period"])
     pnl_pct = round((price - holding["avg_cost"]) / holding["avg_cost"] * 100, 1) \
         if holding.get("avg_cost") else None
 
@@ -303,14 +304,14 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
     dist = (price - ref_level) / ref_level * 100 if ref_level else float("nan")
 
     short = ind.short_term_read(df, horizon_cfg["short_lookback_days"],
-                                horizon_cfg["short_ma"])
+                                horizon_cfg["short_ma"], tech["rsi_period"])
     long = ind.long_term_read(df, horizon_cfg["long_lookback_days"],
-                              horizon_cfg["short_ma"], horizon_cfg["long_ma"])
+                              horizon_cfg["short_ma"], horizon_cfg["long_ma"], tech["rsi_period"])
 
     criteria = buy_criteria or {"rsi_recovery_band": (25, 60),
                                 "long_mom_floor_pct": -5.0}
     is_buy, rules = buy_decision(long, criteria)
-    triggers = trig.compute_triggers(df, rules, horizon_cfg, criteria)
+    triggers = trig.compute_triggers(df, rules, horizon_cfg, criteria, tech["rsi_period"])
 
     reason = []
     sizing = None
