@@ -15,6 +15,7 @@ import pandas as pd
 import indicators as ind
 import analyze as az
 import backtest as bt
+import config as cfg
 import data
 import news
 import notify as nt
@@ -1011,6 +1012,28 @@ def test_features_unchanged_by_future_bars():
                 f"{col} at t={t} changed when future bars were added"
 
 
+def test_build_features_honors_configured_rsi_period(monkeypatch):
+    # backtest.build_features must call ind.long_term_read with the configured
+    # rsi_period, not the hardcoded default -- otherwise the harness scores a
+    # different RSI than production computes, which the module docstring calls
+    # "worse than useless".
+    closes = [50 + (i % 9) - 4 for i in range(160)]
+    df = _ohlc(closes, [c * 1.01 for c in closes], [c * 0.99 for c in closes], closes)
+    empty_idx = pd.DataFrame()
+
+    monkeypatch.setitem(cfg.TECH, "rsi_period", 14)
+    default = bt.build_features({"X": df}, empty_idx, step_days=5, progress=lambda *_: None)
+
+    monkeypatch.setitem(cfg.TECH, "rsi_period", 7)
+    custom = bt.build_features({"X": df}, empty_idx, step_days=5, progress=lambda *_: None)
+
+    shared = set(default["t"]) & set(custom["t"])
+    assert len(shared) > 3
+    diffs = [t for t in shared
+             if default[default["t"] == t]["rsi"].iloc[0] != custom[custom["t"] == t]["rsi"].iloc[0]]
+    assert diffs, "rsi feature did not change when cfg.TECH['rsi_period'] changed"
+
+
 def test_build_features_writes_nothing_by_default():
     # Checkpointing must be opt-in. When it defaulted on, these tests appended
     # their synthetic "X" name straight into the real .cache/features.csv.
@@ -1348,6 +1371,22 @@ def test_format_recommendation_collapses_when_unchanged_and_no_news():
     assert "below its 50-day average, 11th day" in block
     assert "No news" in block
     assert "short:" not in block  # full short/long-term breakdown suppressed
+
+def test_format_recommendation_collapse_surfaces_disclosures_fetch_failure():
+    # A disclosures fetch failure produces items=[] just like "nothing found",
+    # so the rec is still collapse-eligible -- but the collapsed line must not
+    # silently hide that the disclosures check never ran (same honesty rule as news).
+    rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+           "action": "HOLD", "reason": [], "unrealized_pct": 21.6,
+           "delta": {"price_pct": 0.4, "rsi_delta": 0.0, "rules_met_delta": None,
+                     "flipped": [], "trend_flipped": False},
+           "trend_streak": {"days": 11, "started": "2026-07-17"},
+           "disclosures": {"ok": False, "items": []},
+           "short_term": {"momentum_pct": 0, "rsi": 50},
+           "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50}}
+    block = nt.format_recommendation(rec)
+    assert "short:" not in block  # still collapsed, one line
+    assert "disclosures fetch failed" in block
 
 def test_format_recommendation_does_not_collapse_when_news_present():
     rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,

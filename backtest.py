@@ -233,7 +233,8 @@ def build_features(hist: dict, index_df: pd.DataFrame, step_days: int = 5,
             continue
         for t in range(min_bars - 1, len(df), step_days):
             window = df.iloc[:t + 1]
-            long = ind.long_term_read(window, lookback, short_ma, long_ma)
+            long = ind.long_term_read(window, lookback, short_ma, long_ma,
+                                       cfg.TECH["rsi_period"])
             lv = az.derive_levels(window, cfg.TECH, stop_pct, cfg.LEVELS)
             price = float(window["Close"].iloc[-1])
             low = lv.get("buy_zone_low")

@@ -15,9 +15,11 @@ Because the feed is aggregate, not per-company, it is fetched ONCE per
 digest run (fetch_all) and filtered locally per watchlist/holding name
 (match_company) -- fetching once and filtering N ways, rather than N
 network calls for N names. match_company is pure and fully testable
-offline; fetch_all is not directly unit tested, matching news.py's own
-convention (its network-touching _fetch_rss/get_news aren't unit tested
-either -- only the pure scoring functions are).
+offline; fetch_all's exception-handling is tested via monkeypatch (see
+test_fetch_all_never_raises_on_bad_url) -- it is not tested against the
+real network, matching news.py's own convention for its network-touching
+functions (_fetch_rss/get_news are exercised the same way, never against
+the live feed).
 
 Fails soft: a fetch failure makes every name's result ok=False, never
 crashes the digest.

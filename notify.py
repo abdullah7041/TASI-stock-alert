@@ -107,6 +107,9 @@ def format_recommendation(rec: dict) -> str:
 
     if collapse:
         news_note = "No news" if not rec.get("news") else _fmt_news(rec["news"])[0].strip()
+        disc = rec.get("disclosures")
+        if disc and disc.get("ok") is False:
+            news_note += "; disclosures fetch failed"
         lines.append(f"{streak_line.strip()}. {news_note}." if streak_line else f"{news_note}.")
         if rec["kind"] == "holding" and rec.get("unrealized_pct") is not None:
             lines.append(f"   P/L: {rec['unrealized_pct']}%")
