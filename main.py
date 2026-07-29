@@ -270,7 +270,9 @@ def _collect_recs(include_news: bool):
     # Pool all BUYs (verified only — unverified were re-tagged above) and size
     # them from what is left of this month's budget.
     buys = [r for r in recs if r["action"] == "BUY"]
-    budget_summary = az.allocate_budget(buys, _budget_remaining())
+    budget_summary = az.allocate_budget(buys, _budget_remaining(),
+                                        current_positions=len(cfg.HOLDINGS),
+                                        max_positions=cfg.RISK["max_positions"])
     budget_summary["monthly_cap"] = cfg.BUDGET["monthly_budget_sar"]
     budget_summary["unverified"] = unverified
     _budget_record(buys)

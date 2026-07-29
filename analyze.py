@@ -222,17 +222,25 @@ def buy_decision(long_read: dict, criteria: dict) -> tuple[bool, list]:
 
 
 # --- Budget allocation ------------------------------------------------------
-def allocate_budget(buys: list, budget_sar: float) -> dict:
+def allocate_budget(buys: list, budget_sar: float,
+                    current_positions: int = 0, max_positions: int | None = None) -> dict:
     """Split the remaining monthly budget EQUALLY across BUY recs. Mutates each
     rec's 'sizing' in place; returns a summary.
 
     Rules (transparent, in order):
-      - Equal weight: every qualifying name targets the same slice, processed
-        in the order given. This used to be weighted by conviction — which
-        backtested inverted against forward return, so weighting toward it was
-        weighting toward worse outcomes (docs/backtest-findings-2026-07-23.md).
-        With conviction gone there is nothing left to rank on, and pretending
-        otherwise would be inventing a ranking.
+      - max_positions cap (if set): current_positions (names already held)
+        plus this run's newly-qualifying buys may not exceed max_positions.
+        Buys beyond capacity get sizing={shares:0, skip:"..."} and are
+        excluded from the equal-weight split below -- RISK["max_positions"]
+        is documented as "max concurrent open names," and a name you already
+        hold already occupies one of those slots.
+      - Equal weight: every remaining qualifying name targets the same slice,
+        processed in the order given. This used to be weighted by
+        conviction — which backtested inverted against forward return, so
+        weighting toward it was weighting toward worse outcomes
+        (docs/backtest-findings-2026-07-23.md). With conviction gone there is
+        nothing left to rank on, and pretending otherwise would be inventing
+        a ranking.
       - Each gets slice = budget / len(buys), rounded DOWN to whole shares
         (Tadawul does not allow fractions).
       - If the slice affords 0 shares but 1 share fits what is left of the
@@ -243,6 +251,19 @@ def allocate_budget(buys: list, budget_sar: float) -> dict:
     """
     summary = {"budget": round(budget_sar, 2), "allocated": 0.0,
                "leftover": round(budget_sar, 2)}
+
+    if max_positions is not None:
+        capacity = max(0, max_positions - current_positions)
+        if len(buys) > capacity:
+            over_cap = buys[capacity:]
+            buys = buys[:capacity]
+            for r in over_cap:
+                r["sizing"] = {
+                    "shares": 0, "spend": 0.0,
+                    "skip": f"max_positions cap ({max_positions}) reached "
+                            f"({current_positions} already held + {capacity} newly allocated this run)",
+                }
+
     if not buys or budget_sar <= 0:
         for r in buys:
             r["sizing"] = {"shares": 0, "spend": 0.0, "skip": "monthly budget exhausted"}

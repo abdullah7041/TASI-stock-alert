@@ -478,6 +478,37 @@ def test_allocate_zero_budget_skips_all():
     az.allocate_budget(buys, 0.0)
     assert buys[0]["sizing"]["skip"] == "monthly budget exhausted"
 
+def test_allocate_budget_caps_at_max_positions_counting_existing_holdings():
+    buys = [{"code": "A", "price": 10.0}, {"code": "B", "price": 10.0},
+           {"code": "C", "price": 10.0}]
+    az.allocate_budget(buys, 10000.0, current_positions=3, max_positions=4)
+    sized = [b for b in buys if b["sizing"]["shares"] > 0]
+    skipped = [b for b in buys if b["sizing"]["shares"] == 0]
+    assert len(sized) == 1  # only 1 slot left (4 - 3 already held)
+    assert len(skipped) == 2
+    assert "max_positions" in skipped[0]["sizing"]["skip"]
+
+def test_allocate_budget_no_cap_when_max_positions_is_none():
+    buys = [{"code": "A", "price": 10.0}, {"code": "B", "price": 10.0}]
+    az.allocate_budget(buys, 10000.0, current_positions=10, max_positions=None)
+    assert all(b["sizing"]["shares"] > 0 for b in buys)  # unaffected, as before this task
+
+def test_allocate_budget_zero_capacity_skips_all_new_buys():
+    buys = [{"code": "A", "price": 10.0}]
+    az.allocate_budget(buys, 10000.0, current_positions=5, max_positions=5)
+    assert buys[0]["sizing"]["shares"] == 0
+    assert "max_positions" in buys[0]["sizing"]["skip"]
+
+def test_allocate_budget_weight_pct_reflects_capped_count_not_original():
+    # 3 buys but only capacity for 2 -- the 2 that fit should be weighted as
+    # if there were 2 qualifying names, not 3 (the cap changes what "equal
+    # weight" means, since the 3rd was never really in contention).
+    buys = [{"code": "A", "price": 10.0}, {"code": "B", "price": 10.0},
+           {"code": "C", "price": 10.0}]
+    az.allocate_budget(buys, 10000.0, current_positions=0, max_positions=2)
+    assert buys[0]["sizing"]["weight_pct"] == 50.0
+    assert buys[1]["sizing"]["weight_pct"] == 50.0
+
 
 BASE_RISK = {
     "deployable_cash": 3000.0, "max_positions": 5, "position_pct": 0.25,
