@@ -51,6 +51,17 @@ def _yahoo_history(symbol: str, period: str) -> pd.DataFrame:
     return df[keep].dropna()
 
 
+def _yahoo_history_adjusted(symbol: str, period: str) -> pd.DataFrame:
+    """Same as _yahoo_history but split/dividend-adjusted (auto_adjust=True)."""
+    import yfinance as yf  # imported lazily so tests can run without it.
+    df = yf.Ticker(symbol).history(period=period, auto_adjust=True)
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.rename(columns=str.title)  # normalize column casing.
+    keep = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
+    return df[keep].dropna()
+
+
 # --- SAHMK fallback --------------------------------------------------------
 def _sahmk_get(path: str, params: dict | None = None) -> dict | None:
     key = os.environ.get("SAHMK_API_KEY")
@@ -138,6 +149,52 @@ def get_histories(codes: list, period: str = "1y") -> dict:
                     df = pd.DataFrame()
             _HISTORY_CACHE[(code, period)] = df
     return {c: _HISTORY_CACHE[(c, period)] for c in codes}
+
+
+# Separate in-run memo for adjusted history. Kept apart from _HISTORY_CACHE
+# because both dicts would otherwise share the same (code, period) key space
+# — whichever function ran first for a given key would silently hand its
+# (adjusted or unadjusted) result to the other, depending on call order.
+_HISTORY_CACHE_ADJUSTED: dict = {}
+
+
+def get_histories_adjusted(codes: list, period: str = "1y") -> dict:
+    """Split/dividend-adjusted daily OHLCV for many codes, batched like get_histories().
+
+    Exists separately from get_histories() (which hardcodes auto_adjust=False,
+    so a stock split shows up as a phantom price jump) and from
+    backtest.load_adjusted() (which is correctly adjusted but caches to disk
+    forever — right for a static 5-year research corpus, wrong for a live
+    scanner that needs today's actual bar on every run). No disk cache here:
+    every call hits the network for any code not already fetched this run.
+
+    Returns {code: DataFrame}; a code with no data maps to an empty frame.
+    """
+    todo = [c for c in codes if (c, period) not in _HISTORY_CACHE_ADJUSTED]
+    if todo:
+        import yfinance as yf
+        symbols = {yahoo_symbol(c): c for c in todo}
+        try:
+            batch = yf.download(list(symbols), period=period, auto_adjust=True,
+                                group_by="ticker", threads=True, progress=False)
+        except Exception:
+            batch = None
+        for sym, code in symbols.items():
+            df = pd.DataFrame()
+            if batch is not None and not batch.empty:
+                try:
+                    part = batch[sym] if isinstance(batch.columns, pd.MultiIndex) else batch
+                    df = _clean_ohlcv(part)
+                except Exception:
+                    df = pd.DataFrame()
+            if df.empty:
+                # Per-code retry covers symbols the batch call dropped.
+                try:
+                    df = _yahoo_history_adjusted(sym, period)
+                except Exception:
+                    df = pd.DataFrame()
+            _HISTORY_CACHE_ADJUSTED[(code, period)] = df
+    return {c: _HISTORY_CACHE_ADJUSTED[(c, period)] for c in codes}
 
 
 def get_history(code: str, period: str = "1y") -> pd.DataFrame:
