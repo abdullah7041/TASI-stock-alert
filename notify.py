@@ -142,6 +142,52 @@ def format_recommendation(rec: dict) -> str:
     return "\n".join(lines)
 
 
+def _scanner_condition_text(c: dict) -> str:
+    """Same plain-language condition rendering as scanner._condition_text --
+    don't invent different wording for the same information the scanner's own
+    CLI output already uses."""
+    parts = []
+    if c["rel_strength_met"]:
+        parts.append(f"rel_strength {c['rel_strength']:+.1f}% vs index")
+    if c["squeeze_met"]:
+        parts.append(f"ATR squeeze, {c['atr_squeeze_pctile'] * 100:.0f}th percentile "
+                     f"(vol {c['volatility_pct']:.2f}%)")
+    return "; ".join(parts) if parts else "no condition fired"
+
+
+def format_scanner_block(candidates: list, names: dict) -> str:
+    """Digest-level section (unlike everything else in this module, which
+    renders one already-known name): ranks candidates across the ~265-name
+    Tadawul universe rather than reporting on a holding or watchlist name.
+
+    Same three-way-honesty rule as _fmt_news/_fmt_disclosures: a rank without
+    its base rate is meaningless, so the header always names both measured
+    base rates (see research/base_rate.py's base_rate_report docstring and
+    scanner.py's own main() for this repo's established convention), and an
+    empty candidate list still prints the header plus an explicit 'no
+    candidates today' -- never a silently omitted section, or a scanner
+    outage looks identical to a quiet market.
+    """
+    lines = [
+        "**Scanner** — top breakout candidates from ~265 names "
+        "(base rate 27.97% max-touch / 12.85% held-to-close)"
+    ]
+    if not candidates:
+        lines.append("   no candidates today")
+    else:
+        for c in candidates:
+            name = names.get(c["code"]) or c["code"]
+            lines.append(
+                f"   {c['code']} {name}  @ {c['price']:.2f}   "
+                f"{c['conditions_met']}/2 — {_scanner_condition_text(c)}"
+            )
+    lines.append(
+        "_Ranked candidates, not recommendations. Two features, both measured "
+        "this session — see docs/scanner-findings-2026-07-30.md. You decide._"
+    )
+    return "\n".join(lines)
+
+
 def build_message(recs: list, header: str, quote_note: str = "",
                   budget: dict | None = None) -> str:
     """Full Discord message. Only includes actionable recs unless header says digest."""
