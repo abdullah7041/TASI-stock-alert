@@ -819,7 +819,7 @@ def test_match_company_filters_by_name_substring():
         {"title": "MIS awarded SAR 179.8M project by KSMC", "link": "y", "published": "Tue"},
         {"title": "Jamjoom Pharma board recommends dividend", "link": "z", "published": "Wed"},
     ]
-    result = discl.match_company(items, True, "Jamjoom Pharma")
+    result = discl.match_company(items, True, ["Jamjoom Pharma"])
     assert len(result.items) == 1
     assert result.items[0]["title"] == "Jamjoom Pharma board recommends dividend"
     assert result.ok is True
@@ -827,21 +827,48 @@ def test_match_company_filters_by_name_substring():
 def test_match_company_case_insensitive():
     import disclosures as discl
     items = [{"title": "jamjoom pharma reports Q2 profit", "link": "x", "published": "Mon"}]
-    result = discl.match_company(items, True, "Jamjoom Pharma")
+    result = discl.match_company(items, True, ["Jamjoom Pharma"])
     assert len(result.items) == 1
 
 def test_match_company_no_matches_is_empty_not_failed():
     import disclosures as discl
     items = [{"title": "Some Other Co announces something", "link": "x", "published": "Mon"}]
-    result = discl.match_company(items, True, "Jamjoom Pharma")
+    result = discl.match_company(items, True, ["Jamjoom Pharma"])
     assert result.items == []
     assert result.ok is True  # the FEED fetch succeeded; this name just has no hits
 
 def test_match_company_propagates_fetch_failure():
     import disclosures as discl
-    result = discl.match_company([], False, "Jamjoom Pharma")
+    result = discl.match_company([], False, ["Jamjoom Pharma"])
     assert result.items == []
     assert result.ok is False
+
+def test_match_company_matches_any_alias_in_list():
+    # The config short name ("EIC") never appears in real filing titles,
+    # which use the full legal name -- checking every alias, not just the
+    # first, is the whole point of this fix.
+    import disclosures as discl
+    items = [{"title": "Electrical Industries Company posts record profit",
+             "link": "x", "published": "Mon"}]
+    result = discl.match_company(items, True, ["EIC", "Electrical Industries"])
+    assert len(result.items) == 1
+
+def test_match_company_dedupes_when_multiple_aliases_match_same_item():
+    import disclosures as discl
+    items = [{"title": "Al Babtain and Al-Babtain Group announce merger",
+             "link": "x", "published": "Mon"}]
+    result = discl.match_company(items, True, ["Al-Babtain", "Al Babtain"])
+    assert len(result.items) == 1  # not counted twice just because both aliases hit
+
+def test_aliases_for_returns_match_names_when_present():
+    import disclosures as discl
+    item = {"code": "1303", "name": "EIC", "match_names": ["EIC", "Electrical Industries"]}
+    assert discl.aliases_for(item) == ["EIC", "Electrical Industries"]
+
+def test_aliases_for_falls_back_to_name_when_absent():
+    import disclosures as discl
+    item = {"code": "8313", "name": "Rasan"}
+    assert discl.aliases_for(item) == ["Rasan"]
 
 def test_fetch_all_never_raises_on_bad_url(monkeypatch):
     import disclosures as discl

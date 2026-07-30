@@ -235,7 +235,7 @@ def _collect_recs(include_news: bool):
         if df is None or df.empty:
             continue
         price = float(df["Close"].iloc[-1])
-        disc = discl.match_company(all_disclosures, disclosures_ok, h["name"])
+        disc = discl.match_company(all_disclosures, disclosures_ok, discl.aliases_for(h))
         rec = az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
                                   cfg.HORIZON, cfg.TECH, news_by_code.get(h["code"]), disc)
         v = verify.get(h["code"], {})
@@ -249,7 +249,7 @@ def _collect_recs(include_news: bool):
         if df is None or df.empty:
             continue
         price = float(df["Close"].iloc[-1])
-        disc = discl.match_company(all_disclosures, disclosures_ok, w["name"])
+        disc = discl.match_company(all_disclosures, disclosures_ok, discl.aliases_for(w))
         rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
                                     cfg.RISK, cfg.HORIZON, cfg.TECH,
                                     news_by_code.get(w["code"]), cfg.BUY_CRITERIA, disc)

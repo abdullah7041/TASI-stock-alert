@@ -12,26 +12,59 @@ values below are only a fallback used until levels.json exists.
 # name   : for readability in alerts
 # shares : how many you hold
 # avg_cost: your average cost per share (SAR)
+# match_names: optional. disclosures.py filters Argaam's feed by substring on
+#              this name; a few short config names never appear in real filing
+#              titles, which use the full legal name instead. Only names
+#              confirmed missing real matches get an override — everything
+#              else matches fine on `name` alone. See match_names note below
+#              HOLDINGS/WATCHLIST for how these were confirmed.
 HOLDINGS = [
-    {"code": "1303", "name": "EIC",          "shares": 104, "avg_cost": 12.41},
-    {"code": "2320", "name": "Al-Babtain",   "shares": 12,  "avg_cost": 64.26},
+    {"code": "1303", "name": "EIC",          "shares": 104, "avg_cost": 12.41,
+     "match_names": ["EIC", "Electrical Industries"]},
+    {"code": "2320", "name": "Al-Babtain",   "shares": 12,  "avg_cost": 64.26,
+     "match_names": ["Al-Babtain", "Al Babtain"]},
     {"code": "8313", "name": "Rasan",        "shares": 11,  "avg_cost": 107.45},
 ]
 
 # --- Watchlist (names you might buy) ---------------------------------------
 # verified=False means the code is a best-guess and must be confirmed on first
 # run (symbol resolution writes the confirmed code to symbols.json).
+#
+# match_names below were confirmed against real archived headlines
+# (news_archive.jsonl) and live digest runs, not guessed:
+#   - EIC: real coverage says "Electrical Industries Company" / "Electrical
+#     Industries Co.", never the bare initialism "EIC".
+#   - Al-Babtain: Argaam's own titles drop the hyphen ("Al Babtain").
+#   - Avalon Pharma: its actual Tadawul-registered legal name is "Middle East
+#     Pharmaceutical Industries Company" — "Avalon Pharma" is the brand name,
+#     confirmed via live headline: "...Middle East Pharmaceutical Industries
+#     Company – TADAWUL:4016".
+#   - SAL Logistics: legal name is "SAL Saudi Logistics Services Company" —
+#     "SAL Logistics" is not a contiguous substring of it ("Saudi" sits
+#     between "SAL" and "Logistics"), confirmed via live headline.
+#   - Fakeeh Care: real coverage uses "Dr. Soliman Abdul Kader Fakeeh
+#     Hospital Co." / "...Abdel Kader Fakeeh Hospital Company" — "Fakeeh
+#     Care" never appears at all in real headlines for this code.
+#   - Almoosa Health: no confirmed alternate legal name text was available
+#     when this was added; "Al Moosa Health" (space variant) is included as
+#     a low-risk spacing guess, not a confirmed real-world form — revisit if
+#     disclosures keep showing "none found" for this code.
 WATCHLIST = [
     {"code": "4015", "name": "Jamjoom Pharma",   "sector": "pharma",     "verified": True},
-    {"code": "4016", "name": "Avalon Pharma",    "sector": "pharma",     "verified": True},
+    {"code": "4016", "name": "Avalon Pharma",    "sector": "pharma",     "verified": True,
+     "match_names": ["Avalon Pharma", "Middle East Pharmaceutical Industries"]},
     {"code": "4164", "name": "Nahdi Medical",    "sector": "healthcare", "verified": True},
     {"code": "4262", "name": "Lumi Rental",      "sector": "mobility",   "verified": True},
-    {"code": "4017", "name": "Fakeeh Care",      "sector": "healthcare", "verified": True},
+    {"code": "4017", "name": "Fakeeh Care",      "sector": "healthcare", "verified": True,
+     "match_names": ["Fakeeh Care", "Fakeeh Hospital", "Soliman Abdul Kader Fakeeh",
+                     "Soliman Abdel Kader Fakeeh"]},
     # Codes corrected 2026-07-20 (old codes pointed at the wrong company; each
     # new code confirmed against the data source's company name):
     {"code": "6017", "name": "Jahez",            "sector": "logistics",  "verified": True},   # was 6015 (=Americana Restaurants)
-    {"code": "4263", "name": "SAL Logistics",    "sector": "logistics",  "verified": True},   # was 4030 (=Bahri/National Shipping)
-    {"code": "4018", "name": "Almoosa Health",   "sector": "healthcare", "verified": True},   # was 4014 (=Scientific & Medical Equip. House)
+    {"code": "4263", "name": "SAL Logistics",    "sector": "logistics",  "verified": True,    # was 4030 (=Bahri/National Shipping)
+     "match_names": ["SAL Logistics", "SAL Saudi Logistics", "Saudi Logistics Services"]},
+    {"code": "4018", "name": "Almoosa Health",   "sector": "healthcare", "verified": True,    # was 4014 (=Scientific & Medical Equip. House)
+     "match_names": ["Almoosa Health", "Al Moosa Health", "Almoosa"]},
     # Removed 2026-07-20 — not publicly traded on Tadawul (no ticker):
     #   4142 "AJIL Financial"  -> AJIL is a closed joint-stock company (Argaam ticker 0).
     #   4023 "Nupco"           -> National Unified Procurement not listed (Argaam ticker 0).

@@ -51,13 +51,27 @@ def fetch_all(limit: int = 200) -> tuple[list, bool]:
         return [], False
 
 
-def match_company(all_items: list, ok: bool, company_name: str) -> DisclosureResult:
-    """Which of the already-fetched items mention this company. `ok` carries
-    through from fetch_all: a feed-level failure means every name's result
-    is ok=False, distinct from a real fetch that simply found nothing for
-    this particular name."""
+def aliases_for(item: dict) -> list:
+    """The name(s) to check this item against in the disclosures feed.
+    Falls back to the config `name` alone when no `match_names` override is
+    given -- most config names match fine on their own, but a few short
+    names (e.g. "EIC") never appear in real filing titles, which use the
+    full legal name instead ("Electrical Industries Company")."""
+    return item.get("match_names") or [item["name"]]
+
+
+def match_company(all_items: list, ok: bool, company_names: list) -> DisclosureResult:
+    """Which of the already-fetched items mention this company, checking
+    EVERY alias in `company_names` -- a short config name and a company's
+    full legal name can both need checking, since Argaam's titles use
+    whichever form its own database has on file, not the config's. Each
+    item is visited once regardless of how many aliases match it, so no
+    separate dedup step is needed. `ok` carries through from fetch_all: a
+    feed-level failure means every name's result is ok=False, distinct from
+    a real fetch that simply found nothing for this particular name."""
     if not ok:
         return DisclosureResult(items=[], ok=False)
-    low_name = company_name.lower()
-    matches = [it for it in all_items if low_name in it.get("title", "").lower()]
+    low_names = [n.lower() for n in company_names]
+    matches = [it for it in all_items
+              if any(n in it.get("title", "").lower() for n in low_names)]
     return DisclosureResult(items=matches, ok=True)
