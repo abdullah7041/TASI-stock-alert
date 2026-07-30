@@ -284,11 +284,42 @@ def _collect_recs(include_news: bool):
     return regime, recs, budget_summary
 
 
+def _scanner_block() -> str:
+    """Breakout scanner section for the digest. Fail-soft: this rides a
+    genuinely new network-heavy step (~265 live Yahoo fetches) on every
+    digest run, so ANY exception here (network failure, missing/empty
+    universe.json, bad data, anything) must degrade to an 'unavailable'
+    line rather than take down the holdings/watchlist digest that already
+    worked before this step existed.
+    """
+    try:
+        import universe
+        import data
+        import scanner
+
+        codes = universe.load()
+        if not codes:
+            print("scanner: universe.json missing/empty — skipping scanner section.")
+            return "**Scanner**: unavailable (universe.json missing — run MODE=universe)"
+
+        index_code = cfg.REGIME["index_code"]
+        hist = data.get_histories_adjusted(codes + [index_code], cfg.SCANNER["history_period"])
+        index_df = hist.get(index_code)
+
+        candidates = scanner.scan(codes, hist, index_df)
+        names = scanner.resolve_names(candidates)
+        return nt.format_scanner_block(candidates, names)
+    except Exception as e:
+        print(f"scanner: unavailable ({type(e).__name__}: {e})")
+        return "**Scanner**: unavailable (error during scan — see logs)"
+
+
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True)
     msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
                            quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
                            budget=budget)
+    msg = msg + "\n\n" + _scanner_block()
     ok = nt.send_discord(msg)
     if not ok:
         print(msg)  # no webhook configured (e.g. local run) — show the digest here.
