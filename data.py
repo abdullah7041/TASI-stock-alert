@@ -53,9 +53,14 @@ def _naive_index(df: pd.DataFrame) -> pd.DataFrame:
     """
     if df is None or df.empty:
         return df
-    idx = pd.to_datetime(df.index, utc=True, errors="coerce")
+    idx = pd.to_datetime(df.index, errors="coerce")
+    # Keep the exchange's local calendar date. Converting an Asia/Riyadh
+    # midnight to UTC before dropping its timezone would turn it into 21:00
+    # on the preceding day, which corrupts daily-bar labels.
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)
     df = df.copy()
-    df.index = idx.tz_localize(None).normalize()
+    df.index = idx.normalize()
     return df[df.index.notna()]
 
 

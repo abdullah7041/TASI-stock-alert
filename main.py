@@ -192,7 +192,7 @@ def mode_autolevels() -> int:
     return 0
 
 
-def _collect_recs(include_news: bool):
+def _collect_recs(include_news: bool, record_history: bool = False):
     """Returns (regime, recs, budget_summary).
 
     Speed: one batched Yahoo download for every name PLUS the index (was 14
@@ -264,15 +264,16 @@ def _collect_recs(include_news: bool):
             unverified.append((w["code"], w["name"], v.get("yahoo_name", "")))
         recs.append(rec)
 
-    snapshot_history = _load(HISTORY_FILE, {})
-    today = _today()
-    for rec in recs:
-        snap = _snapshot_for(rec)
-        rec["delta"] = histmod.compute_delta(snapshot_history, rec["code"], today, snap)
-        rec["trend_streak"] = histmod.compute_streak(snapshot_history, rec["code"], today,
-                                                      "trend", snap["trend"])
-        snapshot_history = histmod.record_snapshot(snapshot_history, rec["code"], today, snap)
-    _save(HISTORY_FILE, snapshot_history)
+    if record_history:
+        snapshot_history = _load(HISTORY_FILE, {})
+        today = _today()
+        for rec in recs:
+            snap = _snapshot_for(rec)
+            rec["delta"] = histmod.compute_delta(snapshot_history, rec["code"], today, snap)
+            rec["trend_streak"] = histmod.compute_streak(snapshot_history, rec["code"], today,
+                                                          "trend", snap["trend"])
+            snapshot_history = histmod.record_snapshot(snapshot_history, rec["code"], today, snap)
+        _save(HISTORY_FILE, snapshot_history)
 
     # Pool all BUYs (verified only — unverified were re-tagged above) and size
     # them from what is left of this month's budget.
@@ -322,7 +323,7 @@ def _scanner_block() -> str:
 
 
 def mode_digest() -> int:
-    regime, recs, budget = _collect_recs(include_news=True)
+    regime, recs, budget = _collect_recs(include_news=True, record_history=True)
     msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
                            quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
                            budget=budget)
@@ -335,7 +336,7 @@ def mode_digest() -> int:
 
 
 def mode_run() -> int:
-    regime, recs, budget = _collect_recs(include_news=False)
+    regime, recs, budget = _collect_recs(include_news=False, record_history=False)
     # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
     actionable = [r for r in recs if r["action"] not in ("HOLD", "WATCH")]
 

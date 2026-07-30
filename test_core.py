@@ -1100,6 +1100,16 @@ def test_naive_index_strips_timezone():
     assert len(out) == 3
 
 
+def test_naive_index_preserves_rijadh_calendar_dates():
+    """A fallback bar at Riyadh midnight must stay on its trading date."""
+    idx = pd.DatetimeIndex(["2024-07-30 00:00:00"], tz="Asia/Riyadh")
+    df = pd.DataFrame({"Close": [1.0]}, index=idx)
+
+    out = data._naive_index(df)
+
+    assert out.index[0] == pd.Timestamp("2024-07-30")
+
+
 def test_backtest_naive_index_is_the_shared_data_helper():
     """backtest.py used to have its own copy of this helper; it now reuses
     data.py's, so get_histories/get_histories_adjusted and load_adjusted all
@@ -1339,6 +1349,46 @@ def test_format_recommendation_no_trigger_line_when_buy():
 
 
 # --- history wiring: main.py snapshot builder + notify.py rendering --------
+def test_mode_run_collects_without_recording_digest_history(monkeypatch):
+    """Session checks must not overwrite the single daily digest snapshot."""
+    import main as m
+
+    calls = []
+    monkeypatch.setattr(
+        m, "_collect_recs",
+        lambda include_news, record_history: (
+            calls.append((include_news, record_history)) or ("ok", [], {
+                "budget": 0.0, "allocated": 0.0, "leftover": 0.0,
+            })
+        ),
+    )
+    monkeypatch.setattr(m, "_load", lambda *_: {})
+    monkeypatch.setattr(m, "_save", lambda *_: None)
+
+    assert m.mode_run() == 0
+    assert calls == [(False, False)]
+
+
+def test_mode_digest_collects_and_records_history(monkeypatch):
+    """The pre-open digest remains the sole owner of daily snapshots."""
+    import main as m
+
+    calls = []
+    monkeypatch.setattr(
+        m, "_collect_recs",
+        lambda include_news, record_history: (
+            calls.append((include_news, record_history)) or ("ok", [], {
+                "budget": 0.0, "allocated": 0.0, "leftover": 0.0,
+            })
+        ),
+    )
+    monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
+    monkeypatch.setattr(m, "_scanner_block", lambda: "**Scanner**: unavailable")
+
+    assert m.mode_digest() == 0
+    assert calls == [(True, True)]
+
+
 def test_collect_recs_attaches_delta_and_streak(tmp_path, monkeypatch):
     # This test exercises main.py's wiring directly by calling the same
     # snapshot-building logic main.py uses, not by running the full
