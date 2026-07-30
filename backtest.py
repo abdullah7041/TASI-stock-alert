@@ -49,22 +49,6 @@ STEP_DAYS = 5           # weekly decisions; a 6-12 month thesis is not daily.
 
 
 # --- history ----------------------------------------------------------------
-def _naive_index(df: pd.DataFrame) -> pd.DataFrame:
-    """Force a tz-naive DatetimeIndex.
-
-    yfinance returns tz-aware bars, but the CSV cache may reload them naive.
-    Mixing the two makes `Series.asof` raise, which _regime_at would swallow
-    into 'unknown' — silently raising every BUY threshold to the breakdown bar.
-    Normalizing here kills that whole class of mismatch.
-    """
-    if df is None or df.empty:
-        return df
-    idx = pd.to_datetime(df.index, utc=True, errors="coerce")
-    df = df.copy()
-    df.index = idx.tz_localize(None).normalize()
-    return df[df.index.notna()]
-
-
 def load_adjusted(codes: list, years: int = 5, progress=print) -> dict:
     """Daily OHLCV, split/dividend adjusted, cached per code as CSV.
 
@@ -81,7 +65,7 @@ def load_adjusted(codes: list, years: int = 5, progress=print) -> dict:
         if p.exists():
             try:
                 df = pd.read_csv(p, index_col=0, parse_dates=True)
-                out[c] = _naive_index(df) if not df.empty else pd.DataFrame()
+                out[c] = dat._naive_index(df) if not df.empty else pd.DataFrame()
                 continue
             except Exception:
                 pass
@@ -108,7 +92,7 @@ def load_adjusted(codes: list, years: int = 5, progress=print) -> dict:
                     df = dat._clean_ohlcv(part)
                 except Exception:
                     df = pd.DataFrame()
-            df = _naive_index(df)
+            df = dat._naive_index(df)
             out[code] = df
             df.to_csv(HIST_CACHE / f"{code}.csv")   # empty file caches the miss too.
         progress(f"  history {min(i + 100, len(todo)):>5}/{len(todo)}")

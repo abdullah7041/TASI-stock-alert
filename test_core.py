@@ -1095,9 +1095,16 @@ def test_regime_at_handles_tz_aware_lookup():
 def test_naive_index_strips_timezone():
     idx = pd.date_range("2021-01-01", periods=3, freq="D", tz="Asia/Riyadh")
     df = pd.DataFrame({"Close": [1.0, 2.0, 3.0]}, index=idx)
-    out = bt._naive_index(df)
+    out = data._naive_index(df)
     assert out.index.tz is None
     assert len(out) == 3
+
+
+def test_backtest_naive_index_is_the_shared_data_helper():
+    """backtest.py used to have its own copy of this helper; it now reuses
+    data.py's, so get_histories/get_histories_adjusted and load_adjusted all
+    normalize tz through the exact same function."""
+    assert bt.dat._naive_index is data._naive_index
 
 
 # --- backtest: one open trade per name --------------------------------------
@@ -1845,6 +1852,46 @@ def test_get_histories_adjusted_retry_uses_adjusted_fallback_not_unadjusted(monk
     out = data.get_histories_adjusted(["9933"], "1y_test_retry_fallback")
     assert calls == ["9933.SR"]
     assert out["9933"]["Close"].iloc[0] == 7.0
+
+
+class _FakeTickerReturningTzAware:
+    """Stands in for yf.Ticker(symbol) -- .history() returns tz-aware bars,
+    reproducing yfinance's real per-symbol fallback behavior."""
+    def history(self, period, auto_adjust):
+        n = 3
+        idx = pd.date_range("2024-01-01", periods=n, tz="Asia/Riyadh")
+        return pd.DataFrame({"Open": [5.0] * n, "High": [5.0] * n, "Low": [5.0] * n,
+                             "Close": [5.0] * n, "Volume": [5] * n}, index=idx)
+
+
+def test_yahoo_history_fallback_paths_normalize_tz_to_naive(monkeypatch):
+    # yf.download's batch path already returns tz-naive bars; yf.Ticker's
+    # per-symbol fallback (used when the batch call drops a symbol) came back
+    # tz-aware instead -- observed live when ^TASI.SR fell back to this path
+    # while other codes used the batch one, and mixing naive/aware in the same
+    # run made Series.asof raise. Both fallback functions must normalize their
+    # own output, regardless of what yfinance hands back.
+    import yfinance as yf
+    monkeypatch.setattr(yf, "Ticker", lambda symbol: _FakeTickerReturningTzAware())
+
+    unadjusted = data._yahoo_history("9944.SR", "1y")
+    adjusted = data._yahoo_history_adjusted("9944.SR", "1y")
+    assert unadjusted.index.tz is None
+    assert adjusted.index.tz is None
+    assert len(unadjusted) == 3
+    assert len(adjusted) == 3
+
+
+def test_get_histories_adjusted_end_to_end_fallback_is_tz_naive(monkeypatch):
+    # Same scenario as above, but through the real batch-miss -> per-symbol
+    # retry path get_histories_adjusted actually takes in production, so the
+    # regression is caught at the same layer the live crash happened at.
+    import yfinance as yf
+    monkeypatch.setattr(yf, "download", lambda *a, **k: pd.DataFrame())  # batch drops everything
+    monkeypatch.setattr(yf, "Ticker", lambda symbol: _FakeTickerReturningTzAware())
+
+    out = data.get_histories_adjusted(["9955"], "1y_test_e2e_tz")
+    assert out["9955"].index.tz is None
 
 
 if __name__ == "__main__":

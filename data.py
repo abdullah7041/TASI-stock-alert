@@ -40,6 +40,25 @@ def yahoo_symbol(code: str) -> str:
     return f"{code}.SR"
 
 
+def _naive_index(df: pd.DataFrame) -> pd.DataFrame:
+    """Force a tz-naive DatetimeIndex.
+
+    yfinance's batch download (yf.download) and its per-symbol fallback
+    (yf.Ticker(...).history()) disagree on tz-awareness — the batch path
+    comes back naive, the per-symbol one tz-aware (observed live: ^TASI.SR
+    fell back to the per-symbol path while other codes used the batch path,
+    and mixing the two made Series.asof raise). Normalizing every path
+    through here kills that whole class of mismatch before it reaches a
+    caller.
+    """
+    if df is None or df.empty:
+        return df
+    idx = pd.to_datetime(df.index, utc=True, errors="coerce")
+    df = df.copy()
+    df.index = idx.tz_localize(None).normalize()
+    return df[df.index.notna()]
+
+
 # --- Yahoo -----------------------------------------------------------------
 def _yahoo_history(symbol: str, period: str) -> pd.DataFrame:
     import yfinance as yf  # imported lazily so tests can run without it.
@@ -48,7 +67,7 @@ def _yahoo_history(symbol: str, period: str) -> pd.DataFrame:
         return pd.DataFrame()
     df = df.rename(columns=str.title)  # normalize column casing.
     keep = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
-    return df[keep].dropna()
+    return _naive_index(df[keep].dropna())
 
 
 def _yahoo_history_adjusted(symbol: str, period: str) -> pd.DataFrame:
@@ -59,7 +78,7 @@ def _yahoo_history_adjusted(symbol: str, period: str) -> pd.DataFrame:
         return pd.DataFrame()
     df = df.rename(columns=str.title)  # normalize column casing.
     keep = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
-    return df[keep].dropna()
+    return _naive_index(df[keep].dropna())
 
 
 # --- SAHMK fallback --------------------------------------------------------
