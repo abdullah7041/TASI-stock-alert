@@ -5,7 +5,9 @@ Modes (set via env MODE or first CLI arg):
   heartbeat  - send one "alive" ping to Discord. Tests secrets + webhook.
   suggest    - print raw price/RSI/support/resistance for every name. No alerts.
   autolevels - derive buy zones / stops / targets into levels.json. You review it.
-  digest     - one pre-open summary of holdings + watchlist, sent to Discord.
+  digest     - one pre-open summary of holdings + watchlist, plus a breakout
+               scanner section over the broader Tadawul universe, sent to
+               Discord.
   run        - the session job: check levels, send alerts on hits, dedup.
 
 Validation modes (local only, slow, never on the schedule):
@@ -284,11 +286,47 @@ def _collect_recs(include_news: bool):
     return regime, recs, budget_summary
 
 
+def _scanner_block() -> str:
+    """Breakout scanner section for the digest. Fail-soft: this rides a
+    genuinely new network-heavy step (~265 live Yahoo fetches) on every
+    digest run, so ANY exception here (network failure, missing/empty
+    universe.json, bad data, anything) must degrade to an 'unavailable'
+    line rather than take down the holdings/watchlist digest that already
+    worked before this step existed.
+    """
+    try:
+        import universe
+        import data
+        import scanner
+
+        codes = universe.load()
+        if not codes:
+            print("scanner: universe.json missing/empty — skipping scanner section.")
+            return "**Scanner**: unavailable (universe.json missing — run MODE=universe)"
+
+        index_code = cfg.REGIME["index_code"]
+        hist = data.get_histories_adjusted(codes + [index_code], cfg.SCANNER["history_period"])
+        index_df = hist.get(index_code)
+        index_unavailable = index_df is None or index_df.empty
+        if index_unavailable:
+            print(f"scanner: no data for the index ({index_code}) this run -- "
+                  f"rel_strength cannot be computed, so only the squeeze "
+                  f"condition can fire for any candidate below.")
+
+        candidates = scanner.scan(codes, hist, index_df)
+        names = scanner.resolve_names(candidates)
+        return nt.format_scanner_block(candidates, names, index_unavailable=index_unavailable)
+    except Exception as e:
+        print(f"scanner: unavailable ({type(e).__name__}: {e})")
+        return "**Scanner**: unavailable (error during scan — see logs)"
+
+
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True)
     msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
                            quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
                            budget=budget)
+    msg = msg + "\n\n" + _scanner_block()
     ok = nt.send_discord(msg)
     if not ok:
         print(msg)  # no webhook configured (e.g. local run) — show the digest here.

@@ -142,6 +142,74 @@ def format_recommendation(rec: dict) -> str:
     return "\n".join(lines)
 
 
+def format_condition_text(c: dict) -> str:
+    """Plain-language rendering of a scanner candidate's met conditions.
+
+    The single shared implementation for both the digest (format_scanner_block,
+    below) and scanner.py's own CLI output (scanner.main imports this) -- it
+    used to be hand-duplicated in both modules, which let the same wrong-suffix
+    bug ("1th percentile" instead of "1st") ship in both copies at once while
+    a drift test comparing the two outputs stayed green. One implementation
+    means one place left to get this right.
+    """
+    parts = []
+    if c["rel_strength_met"]:
+        parts.append(f"rel_strength {c['rel_strength']:+.1f}% vs index")
+    if c["squeeze_met"]:
+        pctile = int(round(c["atr_squeeze_pctile"] * 100))
+        parts.append(f"ATR squeeze, {_ordinal(pctile)} percentile "
+                     f"(vol {c['volatility_pct']:.2f}%)")
+    return "; ".join(parts) if parts else "no condition fired"
+
+
+def format_scanner_block(candidates: list, names: dict,
+                         index_unavailable: bool = False) -> str:
+    """Digest-level section (unlike everything else in this module, which
+    renders one already-known name): ranks candidates across the ~265-name
+    Tadawul universe rather than reporting on a holding or watchlist name.
+
+    Same three-way-honesty rule as _fmt_news/_fmt_disclosures: a rank without
+    its base rate is meaningless, so the header always names both measured
+    base rates (see research/base_rate.py's base_rate_report docstring and
+    scanner.py's own main() for this repo's established convention), and an
+    empty candidate list still prints the header plus an explicit 'no
+    candidates today' -- never a silently omitted section, or a scanner
+    outage looks identical to a quiet market.
+
+    index_unavailable: True when the TASI index (^TASI.SR) had no usable
+    data this run (matches the condition scanner.main() already checks
+    before printing its own CLI warning). When true, rel_strength could not
+    be computed for ANY candidate this run, so only the squeeze condition
+    could have fired -- a degraded run that must not read identically to a
+    normal one where rel_strength was simply not met. This is not
+    hypothetical: it happened in a real live run (a tz-aware/tz-naive
+    mismatch on ^TASI.SR's fallback path, see scanner._scan_all's docstring).
+    """
+    lines = [
+        "**Scanner** — top breakout candidates from ~265 names "
+        "(base rate 27.97% max-touch / 12.85% held-to-close)"
+    ]
+    if index_unavailable:
+        lines.append(
+            "   ⚠ index (^TASI.SR) unavailable this run — rel_strength could "
+            "not be computed, so only the squeeze condition could fire below"
+        )
+    if not candidates:
+        lines.append("   no candidates today")
+    else:
+        for c in candidates:
+            name = names.get(c["code"]) or c["code"]
+            lines.append(
+                f"   {c['code']} {name}  @ {c['price']:.2f}   "
+                f"{c['conditions_met']}/2 — {format_condition_text(c)}"
+            )
+    lines.append(
+        "_Ranked candidates, not recommendations. Two features, both measured "
+        "this session — see docs/scanner-findings-2026-07-30.md. You decide._"
+    )
+    return "\n".join(lines)
+
+
 def build_message(recs: list, header: str, quote_note: str = "",
                   budget: dict | None = None) -> str:
     """Full Discord message. Only includes actionable recs unless header says digest."""

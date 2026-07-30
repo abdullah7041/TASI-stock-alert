@@ -21,6 +21,8 @@ import news
 import notify as nt
 import history as hist
 import disclosures as discl
+import scanner
+import scanner_features as sf
 
 
 def _frame(closes, highs=None, lows=None):
@@ -1464,6 +1466,385 @@ def test_format_recommendation_first_run_no_delta_no_arrow_no_collapse():
     assert not block.startswith("▲")
     assert "today" not in block.split("\n")[0]  # no price-delta suffix without a delta
     assert "short:" in block  # first run always shows full detail
+
+
+# --- Stage F: breakout scanner -----------------------------------------------
+# scanner_features.code_feature_series, scanner.scan's two-condition scoring,
+# data.get_histories_adjusted, and notify.format_scanner_block.
+
+def _scanner_ohlcv(closes, ranges, volume=1_000_000):
+    """Like _frame(), but with a per-bar High-Low range (as a fraction of
+    that bar's close) so ATR/volatility can be driven to a chosen value --
+    _frame's fixed +-1% range can't do that -- and a real DatetimeIndex,
+    which scanner._scan_all requires (it reads .index.tz directly, which a
+    plain RangeIndex doesn't have). `ranges[i]` = (High-Low)/Close for bar i.
+    """
+    n = len(closes)
+    highs = [c * (1 + r / 2) for c, r in zip(closes, ranges)]
+    lows = [c * (1 - r / 2) for c, r in zip(closes, ranges)]
+    return pd.DataFrame({
+        "Open": closes, "High": highs, "Low": lows, "Close": closes,
+        "Volume": [volume] * n,
+    }, index=pd.bdate_range("2024-01-01", periods=n))
+
+
+def _ramp_closes(n, tail, pct_gain):
+    """Flat at 100 for (n - tail) bars, then a straight-line ramp up to
+    100 * (1 + pct_gain/100) over the last `tail` bars -- gives a
+    hand-predictable ret_60d when tail == 60."""
+    flat = [100.0] * (n - tail)
+    ramp = list(np.linspace(100.0, 100.0 * (1 + pct_gain / 100), tail))
+    return flat + ramp
+
+
+def test_code_feature_series_hand_computable_values():
+    # 70 flat bars at 100 then one spike to 115 on the last bar. Only the
+    # last bar's dollar volume differs from the rest, so vol_surge,
+    # ret_60d, and liquidity_sar are all reducible to a value computed by
+    # hand rather than trusted from the implementation.
+    closes = [100.0] * 69 + [115.0]
+    df = _frame(closes)  # Volume is a constant 1000 in _frame.
+    feat = sf.code_feature_series(df)
+    last = feat.iloc[-1]
+    # dollar_vol: 100_000 for every bar except the last (115_000). The
+    # rolling(20)/rolling(60) windows ending on the last bar are dominated
+    # by 100_000 bars, so their median is 100_000 in both cases.
+    assert abs(last["vol_surge"] - 1.15) < 1e-9        # 115_000 / 100_000
+    assert abs(last["ret_60d"] - 15.0) < 1e-9           # close[69]=115 vs close[9]=100
+    assert abs(last["liquidity_sar"] - 100_000.0) < 1e-9
+
+
+def _scanner_universe():
+    """Five synthetic codes + a flat index, built so each code's
+    conditions_met is predictable by construction (verified against the
+    live cfg.SCANNER thresholds below, not hardcoded blind):
+      A: clears BOTH conditions. Its rel_strength margin over the threshold
+         (+2) is deliberately SMALLER than B's (+5) -- if scan()'s ranking
+         ever collapsed to sorting by rel_strength alone (dropping
+         conditions_met from the sort key), B would outrank A and the
+         ranking-order test below would catch it.
+      B: clears ONLY rel_strength (moderate, un-compressed volatility).
+      C: volatility ABOVE vol_high_cutoff_pct, with an atr_squeeze_pctile
+         that would read as compressed (<= squeeze_pctile_cutoff) if the
+         vol-cutoff gate were missing -- must NOT get squeeze credit.
+      D: below the liquidity floor -- must be dropped entirely.
+      F: clears ONLY rel_strength, with a smaller margin than B (for the
+         ranking/tiebreak check).
+    """
+    s = cfg.SCANNER
+    n = 200
+    idx = _scanner_ohlcv([50.0] * n, [0.01] * n)  # flat index -> ret_60d == 0
+
+    # A: low, compressed-at-the-end volatility (squeeze) + a ramp that
+    # clears the threshold with a SMALLER margin than B's (see docstring).
+    closes_a = _ramp_closes(n, 60, s["rel_strength_threshold_pct"] + 2)
+    ranges_a = [0.05] * (n - 14) + [0.005] * 14
+    a = _scanner_ohlcv(closes_a, ranges_a)
+
+    # B: moderate constant volatility (never compresses) + a strong ramp.
+    closes_b = _ramp_closes(n, 60, s["rel_strength_threshold_pct"] + 5)
+    ranges_b = [0.02] * n
+    b = _scanner_ohlcv(closes_b, ranges_b)
+
+    # C: high early volatility dropping to just-above-cutoff for the last
+    # 14 bars (exactly one ATR window) -- current volatility_pct sits above
+    # vol_high_cutoff_pct, but is the lowest atr_over_price value in its own
+    # trailing 126-bar window, so atr_squeeze_pctile reads as compressed.
+    closes_c = [100.0] * n  # flat -- no rel_strength either.
+    trap_range = (s["vol_high_cutoff_pct"] + 0.3) / 100
+    ranges_c = [0.10] * (n - 14) + [trap_range] * 14
+    c = _scanner_ohlcv(closes_c, ranges_c)
+
+    # D: flat, un-compressed, but far too thin to trade.
+    closes_d = [100.0] * n
+    d = _scanner_ohlcv(closes_d, [0.01] * n, volume=100)  # ~10_000 SAR/day median
+
+    # F: same shape as B but a smaller ramp -- still clears the threshold,
+    # for the rel_strength-desc tiebreak check.
+    closes_f = _ramp_closes(n, 60, s["rel_strength_threshold_pct"] + 1)
+    f = _scanner_ohlcv(closes_f, [0.02] * n)
+
+    hist_map = {"A": a, "B": b, "C": c, "D": d, "F": f}
+    return hist_map, idx
+
+
+def test_scanner_universe_matches_intended_shape():
+    # Sanity-check the synthetic universe itself against the live thresholds
+    # before trusting scan()'s output built on top of it.
+    s = cfg.SCANNER
+    hist_map, idx = _scanner_universe()
+    for code, df in hist_map.items():
+        feat = sf.code_feature_series(df)
+        last = feat.iloc[-1]
+        if code == "D":
+            assert last["liquidity_sar"] < s["liquidity_floor_sar"]
+            continue
+        assert last["liquidity_sar"] >= s["liquidity_floor_sar"]
+        if code == "C":
+            assert last["volatility_pct"] > s["vol_high_cutoff_pct"]
+            assert last["atr_squeeze_pctile"] <= s["squeeze_pctile_cutoff"]
+        elif code == "A":
+            assert last["volatility_pct"] <= s["vol_high_cutoff_pct"]
+            assert last["atr_squeeze_pctile"] <= s["squeeze_pctile_cutoff"]
+            assert last["ret_60d"] >= s["rel_strength_threshold_pct"]
+        elif code in ("B", "F"):
+            assert last["volatility_pct"] <= s["vol_high_cutoff_pct"]
+            assert last["atr_squeeze_pctile"] > s["squeeze_pctile_cutoff"]
+            assert last["ret_60d"] >= s["rel_strength_threshold_pct"]
+
+
+def test_scan_clears_both_conditions():
+    hist_map, idx = _scanner_universe()
+    candidates = scanner.scan(["A", "B", "C", "D", "F"], hist_map, idx)
+    a = next(c for c in candidates if c["code"] == "A")
+    assert a["conditions_met"] == 2
+    assert a["rel_strength_met"] is True
+    assert a["squeeze_met"] is True
+
+
+def test_scan_clears_only_rel_strength():
+    hist_map, idx = _scanner_universe()
+    candidates = scanner.scan(["A", "B", "C", "D", "F"], hist_map, idx)
+    b = next(c for c in candidates if c["code"] == "B")
+    assert b["conditions_met"] == 1
+    assert b["rel_strength_met"] is True
+    assert b["squeeze_met"] is False
+
+
+def test_scan_high_volatility_never_gets_squeeze_credit():
+    # The highest-risk case: C's atr_squeeze_pctile alone would read as
+    # compressed, but its volatility_pct is above vol_high_cutoff_pct, so
+    # the squeeze condition must read False -- checked directly on the flag,
+    # not inferred from conditions_met.
+    hist_map, idx = _scanner_universe()
+    rows = scanner._scan_all(["C"], hist_map, idx)
+    assert len(rows) == 1
+    c = rows[0]
+    assert c["volatility_pct"] > cfg.SCANNER["vol_high_cutoff_pct"]
+    assert c["atr_squeeze_pctile"] <= cfg.SCANNER["squeeze_pctile_cutoff"]
+    assert c["squeeze_met"] is False  # the actual assertion under test.
+    assert c["conditions_met"] == 0
+    # And with conditions_met == 0, C must not surface as a candidate.
+    candidates = scanner.scan(["C"], hist_map, idx)
+    assert candidates == []
+
+
+def test_scan_excludes_below_liquidity_floor_entirely():
+    hist_map, idx = _scanner_universe()
+    rows = scanner._scan_all(["A", "D"], hist_map, idx)
+    codes_scored = [r["code"] for r in rows]
+    assert "D" not in codes_scored  # dropped before scoring, not scored 0.
+    assert "A" in codes_scored
+
+
+def test_scan_ranking_order_conditions_then_rel_strength():
+    hist_map, idx = _scanner_universe()
+    candidates = scanner.scan(["A", "B", "C", "D", "F"], hist_map, idx)
+    codes_in_order = [c["code"] for c in candidates]
+    # A (2 conditions) first; then B and F (1 condition each, B's
+    # rel_strength margin is larger than F's); C and D never appear.
+    assert codes_in_order == ["A", "B", "F"]
+
+
+def test_scan_rel_strength_subtracts_index_return():
+    # _scanner_universe's index is flat (ret_60d == 0), so every rel_strength
+    # assertion above would pass unchanged whether the code did
+    # code_ret60 - index_ret60, code_ret60 + index_ret60, or ignored the
+    # index outright. Move both series so subtraction is the only thing
+    # that produces the expected number.
+    n = 200
+    idx_df = _scanner_ohlcv(_ramp_closes(n, 60, 10.0), [0.01] * n)   # index: +10%
+    code_df = _scanner_ohlcv(_ramp_closes(n, 60, 20.0), [0.02] * n)  # code: +20%
+    rows = scanner._scan_all(["X"], {"X": code_df}, idx_df)
+    assert len(rows) == 1
+    assert abs(rows[0]["rel_strength"] - 10.0) < 0.01  # 20% - 10%, not 20%, 30%, or 0%.
+
+
+def test_scan_normalizes_tz_aware_index_or_code_dates():
+    # Regression coverage for a live crash: data.get_histories_adjusted's
+    # batch path returns tz-naive bars, but its per-symbol retry fallback
+    # (used when Yahoo's batch call drops a symbol -- which happened for
+    # ^TASI.SR in a live run) returns tz-aware ones. Whichever side ends up
+    # tz-aware, scan() must normalize rather than raise on .asof().
+    n = 200
+    naive_idx = _scanner_ohlcv(_ramp_closes(n, 60, 10.0), [0.01] * n)
+    naive_code = _scanner_ohlcv(_ramp_closes(n, 60, 20.0), [0.02] * n)
+
+    aware_idx = naive_idx.copy()
+    aware_idx.index = aware_idx.index.tz_localize("Asia/Riyadh")
+    rows = scanner._scan_all(["X"], {"X": naive_code}, aware_idx)  # tz-aware index, tz-naive code
+    assert len(rows) == 1
+    assert abs(rows[0]["rel_strength"] - 10.0) < 0.01
+
+    aware_code = naive_code.copy()
+    aware_code.index = aware_code.index.tz_localize("Asia/Riyadh")
+    rows = scanner._scan_all(["X"], {"X": aware_code}, naive_idx)  # tz-naive index, tz-aware code
+    assert len(rows) == 1
+    assert abs(rows[0]["rel_strength"] - 10.0) < 0.01
+
+
+# --- notify.format_condition_text: the single shared condition-text renderer -
+# Used to be hand-duplicated as scanner._condition_text and
+# notify._scanner_condition_text; both copies hardcoded the same wrong "Nth"
+# ordinal suffix (e.g. "1th percentile" instead of "1st"), and a drift test
+# that only compared the two outputs to each other stayed green throughout,
+# because both sides were wrong in the same way. Now there is exactly one
+# implementation (notify.format_condition_text, imported by scanner.py), so
+# these test it directly -- including the exact ordinal-suffix cases that
+# bug hit: 1st/2nd/3rd, the 11th/12th/13th teens exception, and 21st.
+def test_scanner_is_the_same_function_object_as_notify():
+    # Guards against the collapse regressing back into two copies.
+    assert scanner.format_condition_text is nt.format_condition_text
+
+
+def test_format_condition_text_ordinal_suffixes():
+    base = {"rel_strength_met": False, "rel_strength": None, "squeeze_met": True,
+            "volatility_pct": 1.0}
+    cases = {
+        0.01: "1st percentile", 0.02: "2nd percentile", 0.03: "3rd percentile",
+        0.04: "4th percentile", 0.11: "11th percentile", 0.12: "12th percentile",
+        0.13: "13th percentile", 0.21: "21st percentile",
+    }
+    for pctile, expected in cases.items():
+        c = dict(base, atr_squeeze_pctile=pctile)
+        assert expected in nt.format_condition_text(c), (pctile, nt.format_condition_text(c))
+
+
+def test_format_condition_text_both_met():
+    c = {"rel_strength_met": True, "rel_strength": 18.234,
+         "squeeze_met": True, "atr_squeeze_pctile": 0.123, "volatility_pct": 1.987}
+    text = nt.format_condition_text(c)
+    assert "rel_strength +18.2% vs index" in text
+    assert "ATR squeeze, 12th percentile (vol 1.99%)" in text
+
+
+def test_format_condition_text_neither_met():
+    c = {"rel_strength_met": False, "rel_strength": None,
+         "squeeze_met": False, "atr_squeeze_pctile": None, "volatility_pct": None}
+    assert nt.format_condition_text(c) == "no condition fired"
+
+
+def test_format_condition_text_rel_only():
+    c = {"rel_strength_met": True, "rel_strength": -3.5,
+         "squeeze_met": False, "atr_squeeze_pctile": 0.9, "volatility_pct": 4.0}
+    text = nt.format_condition_text(c)
+    assert text == "rel_strength -3.5% vs index"
+
+
+# --- notify.format_scanner_block ---------------------------------------------
+def test_format_scanner_block_empty_candidates_says_so_explicitly():
+    block = nt.format_scanner_block([], {})
+    assert "no candidates today" in block
+    assert "27.97" in block and "12.85" in block  # base rates always shown.
+
+
+def test_format_scanner_block_renders_candidate_and_base_rates():
+    candidates = [{
+        "code": "1234", "price": 55.5, "conditions_met": 2,
+        "rel_strength": 20.5, "rel_strength_met": True,
+        "atr_squeeze_pctile": 0.1, "volatility_pct": 2.0, "squeeze_met": True,
+        "liquidity_sar": 1_000_000,
+    }]
+    names = {"1234": "Test Co"}
+    block = nt.format_scanner_block(candidates, names)
+    assert "27.97" in block and "12.85" in block
+    assert "1234" in block and "Test Co" in block
+    assert "rel_strength +20.5% vs index" in block  # plain-language condition text.
+
+
+def test_format_scanner_block_flags_index_unavailable():
+    # Regression coverage for main._scanner_block's missing degradation note:
+    # when the TASI index fetch fails, rel_strength is structurally
+    # uncomputable for every candidate this run (not just "didn't meet the
+    # threshold"), and that must be visible in the digest, not silently
+    # indistinguishable from a normal run where only squeeze fired.
+    candidates = [{
+        "code": "1234", "price": 55.5, "conditions_met": 1,
+        "rel_strength": None, "rel_strength_met": False,
+        "atr_squeeze_pctile": 0.1, "volatility_pct": 2.0, "squeeze_met": True,
+        "liquidity_sar": 1_000_000,
+    }]
+    names = {"1234": "Test Co"}
+    degraded = nt.format_scanner_block(candidates, names, index_unavailable=True)
+    normal = nt.format_scanner_block(candidates, names, index_unavailable=False)
+    assert "index" in degraded.lower() and "unavailable" in degraded.lower()
+    assert degraded != normal
+    assert "index" not in normal.lower()
+
+
+def test_format_scanner_block_index_unavailable_defaults_false():
+    block = nt.format_scanner_block([], {})
+    assert "unavailable" not in block.lower()
+
+
+# --- data.get_histories_adjusted ---------------------------------------------
+def test_get_histories_adjusted_passes_auto_adjust_true(monkeypatch):
+    import yfinance as yf
+    captured = {}
+
+    def fake_download(symbols, **kwargs):
+        captured["auto_adjust"] = kwargs.get("auto_adjust")
+        n = 3
+        idx = pd.date_range("2024-01-01", periods=n)
+        return pd.DataFrame({"Open": [1.0] * n, "High": [1.0] * n, "Low": [1.0] * n,
+                             "Close": [1.0] * n, "Volume": [1] * n}, index=idx)
+
+    monkeypatch.setattr(yf, "download", fake_download)
+    data.get_histories_adjusted(["9922"], "1y_test_auto_adjust")
+    assert captured["auto_adjust"] is True
+
+
+def test_get_histories_adjusted_cache_separate_from_get_histories(monkeypatch):
+    import yfinance as yf
+
+    def fake_download(symbols, **kwargs):
+        n = 5
+        idx = pd.date_range("2024-01-01", periods=n)
+        val = 100.0 if kwargs.get("auto_adjust") else 50.0
+        return pd.DataFrame({"Open": [val] * n, "High": [val] * n, "Low": [val] * n,
+                             "Close": [val] * n, "Volume": [1000] * n}, index=idx)
+
+    monkeypatch.setattr(yf, "download", fake_download)
+    code, period = "9911", "1y_test_cache_separation"
+    unadjusted = data.get_histories([code], period)
+    adjusted = data.get_histories_adjusted([code], period)
+    # Same (code, period) key requested from both functions -- if the two
+    # caches shared a dict, whichever ran first would leak its result to
+    # the other.
+    assert unadjusted[code]["Close"].iloc[0] == 50.0
+    assert adjusted[code]["Close"].iloc[0] == 100.0
+    assert (code, period) in data._HISTORY_CACHE
+    assert (code, period) in data._HISTORY_CACHE_ADJUSTED
+
+
+def test_get_histories_adjusted_retry_uses_adjusted_fallback_not_unadjusted(monkeypatch):
+    # The per-code retry path (triggered when the batch call drops a symbol)
+    # must call data._yahoo_history_adjusted, NOT data._yahoo_history -- a
+    # test patching the wrong one would pass even if the wiring called the
+    # unadjusted fallback by mistake.
+    import yfinance as yf
+    monkeypatch.setattr(yf, "download", lambda *a, **k: pd.DataFrame())  # batch drops everything
+
+    calls = []
+
+    def fake_adjusted_fallback(symbol, period):
+        calls.append(symbol)
+        n = 3
+        idx = pd.date_range("2024-01-01", periods=n)
+        return pd.DataFrame({"Open": [7.0] * n, "High": [7.0] * n, "Low": [7.0] * n,
+                             "Close": [7.0] * n, "Volume": [7] * n}, index=idx)
+
+    def fake_unadjusted_fallback(*a, **k):
+        raise AssertionError(
+            "get_histories_adjusted must not fall back to the unadjusted "
+            "_yahoo_history -- it should call _yahoo_history_adjusted"
+        )
+
+    monkeypatch.setattr(data, "_yahoo_history_adjusted", fake_adjusted_fallback)
+    monkeypatch.setattr(data, "_yahoo_history", fake_unadjusted_fallback)
+    out = data.get_histories_adjusted(["9933"], "1y_test_retry_fallback")
+    assert calls == ["9933.SR"]
+    assert out["9933"]["Close"].iloc[0] == 7.0
 
 
 if __name__ == "__main__":
