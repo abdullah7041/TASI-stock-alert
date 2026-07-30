@@ -10,7 +10,8 @@ It automates your rules. It does not place orders and it is not financial advice
 2. Checks the TASI index and reports the market regime in the digest header. The regime is context, not a gate — it no longer changes any per-name decision.
 3. Holdings: alerts on STOP, TRIM, or TARGET hits. Watchlist: reports how many of the three BUY rules each name meets, and equal-weight position sizing from your monthly budget.
 4. Every alert carries two reads: a long-term swing read and a short-term momentum read. Neither carries a confidence label; the short-term read is inherently noisier because it runs on delayed daily data.
-5. De-dupes so you get one alert per level per day.
+5. Scans Tadawul's full universe (~265 names) daily for breakout candidates and appends them to the digest.
+6. De-dupes so you get one alert per level per day.
 
 ## What it does not do
 
@@ -28,6 +29,8 @@ News is an auditable keyword/phrase tally over free Google News headlines — wo
 - `notify.py` — Discord delivery.
 - `main.py` — modes and orchestration.
 - `universe.py` — Tadawul ticker discovery for the backtest.
+- `scanner.py` — breakout candidate ranking (Stage F).
+- `scanner_features.py` — feature extraction for scanner scoring.
 - `backtest.py` — walk-forward validation of the BUY rules.
 - `test_core.py` — offline tests (no network).
 - `.github/workflows/tasi.yml` — the schedule.
@@ -124,6 +127,31 @@ source than the news headlines Stage A added — these are the company's own
 regulatory filings, not press coverage. Same honesty rule as news: a feed
 outage renders `disclosures: fetch failed`, distinct from `disclosures: none
 found` for a real fetch that had nothing for that name.
+
+## Breakout scanner
+
+The digest includes a daily scan of Tadawul's full universe (~265 listed names) for breakout candidates, appended to the digest as a `Scanner` block. The scanner ranks names by a 2-condition score:
+
+1. **rel_strength**: 60-day return vs the TASI index's 60-day return, ≥ `rel_strength_threshold_pct` (15.0% from `config.py`).
+2. **atr_squeeze**: Applied only when volatility (ATR/price) is at or below `vol_high_cutoff_pct` (2.9%) — above that level, the condition does not fire. When it does apply, true when the name's ATR is at or below the `squeeze_pctile_cutoff` (0.2, the bottom quintile) of its own trailing 126-bar range.
+
+A **liquidity floor** is applied first: names with median 60-bar dollar turnover below `liquidity_floor_sar` (50,000 SAR) are not scored at all. This excludes about 8% of the universe (thinly-traded names where a small order moves the price).
+
+The scanner returns the top 10 ranked by conditions_met (descending), then by rel_strength (descending). Any name with at least one condition met enters the list. All thresholds live in `SCANNER` in `config.py`.
+
+**Base rates these candidates are measured against** (from `docs/scanner-findings-2026-07-30.md`):
+- **max-High touch** (intraday touch of +15% within 60 bars): 27.97% of daily bars, 2021–2026.
+- **close-to-close** (still holding +15% gain at the 60-bar mark): 12.85% of daily bars, 2021–2026.
+
+rel_strength survives every validity check: monotonic lift within all volatility strata (not riding volatility), monotonic lift by year (2022–2025), and confirmed in the late-window (bars 31–60) as well as the full window — the edge is not an artifact of the label window overlapping the feature's own 60-day lookback. Top decile shows 1.46x lift against the base rates.
+
+atr_squeeze is conditional: it works as a filter within low/mid-volatility names (1.43x–1.25x lift), but has no signal in the high-volatility tercile, and is unreliable in strong bull years (see the findings doc for the detailed year-by-year breakdown).
+
+**Dropped features (do not re-propose without reading why):**
+- `vol_surge` (volume spike vs 20-day median): no monotonic lift anywhere. Deciles bounce randomly (0.92x–1.14x) with no consistent direction.
+- `dist_52w_high` (distance to 52-week high): failed backwards from the plan's own hypothesis. Pooled deciles are U-shaped; within low-vol names they monotonically decrease as proximity to the 52-week high increases (1.61x → 0.79x), the exact opposite of "breakout proximity." The signal actually measures a beaten-down-stock mean-reversion bounce, not a breakout edge.
+
+The scanner fails soft: any exception during scanning (data fetch failure, unexpected input shape, etc.) degrades to `Scanner: unavailable` in the digest, while the holdings and watchlist portions print normally. This prevents a scanner bug from breaking the whole digest.
 
 ## `max_positions` is now enforced
 
