@@ -152,6 +152,20 @@ REGIME = {
     "index_ma":     50,          # index below this MA + falling => breakdown.
 }
 
+# --- Breakout scanner (empirically derived thresholds) -------------------------
+# Per docs/scanner-findings-2026-07-30.md: rel_strength survives all checks
+# (1.46x lift); atr_squeeze usable on non-high-vol names; vol_surge and
+# dist_52w_high fail. Thresholds tuned over 2021-2026 daily OHLCV data.
+SCANNER = {
+    "rel_strength_threshold_pct": 15.0,    # top decile shows 1.46x lift (27.97% base rate).
+    "vol_high_cutoff_pct":        2.9,     # ATR/price*100 above this: squeeze condition doesn't apply.
+    "squeeze_pctile_cutoff":      0.2,     # bottom quintile of trailing 126-bar own range.
+    "liquidity_floor_sar":        50_000,  # median 60-bar dollar turnover; excludes ~8% of rows.
+    "min_history_bars":           130,     # 126-bar squeeze window + buffer.
+    "history_period":             "1y",    # lookback for feature calculations.
+    "top_n":                      10,      # return top N candidates ranked by conditions.
+}
+
 # --- Fallback levels (used only until levels.json exists) -------------------
 # You should not need to touch these. autolevels mode fills levels.json.
 FALLBACK_LEVELS = {
