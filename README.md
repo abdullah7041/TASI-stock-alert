@@ -135,7 +135,7 @@ The digest includes a daily scan of Tadawul's full universe (~265 listed names) 
 1. **rel_strength**: 60-day return vs the TASI index's 60-day return, ≥ `rel_strength_threshold_pct` (15.0% from `config.py`).
 2. **atr_squeeze**: Applied only when volatility (ATR/price) is at or below `vol_high_cutoff_pct` (2.9%) — above that level, the condition does not fire. When it does apply, true when the name's ATR is at or below the `squeeze_pctile_cutoff` (0.2, the bottom quintile) of its own trailing 126-bar range.
 
-A **liquidity floor** is applied first: names with median 60-bar dollar turnover below `liquidity_floor_sar` (50,000 SAR) are not scored at all. This excludes about 8% of the universe (thinly-traded names where a small order moves the price).
+A **liquidity floor** is applied first: names with median 60-bar dollar turnover below `liquidity_floor_sar` (50,000 SAR) are not scored at all. This excludes about 8% of the historical sample this was measured on (thinly-traded bar-days where a small order moves the price) — see `docs/scanner-findings-2026-07-30.md` for the exact row counts.
 
 The scanner returns the top 10 ranked by conditions_met (descending), then by rel_strength (descending). Any name with at least one condition met enters the list. All thresholds live in `SCANNER` in `config.py`.
 
@@ -143,7 +143,7 @@ The scanner returns the top 10 ranked by conditions_met (descending), then by re
 - **max-High touch** (intraday touch of +15% within 60 bars): 27.97% of daily bars, 2021–2026.
 - **close-to-close** (still holding +15% gain at the 60-bar mark): 12.85% of daily bars, 2021–2026.
 
-rel_strength survives every validity check: monotonic lift within all volatility strata (not riding volatility), monotonic lift by year (2022–2025), and confirmed in the late-window (bars 31–60) as well as the full window — the edge is not an artifact of the label window overlapping the feature's own 60-day lookback. Top decile shows 1.46x lift against the base rates.
+rel_strength survives every validity check: monotonic lift within all volatility strata (not riding volatility), positive lift in every full year 2022–2025 (1.52x, 1.20x, 1.28x, 1.54x — positive, not monotonically increasing), and confirmed in the late-window (bars 31–60) as well as the full window — the edge is not an artifact of the label window overlapping the feature's own 60-day lookback. Top decile shows 1.46x lift on the max-High-touch base rate (1.51x on close-to-close).
 
 atr_squeeze is conditional: it works as a filter within low/mid-volatility names (1.43x–1.25x lift), but has no signal in the high-volatility tercile, and is unreliable in strong bull years (see the findings doc for the detailed year-by-year breakdown).
 

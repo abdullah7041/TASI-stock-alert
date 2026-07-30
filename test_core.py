@@ -1683,26 +1683,52 @@ def test_scan_normalizes_tz_aware_index_or_code_dates():
     assert abs(rows[0]["rel_strength"] - 10.0) < 0.01
 
 
-# --- drift check: scanner._condition_text vs notify._scanner_condition_text -
-# Task 5 deliberately forked this renderer into notify.py (to keep pandas/
-# config out of notify's imports). Same candidate dict in, must be the same
-# text out -- a divergence here is a real bug, not something to loosen the
-# assertion for.
-def test_condition_text_matches_between_scanner_and_notify():
-    both_met = {
-        "rel_strength_met": True, "rel_strength": 18.234,
-        "squeeze_met": True, "atr_squeeze_pctile": 0.123, "volatility_pct": 1.987,
+# --- notify.format_condition_text: the single shared condition-text renderer -
+# Used to be hand-duplicated as scanner._condition_text and
+# notify._scanner_condition_text; both copies hardcoded the same wrong "Nth"
+# ordinal suffix (e.g. "1th percentile" instead of "1st"), and a drift test
+# that only compared the two outputs to each other stayed green throughout,
+# because both sides were wrong in the same way. Now there is exactly one
+# implementation (notify.format_condition_text, imported by scanner.py), so
+# these test it directly -- including the exact ordinal-suffix cases that
+# bug hit: 1st/2nd/3rd, the 11th/12th/13th teens exception, and 21st.
+def test_scanner_is_the_same_function_object_as_notify():
+    # Guards against the collapse regressing back into two copies.
+    assert scanner.format_condition_text is nt.format_condition_text
+
+
+def test_format_condition_text_ordinal_suffixes():
+    base = {"rel_strength_met": False, "rel_strength": None, "squeeze_met": True,
+            "volatility_pct": 1.0}
+    cases = {
+        0.01: "1st percentile", 0.02: "2nd percentile", 0.03: "3rd percentile",
+        0.04: "4th percentile", 0.11: "11th percentile", 0.12: "12th percentile",
+        0.13: "13th percentile", 0.21: "21st percentile",
     }
-    neither_met = {
-        "rel_strength_met": False, "rel_strength": None,
-        "squeeze_met": False, "atr_squeeze_pctile": None, "volatility_pct": None,
-    }
-    rel_only = {
-        "rel_strength_met": True, "rel_strength": -3.5,
-        "squeeze_met": False, "atr_squeeze_pctile": 0.9, "volatility_pct": 4.0,
-    }
-    for c in (both_met, neither_met, rel_only):
-        assert scanner._condition_text(c) == nt._scanner_condition_text(c)
+    for pctile, expected in cases.items():
+        c = dict(base, atr_squeeze_pctile=pctile)
+        assert expected in nt.format_condition_text(c), (pctile, nt.format_condition_text(c))
+
+
+def test_format_condition_text_both_met():
+    c = {"rel_strength_met": True, "rel_strength": 18.234,
+         "squeeze_met": True, "atr_squeeze_pctile": 0.123, "volatility_pct": 1.987}
+    text = nt.format_condition_text(c)
+    assert "rel_strength +18.2% vs index" in text
+    assert "ATR squeeze, 12th percentile (vol 1.99%)" in text
+
+
+def test_format_condition_text_neither_met():
+    c = {"rel_strength_met": False, "rel_strength": None,
+         "squeeze_met": False, "atr_squeeze_pctile": None, "volatility_pct": None}
+    assert nt.format_condition_text(c) == "no condition fired"
+
+
+def test_format_condition_text_rel_only():
+    c = {"rel_strength_met": True, "rel_strength": -3.5,
+         "squeeze_met": False, "atr_squeeze_pctile": 0.9, "volatility_pct": 4.0}
+    text = nt.format_condition_text(c)
+    assert text == "rel_strength -3.5% vs index"
 
 
 # --- notify.format_scanner_block ---------------------------------------------
@@ -1724,6 +1750,31 @@ def test_format_scanner_block_renders_candidate_and_base_rates():
     assert "27.97" in block and "12.85" in block
     assert "1234" in block and "Test Co" in block
     assert "rel_strength +20.5% vs index" in block  # plain-language condition text.
+
+
+def test_format_scanner_block_flags_index_unavailable():
+    # Regression coverage for main._scanner_block's missing degradation note:
+    # when the TASI index fetch fails, rel_strength is structurally
+    # uncomputable for every candidate this run (not just "didn't meet the
+    # threshold"), and that must be visible in the digest, not silently
+    # indistinguishable from a normal run where only squeeze fired.
+    candidates = [{
+        "code": "1234", "price": 55.5, "conditions_met": 1,
+        "rel_strength": None, "rel_strength_met": False,
+        "atr_squeeze_pctile": 0.1, "volatility_pct": 2.0, "squeeze_met": True,
+        "liquidity_sar": 1_000_000,
+    }]
+    names = {"1234": "Test Co"}
+    degraded = nt.format_scanner_block(candidates, names, index_unavailable=True)
+    normal = nt.format_scanner_block(candidates, names, index_unavailable=False)
+    assert "index" in degraded.lower() and "unavailable" in degraded.lower()
+    assert degraded != normal
+    assert "index" not in normal.lower()
+
+
+def test_format_scanner_block_index_unavailable_defaults_false():
+    block = nt.format_scanner_block([], {})
+    assert "unavailable" not in block.lower()
 
 
 # --- data.get_histories_adjusted ---------------------------------------------

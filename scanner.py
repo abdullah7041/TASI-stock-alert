@@ -17,8 +17,10 @@ all (not scored, not returned, regardless of how the two conditions would
 have landed).
 
 Run standalone: `python scanner.py` (matches research/base_rate.py's own
-convention). Fail-soft digest wiring is a later task (Task 6) -- scan(),
-resolve_names(), and main() here let exceptions propagate.
+convention). scan(), resolve_names(), and main() here let exceptions
+propagate -- fail-soft wrapping for the digest lives in main.py's
+_scanner_block, which wraps this module's calls and degrades to an
+"unavailable" line rather than take down the rest of the digest.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ import pandas as pd
 
 import config as cfg
 from scanner_features import code_feature_series
+from notify import format_condition_text
 
 
 def _scan_all(codes: list, hist: dict, index_df) -> list[dict]:
@@ -150,16 +153,6 @@ def resolve_names(candidates: list) -> dict:
     return names
 
 
-def _condition_text(c: dict) -> str:
-    parts = []
-    if c["rel_strength_met"]:
-        parts.append(f"rel_strength {c['rel_strength']:+.1f}% vs index")
-    if c["squeeze_met"]:
-        parts.append(f"ATR squeeze, {c['atr_squeeze_pctile'] * 100:.0f}th percentile "
-                     f"(vol {c['volatility_pct']:.2f}%)")
-    return "; ".join(parts) if parts else "no condition fired"
-
-
 def main() -> int:
     import universe
 
@@ -204,7 +197,7 @@ def main() -> int:
     for c in candidates:
         name = names.get(c["code"], c["code"])
         print(f"{c['code']} ({name}): {c['price']:.2f} SAR, "
-              f"{c['conditions_met']}/2 conditions — {_condition_text(c)}")
+              f"{c['conditions_met']}/2 conditions — {format_condition_text(c)}")
 
     return 0
 

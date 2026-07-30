@@ -5,7 +5,9 @@ Modes (set via env MODE or first CLI arg):
   heartbeat  - send one "alive" ping to Discord. Tests secrets + webhook.
   suggest    - print raw price/RSI/support/resistance for every name. No alerts.
   autolevels - derive buy zones / stops / targets into levels.json. You review it.
-  digest     - one pre-open summary of holdings + watchlist, sent to Discord.
+  digest     - one pre-open summary of holdings + watchlist, plus a breakout
+               scanner section over the broader Tadawul universe, sent to
+               Discord.
   run        - the session job: check levels, send alerts on hits, dedup.
 
 Validation modes (local only, slow, never on the schedule):
@@ -305,10 +307,15 @@ def _scanner_block() -> str:
         index_code = cfg.REGIME["index_code"]
         hist = data.get_histories_adjusted(codes + [index_code], cfg.SCANNER["history_period"])
         index_df = hist.get(index_code)
+        index_unavailable = index_df is None or index_df.empty
+        if index_unavailable:
+            print(f"scanner: no data for the index ({index_code}) this run -- "
+                  f"rel_strength cannot be computed, so only the squeeze "
+                  f"condition can fire for any candidate below.")
 
         candidates = scanner.scan(codes, hist, index_df)
         names = scanner.resolve_names(candidates)
-        return nt.format_scanner_block(candidates, names)
+        return nt.format_scanner_block(candidates, names, index_unavailable=index_unavailable)
     except Exception as e:
         print(f"scanner: unavailable ({type(e).__name__}: {e})")
         return "**Scanner**: unavailable (error during scan — see logs)"
