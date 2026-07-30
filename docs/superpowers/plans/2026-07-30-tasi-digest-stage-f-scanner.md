@@ -55,7 +55,7 @@ placeholder 8.1%.
 
 ## Files
 
-### 1. New `scanner_features.py` — extract shared feature math
+### Task 1: New `scanner_features.py` — extract shared feature math
 
 `research/lift_analysis.py` currently defines `code_feature_series(df)`
 inline (whole-history rolling vol_surge / atr_squeeze_pctile / ret_60d /
@@ -81,7 +81,7 @@ all 4 for the historical record, and a function that computes what its
 caller needs is fine; deleting the two failed columns would silently break
 `lift_analysis.py`'s existing output.
 
-### 2. `data.py` — new `get_histories_adjusted`
+### Task 2: `data.py` — new `get_histories_adjusted`
 
 Add alongside `get_histories` (`data.py:109`), same batching/threading/
 per-code-retry structure, but `auto_adjust=True` and its own in-memory
@@ -101,7 +101,7 @@ network for codes not already in the in-memory cache this run.
 Docstring must state why this exists instead of reusing `load_adjusted`:
 the scanner needs today's bar; the backtest cache is deliberately frozen.
 
-### 3. New `config.py` `SCANNER` dict
+### Task 3: New `config.py` `SCANNER` dict
 
 ```python
 SCANNER = {
@@ -119,7 +119,7 @@ Comment each threshold with its measured value from
 `docs/scanner-findings-2026-07-30.md` so a future reader can tell "tuned
 knob" from "made up number".
 
-### 4. New `scanner.py`
+### Task 4: New `scanner.py`
 
 ```python
 def scan(codes: list, hist: dict, index_df) -> list[dict]:
@@ -158,7 +158,7 @@ base rates (27.97% / 12.85%) alongside the ranked list, not just the ranks —
 a rank without its base rate is not a result, same rule
 `base_rate_report` already enforces.
 
-### 5. `notify.py` — new `format_scanner_block`
+### Task 5: `notify.py` — new `format_scanner_block`
 
 ```python
 def format_scanner_block(candidates: list, names: dict) -> str:
@@ -179,7 +179,7 @@ Empty candidate list still prints the header line plus "no candidates
 today" — never silently omit the section, or a scanner outage looks
 identical to a quiet market.
 
-### 6. `main.py` — wire into the digest
+### Task 6: `main.py` — wire into the digest
 
 `mode_digest` (`main.py:287`) gains a scanner step after the existing
 holdings/watchlist recs are collected: call `scanner.main`-equivalent logic
@@ -191,7 +191,7 @@ unavailable" instead of raising. This is a genuinely new network-heavy step
 (265 names) riding on every digest run; failing soft here matters more than
 it did for the 11-name loops.
 
-### 7. `test_core.py`
+### Task 7: `test_core.py`
 
 - `scanner_features.code_feature_series` on a small synthetic OHLCV frame:
   hand-computable `vol_surge`, `ret_60d`, `liquidity_sar` at a known row.
@@ -208,7 +208,7 @@ it did for the 11-name loops.
 - Rerun-and-diff from Task 1 above stands as the correctness check for
   `code_feature_series` itself; no need to re-derive its lift numbers here.
 
-### 8. `README.md`
+### Task 8: `README.md`
 
 Stage F section: what the scanner checks, the two survivor conditions and
 their thresholds, a link to `docs/scanner-findings-2026-07-30.md`, and an
