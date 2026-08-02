@@ -14,7 +14,6 @@ what it is acting on.
 from __future__ import annotations
 
 import os
-import time
 from dataclasses import dataclass
 
 import pandas as pd
@@ -107,21 +106,26 @@ def _sahmk_get(path: str, params: dict | None = None) -> dict | None:
 
 
 def _sahmk_quote(code: str) -> Quote | None:
-    data = _sahmk_get("/quotes/", {"symbols": code})
+    data = _sahmk_get(f"/quote/{code}/")
     if not data:
         return None
-    # SAHMK returns a list of quote objects; shape-tolerant parse.
-    rows = data if isinstance(data, list) else data.get("data") or data.get("results") or []
-    if not rows:
+    # The single-symbol endpoint returns one quote object. Retain support for
+    # wrapped responses so a provider envelope change fails closed, not loudly.
+    if isinstance(data, dict) and any(key in data for key in ("price", "last", "close")):
+        row = data
+    else:
+        rows = data if isinstance(data, list) else data.get("data") or data.get("results") or []
+        row = rows[0] if rows else None
+    if not isinstance(row, dict):
         return None
-    row = rows[0]
-    price = row.get("price") or row.get("last") or row.get("close")
-    if price is None:
+    price = next((row[key] for key in ("price", "last", "close") if row.get(key) is not None), None)
+    timestamp = row.get("timestamp") or row.get("time")
+    if price is None or not timestamp:
         return None
     return Quote(
         code=str(code),
         price=float(price),
-        ts=str(row.get("timestamp") or row.get("time") or time.strftime("%Y-%m-%dT%H:%M:%S")),
+        ts=str(timestamp),
         delayed=True,  # Free/Starter delayed unless you know you are on realtime.
         source="sahmk",
     )

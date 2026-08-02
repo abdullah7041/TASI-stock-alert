@@ -8,6 +8,8 @@ pure (testable offline); only send_discord touches the network.
 from __future__ import annotations
 
 import os
+from datetime import date, datetime, timedelta
+from email.utils import parsedate_to_datetime
 
 
 def _fmt_reads(rec: dict) -> str:
@@ -18,7 +20,35 @@ def _fmt_reads(rec: dict) -> str:
     return f"{short}\n   {long}"
 
 
-def _fmt_news(news: dict) -> list:
+def _headline_date(headline: dict) -> date | None:
+    """Return a provider-supplied publication date, or None when it is unusable."""
+    published = headline.get("published")
+    if not isinstance(published, str) or not published.strip():
+        return None
+    try:
+        return parsedate_to_datetime(published).date()
+    except (TypeError, ValueError, IndexError):
+        try:
+            return datetime.fromisoformat(published.replace("Z", "+00:00")).date()
+        except ValueError:
+            for fmt in ("%d %b %Y", "%Y-%m-%d"):
+                try:
+                    return datetime.strptime(published, fmt).date()
+                except ValueError:
+                    pass
+            return None
+
+
+def _recent_headlines(news: dict, today: date) -> list[dict]:
+    """Keep only headlines whose provider timestamp proves they are recent."""
+    cutoff = today - timedelta(days=7)
+    return [
+        headline for headline in (news.get("headlines") or [])
+        if (published_on := _headline_date(headline)) is not None and published_on >= cutoff
+    ]
+
+
+def _fmt_news(news: dict, *, today: date | None = None) -> list:
     """Three distinct renders: a failed fetch, a fetch that found nothing, and
     a fetch with real headlines. Collapsing the first two into one 'neutral
     0.0' line is exactly what made news look hardcoded."""
@@ -27,8 +57,11 @@ def _fmt_news(news: dict) -> list:
     headlines = news.get("headlines") or []
     if not headlines:
         return [f"   news: no headlines found ({news.get('label')}, score {news.get('score')})"]
-    lines = [f"   news: {news.get('label')} (score {news.get('score')}, {len(headlines)} headlines)"]
-    for h in headlines[:3]:
+    recent = _recent_headlines(news, today or date.today())
+    if not recent:
+        return [f"   news: no recent headlines found ({news.get('label')}, score {news.get('score')})"]
+    lines = [f"   news: {news.get('label')} (score {news.get('score')}, {len(recent)} headlines)"]
+    for h in recent[:3]:
         title = h.get("title", "")
         published = h.get("published", "")
         lines.append(f"      \"{title}\" — {published}")
@@ -83,13 +116,14 @@ def _is_changed(delta: dict | None) -> bool:
     return bool(delta["flipped"]) or (delta["rules_met_delta"] or 0) != 0 or delta["trend_flipped"]
 
 
-def format_recommendation(rec: dict) -> str:
+def format_recommendation(rec: dict, *, today: date | None = None) -> str:
     """One block per name. Marks changed names with a leading arrow, shows
     the day-over-day price move in the header, and collapses names with no
     change and no news to one summary line -- attention goes to what's new."""
+    current_day = today or date.today()
     delta = rec.get("delta")
     changed = _is_changed(delta)
-    news_headlines = bool((rec.get("news") or {}).get("headlines"))
+    news_headlines = bool(_recent_headlines(rec.get("news") or {}, current_day))
     disclosure_items = bool((rec.get("disclosures") or {}).get("items"))
     collapse = (delta is not None) and (not changed) and (not news_headlines) \
         and (not disclosure_items) and (rec["action"] in ("HOLD", "WATCH"))
@@ -106,7 +140,7 @@ def format_recommendation(rec: dict) -> str:
     streak_line = _fmt_trend_streak(streak, trend) if streak else None
 
     if collapse:
-        news_note = "No news" if not rec.get("news") else _fmt_news(rec["news"])[0].strip()
+        news_note = "No news" if not rec.get("news") else _fmt_news(rec["news"], today=current_day)[0].strip()
         disc = rec.get("disclosures")
         if disc and disc.get("ok") is False:
             news_note += "; disclosures fetch failed"
@@ -135,7 +169,7 @@ def format_recommendation(rec: dict) -> str:
     if streak_line:
         lines.append(streak_line)
     if rec.get("news"):
-        lines.extend(_fmt_news(rec["news"]))
+        lines.extend(_fmt_news(rec["news"], today=current_day))
     if rec.get("disclosures"):
         lines.extend(_fmt_disclosures(rec["disclosures"]))
     lines.append(f"   {_fmt_reads(rec)}")
@@ -235,14 +269,68 @@ def build_message(recs: list, header: str, quote_note: str = "",
     return "\n\n".join(parts)
 
 
+def pack_discord_content(content: str, limit: int = 1900) -> list[str]:
+    """Pack complete digest cards into Discord-sized messages.
+
+    Cards are separated by blank lines. A card that is itself too large is
+    split only between lines, falling back to a whitespace boundary for a
+    single overlong line. A token longer than Discord's cap is the sole case
+    that must be split inside the token to keep every request valid.
+    """
+    if limit < 1:
+        raise ValueError("limit must be positive")
+
+    cards = [card for card in content.split("\n\n") if card]
+    chunks: list[str] = []
+    current = ""
+
+    def append(piece: str) -> None:
+        nonlocal current
+        separator = "\n\n" if current else ""
+        if current and len(current) + len(separator) + len(piece) > limit:
+            chunks.append(current)
+            current = piece
+        else:
+            current += separator + piece
+
+    for card in cards:
+        if len(card) <= limit:
+            append(card)
+            continue
+        for line in card.splitlines():
+            if len(line) <= limit:
+                append(line)
+                continue
+            words = line.split()
+            line_chunk = ""
+            for word in words:
+                if len(word) > limit:
+                    if line_chunk:
+                        append(line_chunk)
+                        line_chunk = ""
+                    for start in range(0, len(word), limit):
+                        append(word[start:start + limit])
+                    continue
+                if line_chunk and len(line_chunk) + 1 + len(word) > limit:
+                    append(line_chunk)
+                    line_chunk = word
+                else:
+                    line_chunk = f"{line_chunk} {word}".strip()
+            if line_chunk:
+                append(line_chunk)
+    if current or not chunks:
+        chunks.append(current)
+    return chunks
+
+
 def send_discord(content: str, webhook_url: str | None = None) -> bool:
     """POST to Discord. Returns True on 2xx. Never raises."""
     url = webhook_url or os.environ.get("DISCORD_WEBHOOK_URL")
     if not url:
         return False
     import requests
-    # Discord caps content at 2000 chars; chunk if needed.
-    chunks = [content[i:i + 1900] for i in range(0, len(content), 1900)] or [content]
+    # Discord caps content at 2000 chars; preserve semantic cards below it.
+    chunks = pack_discord_content(content)
     ok = True
     for chunk in chunks:
         try:

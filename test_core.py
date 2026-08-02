@@ -7,6 +7,7 @@ and the two evaluators. Data is synthetic so these are deterministic.
 """
 
 import io
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +34,21 @@ def _frame(closes, highs=None, lows=None):
         "Open": closes, "High": highs, "Low": lows,
         "Close": closes, "Volume": [1000] * len(closes),
     })
+
+
+def test_sahmk_quote_parses_direct_quote_without_inventing_timestamp(monkeypatch):
+    calls = []
+
+    def fake_get(path, params=None):
+        calls.append((path, params))
+        return {"symbol": "1303", "price": 15.1, "timestamp": "2026-08-02T08:40:00Z"}
+
+    monkeypatch.setattr(data, "_sahmk_get", fake_get)
+
+    quote = data._sahmk_quote("1303")
+
+    assert calls == [("/quote/1303/", None)]
+    assert quote == data.Quote("1303", 15.1, "2026-08-02T08:40:00Z", True, "sahmk")
 
 
 # --- RSI --------------------------------------------------------------------
@@ -684,6 +700,37 @@ def test_format_disclosures_shows_items():
         {"title": "Jamjoom board recommends dividend", "link": "x", "published": "Mon"}]})
     assert any("Jamjoom board recommends dividend" in line for line in block)
 
+
+def test_fmt_news_excludes_stale_headlines():
+    lines = nt._fmt_news({
+        "ok": True,
+        "label": "neutral",
+        "score": 0.0,
+        "headlines": [
+            {"title": "Recent result", "published": "Fri, 01 Aug 2026 09:00:00 GMT"},
+            {"title": "Stale result", "published": "Fri, 17 Jul 2026 09:00:00 GMT"},
+        ],
+    }, today=date(2026, 8, 2))
+
+    assert "1 headlines" in lines[0]
+    assert any("Recent result" in line for line in lines)
+    assert not any("Stale result" in line for line in lines)
+
+
+def test_pack_discord_content_keeps_complete_paragraph_cards_together():
+    content = "Header\n\nFirst card\nwith detail\n\nSecond card"
+
+    chunks = nt.pack_discord_content(content, limit=30)
+
+    assert chunks == ["Header\n\nFirst card\nwith detail", "Second card"]
+    assert all(len(chunk) <= 30 for chunk in chunks)
+
+
+def test_pack_discord_content_caps_an_overlong_single_token():
+    chunks = nt.pack_discord_content("x" * 31, limit=30)
+
+    assert all(len(chunk) <= 30 for chunk in chunks)
+
 def test_format_recommendation_does_not_collapse_when_disclosures_present():
     rec = {"kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
            "action": "HOLD", "reason": [], "unrealized_pct": 21.6,
@@ -894,14 +941,14 @@ def test_format_and_build_message():
         "long_term": {"trend": "up", "momentum_pct": 8.0, "rsi": 60},
         "news": {"ok": True, "label": "positive", "score": 0.4,
                 "headlines": [{"title": "Jamjoom profit rises 12%",
-                              "link": "http://x", "published": "24 Jul 2026"}]},
-    }
-    block = nt.format_recommendation(rec)
+                                  "link": "http://x", "published": "01 Aug 2026"}]},
+        }
+    block = nt.format_recommendation(rec, today=date(2026, 8, 2))
     assert "4015" in block and "BUY" in block and "Rules met: 3/3" in block
     assert "conviction" not in block
     assert "conf)" not in block  # the fake confidence suffix is gone.
     assert "Jamjoom profit rises 12%" in block
-    assert "24 Jul 2026" in block
+    assert "01 Aug 2026" in block
     msg = nt.build_message([rec], "Test header")
     assert "Test header" in msg and "Not financial advice" in msg
 
@@ -1481,10 +1528,10 @@ def test_format_recommendation_does_not_collapse_when_news_present():
                      "flipped": [], "trend_flipped": False},
            "trend_streak": {"days": 11, "started": "2026-07-17"},
            "news": {"ok": True, "label": "positive", "score": 1.0,
-                    "headlines": [{"title": "EIC profit rises", "published": "Mon"}]},
+                    "headlines": [{"title": "EIC profit rises", "published": "01 Aug 2026"}]},
            "short_term": {"momentum_pct": 0, "rsi": 50},
            "long_term": {"trend": "down", "momentum_pct": 0, "rsi": 50}}
-    block = nt.format_recommendation(rec)
+    block = nt.format_recommendation(rec, today=date(2026, 8, 2))
     assert "short:" in block  # full breakdown still shown because news exists
 
 def test_format_recommendation_buy_never_collapses_even_when_unchanged():
