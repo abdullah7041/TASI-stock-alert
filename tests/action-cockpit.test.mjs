@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 async function renderDashboard() {
@@ -29,4 +30,10 @@ test("limits Home scanner cards to qualified names and labels preview data", asy
   assert.match(html, /Why this action\?/i);
   assert.equal((html.match(/data-state="qualified"/g) ?? []).length, 1);
   assert.doesNotMatch(html, /Tabuk Agricultural/i);
+});
+
+test("lint ignores local worktrees and their generated output", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+  assert.match(packageJson.scripts.lint, /--ignore-pattern \.worktrees/);
 });
