@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import math
 from pathlib import Path
 import sys
 
@@ -8,7 +9,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from cockpit.research_contracts import ResearchRequest, ResearchVerdict
+from cockpit.research_contracts import (
+    ResearchReport,
+    ResearchRequest,
+    ResearchVerdict,
+)
 from cockpit.research_service import (
     BudgetCapExceeded,
     InMemoryBudgetReservations,
@@ -42,13 +47,50 @@ def qualified_snapshot() -> InMemorySnapshotLookup:
     )
 
 
-def request(symbol: str = "2222") -> ResearchRequest:
+def request(symbol: str = "2222", estimated_cost_sar: float = 5.0) -> ResearchRequest:
     return ResearchRequest(
         user_id="owner-1",
         symbol=symbol,
         trading_date=date(2026, 8, 7),
-        estimated_cost_sar=5.0,
+        estimated_cost_sar=estimated_cost_sar,
     )
+
+
+@pytest.mark.parametrize("estimated_cost_sar", [-0.01, math.nan, math.inf, -math.inf])
+def test_research_request_rejects_negative_and_nonfinite_estimated_costs(
+    estimated_cost_sar: float,
+):
+    with pytest.raises(ValueError, match="finite, non-negative"):
+        request(estimated_cost_sar=estimated_cost_sar)
+
+
+@pytest.mark.parametrize("estimated_cost_sar", [-0.01, math.nan, math.inf, -math.inf])
+def test_service_rejects_invalid_costs_before_budget_reservation(
+    estimated_cost_sar: float,
+):
+    invalid_request = request()
+    object.__setattr__(invalid_request, "estimated_cost_sar", estimated_cost_sar)
+    budget = InMemoryBudgetReservations()
+    service = ResearchService(cache=InMemoryReportCache(), budget=budget)
+
+    with pytest.raises(ValueError, match="finite, non-negative"):
+        service.start_report(invalid_request, qualified_snapshot())
+
+    assert budget.reserved_sar == 0.0
+    assert budget.reservation_count == 0
+
+
+def test_research_report_rejects_an_invalid_runtime_verdict():
+    with pytest.raises(ValueError, match="RESEARCH, WAIT, or SKIP"):
+        ResearchReport(
+            report_id="report-1",
+            user_id="owner-1",
+            symbol="2222",
+            trading_date=date(2026, 8, 7),
+            verdict="BUY",  # type: ignore[arg-type]
+            data_status="preview-delayed",
+            sections=(),
+        )
 
 
 def test_start_report_rejects_a_symbol_with_fewer_than_two_conditions():

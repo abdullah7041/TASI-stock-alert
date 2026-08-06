@@ -15,6 +15,7 @@ from cockpit.research_contracts import (
     ResearchReport,
     ResearchRequest,
     ResearchVerdict,
+    validate_estimated_cost_sar,
 )
 
 RESEARCH_CAP_SAR = 45.0
@@ -72,6 +73,7 @@ class InMemoryBudgetReservations:
         self.reservation_count = 0
 
     def reserve(self, cost_sar: float) -> bool:
+        cost_sar = validate_estimated_cost_sar(cost_sar)
         if self.reserved_sar + cost_sar > self._cap_sar:
             return False
         self.reserved_sar += cost_sar
@@ -90,6 +92,7 @@ class ResearchService:
     def start_report(
         self, request: ResearchRequest, snapshot: SnapshotLookup
     ) -> ResearchReport:
+        cost_sar = validate_estimated_cost_sar(request.estimated_cost_sar)
         candidate = self._qualified_candidate(request.symbol, snapshot)
         cached = self._cache.get(request)
         if cached is not None:
@@ -97,8 +100,8 @@ class ResearchService:
 
         state = self._budget.state()
         if (
-            state.reserved_sar + request.estimated_cost_sar > RESEARCH_CAP_SAR
-            or not self._budget.reserve(request.estimated_cost_sar)
+            state.reserved_sar + cost_sar > RESEARCH_CAP_SAR
+            or not self._budget.reserve(cost_sar)
         ):
             raise BudgetCapExceeded("Research budget would exceed the 45 SAR cap")
 

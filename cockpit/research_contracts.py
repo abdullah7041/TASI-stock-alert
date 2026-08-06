@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
+from math import isfinite
 
 
 class ResearchVerdict(str, Enum):
@@ -40,6 +41,13 @@ class ResearchReport:
     sections: tuple[ReportSection, ...]
     citations: tuple[Citation, ...] = ()
 
+    def __post_init__(self) -> None:
+        try:
+            verdict = ResearchVerdict(self.verdict)
+        except (TypeError, ValueError) as error:
+            raise ValueError("Research verdict must be RESEARCH, WAIT, or SKIP") from error
+        object.__setattr__(self, "verdict", verdict)
+
 
 @dataclass(frozen=True)
 class BudgetState:
@@ -57,3 +65,22 @@ class ResearchRequest:
     symbol: str
     trading_date: date
     estimated_cost_sar: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "estimated_cost_sar",
+            validate_estimated_cost_sar(self.estimated_cost_sar),
+        )
+
+
+def validate_estimated_cost_sar(value: object) -> float:
+    if isinstance(value, bool):
+        raise ValueError("Estimated cost must be finite, non-negative SAR")
+    try:
+        cost_sar = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("Estimated cost must be finite, non-negative SAR") from error
+    if not isfinite(cost_sar) or cost_sar < 0:
+        raise ValueError("Estimated cost must be finite, non-negative SAR")
+    return cost_sar
