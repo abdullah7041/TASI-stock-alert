@@ -228,7 +228,9 @@
   text-transform: uppercase;
 }
 
-.researchPrompt { display: inline-block; margin-top: 12px; color: #83aecf; font-size: 0.8rem; font-weight: 700; }
+.researchButton { display: inline-block; margin-top: 12px; padding: 0; border: 0; background: transparent; color: #83c6ff; font: inherit; font-size: .8rem; font-weight: 750; cursor: pointer; }
+.researchButton:hover { color: #b9dcf8; text-decoration: underline; }
+.researchDisabled { margin: 12px 0 0; color: #8294b4; font-size: .8rem; }
 .researchLink { margin: 13px 2px 0; color: #8ea3c7; }
 .footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid #263653; color: #788aa8; }
 

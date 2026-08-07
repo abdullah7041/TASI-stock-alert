@@ -1,12 +1,20 @@
+"use client";
+
+import { useState } from "react";
 import type { DashboardFixture } from "@/app/fixtures/dashboard";
 import styles from "./ActionCockpit.module.css";
+import { ResearchWorkspace } from "./ResearchWorkspace";
 
 function formatPrice(price: number) {
   return `${price.toFixed(2)} SAR`;
 }
 
 export function ActionCockpit({ dashboard }: { dashboard: DashboardFixture }) {
+  const [selectedCandidate, setSelectedCandidate] = useState<DashboardFixture["qualified"][number] | null>(null);
   const qualified = dashboard.qualified.slice(0, 3);
+  const researchEnabled = import.meta.env.VITE_AGENT_ENABLED !== "false";
+
+  if (selectedCandidate) return <ResearchWorkspace candidate={selectedCandidate} onClose={() => setSelectedCandidate(null)} />;
 
   return (
     <main className={styles.cockpit}>
@@ -114,7 +122,11 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardFixture }) {
               </div>
               <h3>{candidate.name}</h3>
               <p>Relative strength <strong>+{candidate.relativeStrengthPct.toFixed(1)}%</strong></p>
-              <span className={styles.researchPrompt}>Research before deciding →</span>
+              {researchEnabled ? (
+                <button aria-label={`Research ${candidate.name}`} className={styles.researchButton} onClick={() => setSelectedCandidate(candidate)} type="button">Research this idea →</button>
+              ) : (
+                <p className={styles.researchDisabled}>Research is temporarily disabled.</p>
+              )}
             </article>
           ))}
         </div>
