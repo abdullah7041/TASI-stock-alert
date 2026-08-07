@@ -37,5 +37,5 @@ a temporary broker price only as clearly labelled context.
 
 An unavailable D1 binding, missing secret, exhausted budget, invalid model
 response, or search failure renders a visible agent error without hiding the
-existing scanner. A single `NEXT_PUBLIC_AGENT_ENABLED` feature flag disables
+existing scanner. A single `VITE_AGENT_ENABLED=false` feature flag disables
 the Research controls and restores the current cockpit immediately.

@@ -10,7 +10,7 @@ export type DashboardFixture = {
     pnlPct: number;
   }>;
   changed: Array<{ code: string; name: string; status: string; reason: string }>;
-  qualified: Array<{ code: string; name: string; relativeStrengthPct: number; squeeze: boolean }>;
+  qualified: Array<{ code: string; name: string; relativeStrengthPct: number; squeeze: boolean; conditionsMet: number }>;
   researchCount: number;
 };
 
@@ -34,6 +34,7 @@ export const dashboardFixture: DashboardFixture = {
       name: "Alinma Bank",
       relativeStrengthPct: 10.4,
       squeeze: true,
+      conditionsMet: 2,
     },
   ],
   researchCount: 7,

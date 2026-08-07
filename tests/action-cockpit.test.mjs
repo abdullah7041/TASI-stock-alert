@@ -32,6 +32,14 @@ test("limits Home scanner cards to qualified names and labels preview data", asy
   assert.doesNotMatch(html, /Tabuk Agricultural/i);
 });
 
+test("offers research only from a qualified scanner card", async () => {
+  const response = await renderDashboard();
+  const html = await response.text();
+
+  assert.match(html, /aria-label="Research Alinma Bank"/);
+  assert.doesNotMatch(html, /aria-label="Research Tabuk Agricultural"/);
+});
+
 test("lint ignores local worktrees and their generated output", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
