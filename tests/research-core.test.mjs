@@ -5,6 +5,7 @@ import {
   AGENT_MONTHLY_STOP_SAR,
   buildDeterministicSections,
   estimateOperationCostSar,
+  extractResponseText,
   extractAnnotatedCitations,
   reportResponseFormat,
   validateQualifiedResearch,
@@ -86,4 +87,22 @@ test("requires a strict structured report response instead of trusting prompt te
       },
     },
   });
+});
+
+test("reads structured text from the raw Responses API message content", () => {
+  const response = {
+    output_text: "",
+    output: [{
+      type: "message",
+      content: [{
+        type: "output_text",
+        text: '{"companyNews":"Official disclosure","risks":"Delayed data","verdict":"WAIT"}',
+      }],
+    }],
+  };
+
+  assert.equal(
+    extractResponseText(response),
+    '{"companyNews":"Official disclosure","risks":"Delayed data","verdict":"WAIT"}',
+  );
 });
