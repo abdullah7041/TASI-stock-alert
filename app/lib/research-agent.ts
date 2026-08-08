@@ -1,4 +1,4 @@
-import { buildDeterministicSections, estimateOperationCostSar, extractAnnotatedCitations, reportResponseFormat } from "@/app/lib/research-core.mjs";
+import { buildDeterministicSections, estimateOperationCostSar, extractAnnotatedCitations, extractResponseText, reportResponseFormat } from "@/app/lib/research-core.mjs";
 import { ResearchStore } from "@/app/lib/research-store";
 
 const allowedDomains = ["saudiexchange.sa", "cma.org.sa", "argaam.com", "reuters.com", "bloomberg.com"];
@@ -86,7 +86,7 @@ export async function createOrReuseReport(context: PrivateResearchContext, candi
       `Research ${candidate.code} ${candidate.name} for a private Saudi-market decision workspace. Return only JSON: {"companyNews":"short cited factual summary","risks":"short cited risks","verdict":"RESEARCH|WAIT|SKIP"}. Official disclosures first. Do not give a buy instruction, entry price, stop, target, or portfolio advice.`,
       true,
     );
-    const research = parseResearch(modelResponse.output_text);
+    const research = parseResearch(extractResponseText(modelResponse));
     const citations = extractAnnotatedCitations(modelResponse);
     const report = {
       id: crypto.randomUUID(),
@@ -121,7 +121,7 @@ export async function answerStockQuestion(context: PrivateResearchContext, candi
   try {
     const priceNote = Number.isFinite(manualPrice) ? ` User-supplied broker price: ${manualPrice} SAR; label it as unverified.` : "";
     const modelResponse = await openAiResponse(context, `Answer only from this saved report and its deterministic sections: ${JSON.stringify(existing.report)}\n\nQuestion: ${text}.${priceNote} Do not browse, create a trade instruction, invent levels, or give a buy verdict.`, false);
-    const reply = modelResponse.output_text?.trim();
+    const reply = extractResponseText(modelResponse).trim();
     if (!reply) throw new Error("The agent returned no answer.");
     const message = { id: crypto.randomUUID(), role: "assistant", text: reply, createdAt: new Date().toISOString(), citations: (existing.report as { sections?: Array<{ citations?: unknown[] }> }).sections?.flatMap((section) => section.citations ?? []) ?? [] };
     await context.store.saveMessage(context.ownerId, candidate.code, message);

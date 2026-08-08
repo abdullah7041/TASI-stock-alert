@@ -24,6 +24,17 @@ export function reportResponseFormat() {
   };
 }
 
+export function extractResponseText(response) {
+  if (typeof response?.output_text === "string" && response.output_text.trim()) return response.output_text;
+
+  return (response?.output ?? [])
+    .filter((item) => item?.type === "message")
+    .flatMap((item) => item.content ?? [])
+    .filter((content) => content?.type === "output_text" && typeof content.text === "string")
+    .map((content) => content.text)
+    .join("\n");
+}
+
 export function validateQualifiedResearch(candidate) {
   if (!candidate || Number(candidate.conditionsMet) < 2) {
     throw new Error("Only scanner-qualified candidates can be researched.");
