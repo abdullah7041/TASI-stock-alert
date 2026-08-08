@@ -6,6 +6,7 @@ import {
   buildDeterministicSections,
   estimateOperationCostSar,
   extractAnnotatedCitations,
+  reportResponseFormat,
   validateQualifiedResearch,
 } from "../app/lib/research-core.mjs";
 
@@ -67,4 +68,22 @@ test("keeps only URLs supplied by OpenAI URL annotations as citations", () => {
   assert.deepEqual(citations, [
     { title: "Saudi Exchange disclosure", url: "https://www.saudiexchange.sa/example" },
   ]);
+});
+
+test("requires a strict structured report response instead of trusting prompt text", () => {
+  assert.deepEqual(reportResponseFormat(), {
+    type: "json_schema",
+    name: "tasi_research_report",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["companyNews", "risks", "verdict"],
+      properties: {
+        companyNews: { type: "string" },
+        risks: { type: "string" },
+        verdict: { type: "string", enum: ["RESEARCH", "WAIT", "SKIP"] },
+      },
+    },
+  });
 });

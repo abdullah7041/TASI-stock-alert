@@ -1,4 +1,4 @@
-import { buildDeterministicSections, estimateOperationCostSar, extractAnnotatedCitations } from "@/app/lib/research-core.mjs";
+import { buildDeterministicSections, estimateOperationCostSar, extractAnnotatedCitations, reportResponseFormat } from "@/app/lib/research-core.mjs";
 import { ResearchStore } from "@/app/lib/research-store";
 
 const allowedDomains = ["saudiexchange.sa", "cma.org.sa", "argaam.com", "reuters.com", "bloomberg.com"];
@@ -45,6 +45,7 @@ async function openAiResponse(context: PrivateResearchContext, input: string, us
     input,
   };
   if (useWebSearch) {
+    body.text = { format: reportResponseFormat() };
     body.tools = [{ type: "web_search", search_context_size: "medium", filters: { allowed_domains: allowedDomains } }];
     body.tool_choice = "required";
     body.include = ["web_search_call.action.sources"];

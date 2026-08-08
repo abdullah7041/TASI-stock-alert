@@ -6,6 +6,24 @@ const OPERATION_COSTS_SAR = {
   comparison: 0.25,
 };
 
+export function reportResponseFormat() {
+  return {
+    type: "json_schema",
+    name: "tasi_research_report",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["companyNews", "risks", "verdict"],
+      properties: {
+        companyNews: { type: "string" },
+        risks: { type: "string" },
+        verdict: { type: "string", enum: ["RESEARCH", "WAIT", "SKIP"] },
+      },
+    },
+  };
+}
+
 export function validateQualifiedResearch(candidate) {
   if (!candidate || Number(candidate.conditionsMet) < 2) {
     throw new Error("Only scanner-qualified candidates can be researched.");
