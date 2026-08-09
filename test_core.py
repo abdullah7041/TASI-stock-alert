@@ -1431,6 +1431,7 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
     )
     monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
     monkeypatch.setattr(m, "_scanner_result", lambda: {"candidates": [], "names": {}, "indexUnavailable": False, "warning": "scanner unavailable: test"})
+    monkeypatch.setattr(m, "_save", lambda *_: None)
 
     assert m.mode_digest() == 0
     assert calls == [(True, True)]
