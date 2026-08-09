@@ -56,10 +56,22 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python main.py
 
+      - name: Update private cockpit
+        if: steps.mode.outputs.mode == 'digest'
+        env:
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          test -n "$COCKPIT_INGEST_TOKEN"
+          curl --fail-with-body --retry 3 --retry-delay 2 \
+            -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest \
+            -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @dashboard.json
+
       - name: Commit state
         run: |
           git config user.name "tasi-bot"
           git config user.email "tasi-bot@users.noreply.github.com"
-          git add state.json levels.json symbols.json news_archive.jsonl history.json 2>/dev/null || true
+          git add state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json 2>/dev/null || true
           git commit -m "state update [skip ci]" 2>/dev/null || echo "nothing to commit"
           git push 2>/dev/null || echo "nothing to push"

@@ -1436,6 +1436,41 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
     assert calls == [(True, True)]
 
 
+def test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_candidates():
+    """The cockpit receives the daily scan, never a hand-maintained fixture."""
+    import main as m
+
+    snapshot = m._dashboard_snapshot(
+        "breakdown",
+        [
+            {"kind": "holding", "code": "2320", "name": "Al-Babtain", "action": "SELL (STOP)",
+             "price": 55.85, "reason": ["Daily close is below the stop."], "unrealized_pct": -13.1},
+            {"kind": "holding", "code": "1303", "name": "EIC", "action": "HOLD",
+             "price": 15.0, "reason": ["No change."], "unrealized_pct": 1.0},
+        ],
+        {"monthly_cap": 500.0},
+        {
+            "candidates": [
+                {"code": "1150", "conditions_met": 2, "rel_strength": 10.44, "squeeze_met": True},
+                {"code": "4015", "conditions_met": 1, "rel_strength": 7.0, "squeeze_met": False},
+            ],
+            "names": {"1150": "Alinma Bank", "4015": "Jamjoom"},
+        },
+        as_of="2026-08-09T06:45:00Z",
+    )
+
+    assert snapshot["asOf"] == "2026-08-09T06:45:00Z"
+    assert snapshot["regime"] == "breakdown"
+    assert snapshot["urgent"] == [{
+        "code": "2320", "name": "Al-Babtain", "action": "SELL (STOP)", "price": 55.85,
+        "reason": "Daily close is below the stop.", "pnlPct": -13.1,
+    }]
+    assert snapshot["qualified"] == [{
+        "code": "1150", "name": "Alinma Bank", "relativeStrengthPct": 10.4,
+        "squeeze": True, "conditionsMet": 2,
+    }]
+
+
 def test_collect_recs_attaches_delta_and_streak(tmp_path, monkeypatch):
     # This test exercises main.py's wiring directly by calling the same
     # snapshot-building logic main.py uses, not by running the full

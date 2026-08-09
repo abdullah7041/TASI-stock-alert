@@ -41,6 +41,7 @@ LEVELS_FILE = HERE / "levels.json"
 STATE_FILE = HERE / "state.json"
 BUDGET_FILE = HERE / "budget_state.json"
 HISTORY_FILE = HERE / "history.json"
+DASHBOARD_FILE = HERE / "dashboard.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -148,6 +149,22 @@ def _budget_record(buys: list) -> None:
         })
         month["spent"] = round(month["spent"] + b["sizing"]["spend"], 2)
     _save(BUDGET_FILE, state)
+
+
+def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None) -> dict:
+    """Serialize one delayed daily digest for the private cockpit."""
+    urgent = [
+        {"code": r["code"], "name": r["name"], "action": r["action"], "price": r["price"],
+         "reason": (r.get("reason") or ["No reason recorded."])[0], "pnlPct": r.get("unrealized_pct", 0.0)}
+        for r in recs if r.get("kind") == "holding" and r.get("action") not in ("HOLD", "WATCH")
+    ]
+    candidates = (scanner_result or {}).get("candidates", [])
+    names = (scanner_result or {}).get("names", {})
+    qualified = [
+        {"code": c["code"], "name": names.get(c["code"], c["code"]), "relativeStrengthPct": round(float(c.get("rel_strength") or 0.0), 1), "squeeze": bool(c.get("squeeze_met")), "conditionsMet": 2}
+        for c in candidates if c.get("conditions_met") == 2
+    ]
+    return {"asOf": as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "regime": regime, "dataStatus": "preview-delayed", "urgent": urgent, "changed": [], "qualified": qualified, "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]), "monthlyBudgetSar": budget.get("monthly_cap")}
 
 
 # --- modes -----------------------------------------------------------------
@@ -328,6 +345,7 @@ def mode_digest() -> int:
                            quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
                            budget=budget)
     msg = msg + "\n\n" + _scanner_block()
+    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, None))
     ok = nt.send_discord(msg)
     if not ok:
         print(msg)  # no webhook configured (e.g. local run) — show the digest here.

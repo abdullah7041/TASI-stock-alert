@@ -23,5 +23,6 @@ declare module "cloudflare:workers" {
     AGENT_OWNER_EMAIL?: string;
     AGENT_REPORT_MODEL?: string;
     AGENT_CHAT_MODEL?: string;
+    DASHBOARD_INGEST_TOKEN?: string;
   };
 }
