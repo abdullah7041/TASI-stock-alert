@@ -1430,10 +1430,35 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
         ),
     )
     monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
-    monkeypatch.setattr(m, "_scanner_block", lambda: "**Scanner**: unavailable")
+    monkeypatch.setattr(m, "_scanner_result", lambda: {"candidates": [], "names": {}, "indexUnavailable": False, "warning": "scanner unavailable: test"})
 
     assert m.mode_digest() == 0
     assert calls == [(True, True)]
+
+
+def test_mode_digest_saves_the_same_real_scanner_result_used_for_its_message(monkeypatch):
+    import main as m
+
+    scanner_result = {
+        "candidates": [{"code": "1150", "conditions_met": 2, "rel_strength": 10.4, "squeeze_met": True}],
+        "names": {"1150": "Alinma Bank"},
+        "indexUnavailable": False,
+        "warning": None,
+    }
+    saved = {}
+    monkeypatch.setattr(m, "_collect_recs", lambda **_: ("ok", [], {
+        "monthly_cap": 500.0, "allocated": 0.0, "budget": 500.0, "leftover": 500.0,
+    }))
+    monkeypatch.setattr(m, "_scanner_result", lambda: scanner_result)
+    monkeypatch.setattr(m.nt, "format_scanner_block", lambda candidates, names, **_: f"scanner {names[candidates[0]['code']]}")
+    monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
+    monkeypatch.setattr(m, "_save", lambda path, value: saved.setdefault(path.name, value))
+
+    assert m.mode_digest() == 0
+    assert saved["dashboard.json"]["qualified"] == [{
+        "code": "1150", "name": "Alinma Bank", "relativeStrengthPct": 10.4,
+        "squeeze": True, "conditionsMet": 2,
+    }]
 
 
 def test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_candidates():
@@ -1460,6 +1485,10 @@ def test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_can
     )
 
     assert snapshot["asOf"] == "2026-08-09T06:45:00Z"
+    assert snapshot["schemaVersion"] == 1
+    assert snapshot["tradeDate"] == "2026-08-09"
+    assert snapshot["dataStatus"] == "delayed-daily"
+    assert snapshot["warnings"] == []
     assert snapshot["regime"] == "breakdown"
     assert snapshot["urgent"] == [{
         "code": "2320", "name": "Al-Babtain", "action": "SELL (STOP)", "price": 55.85,

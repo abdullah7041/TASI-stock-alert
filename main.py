@@ -153,6 +153,7 @@ def _budget_record(buys: list) -> None:
 
 def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
+    generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     urgent = [
         {"code": r["code"], "name": r["name"], "action": r["action"], "price": r["price"],
          "reason": (r.get("reason") or ["No reason recorded."])[0], "pnlPct": r.get("unrealized_pct", 0.0)}
@@ -164,7 +165,12 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         {"code": c["code"], "name": names.get(c["code"], c["code"]), "relativeStrengthPct": round(float(c.get("rel_strength") or 0.0), 1), "squeeze": bool(c.get("squeeze_met")), "conditionsMet": 2}
         for c in candidates if c.get("conditions_met") == 2
     ]
-    return {"asOf": as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "regime": regime, "dataStatus": "preview-delayed", "urgent": urgent, "changed": [], "qualified": qualified, "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]), "monthlyBudgetSar": budget.get("monthly_cap")}
+    warning = (scanner_result or {}).get("warning")
+    return {"schemaVersion": 1, "tradeDate": generated_at[:10], "asOf": generated_at,
+            "regime": regime, "dataStatus": "delayed-daily", "warnings": [warning] if warning else [],
+            "urgent": urgent, "changed": [], "qualified": qualified,
+            "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
+            "monthlyBudgetSar": budget.get("monthly_cap")}
 
 
 # --- modes -----------------------------------------------------------------
@@ -304,7 +310,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     return regime, recs, budget_summary
 
 
-def _scanner_block() -> str:
+def _scanner_result() -> dict:
     """Breakout scanner section for the digest. Fail-soft: this rides a
     genuinely new network-heavy step (~265 live Yahoo fetches) on every
     digest run, so ANY exception here (network failure, missing/empty
@@ -320,7 +326,8 @@ def _scanner_block() -> str:
         codes = universe.load()
         if not codes:
             print("scanner: universe.json missing/empty — skipping scanner section.")
-            return "**Scanner**: unavailable (universe.json missing — run MODE=universe)"
+            return {"candidates": [], "names": {}, "indexUnavailable": False,
+                    "warning": "scanner unavailable: universe.json missing"}
 
         index_code = cfg.REGIME["index_code"]
         hist = data.get_histories_adjusted(codes + [index_code], cfg.SCANNER["history_period"])
@@ -333,10 +340,21 @@ def _scanner_block() -> str:
 
         candidates = scanner.scan(codes, hist, index_df)
         names = scanner.resolve_names(candidates)
-        return nt.format_scanner_block(candidates, names, index_unavailable=index_unavailable)
+        return {"candidates": candidates, "names": names, "indexUnavailable": index_unavailable,
+                "warning": "TASI index unavailable; relative strength could not be calculated." if index_unavailable else None}
     except Exception as e:
         print(f"scanner: unavailable ({type(e).__name__}: {e})")
+        return {"candidates": [], "names": {}, "indexUnavailable": False,
+                "warning": f"scanner unavailable: {type(e).__name__}"}
+
+
+def _scanner_block(result: dict | None = None) -> str:
+    """Format a previously collected scanner result without rerunning it."""
+    result = result or _scanner_result()
+    if str(result.get("warning") or "").startswith("scanner unavailable:"):
         return "**Scanner**: unavailable (error during scan — see logs)"
+    return nt.format_scanner_block(result["candidates"], result["names"],
+                                   index_unavailable=result["indexUnavailable"])
 
 
 def mode_digest() -> int:
@@ -344,8 +362,9 @@ def mode_digest() -> int:
     msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
                            quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
                            budget=budget)
-    msg = msg + "\n\n" + _scanner_block()
-    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, None))
+    scanner_result = _scanner_result()
+    msg = msg + "\n\n" + _scanner_block(scanner_result)
+    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result))
     ok = nt.send_discord(msg)
     if not ok:
         print(msg)  # no webhook configured (e.g. local run) — show the digest here.
