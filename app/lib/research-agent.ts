@@ -69,7 +69,7 @@ function parseResearch(text: string | undefined) {
   }
 }
 
-export async function createOrReuseReport(context: PrivateResearchContext, candidate: Candidate, snapshot: { asOf: string; dataStatus: "preview-delayed" }) {
+export async function createOrReuseReport(context: PrivateResearchContext, candidate: Candidate, snapshot: { asOf: string; dataStatus: "delayed-daily" }) {
   if (candidate.conditionsMet < 2) throw new Response("Only qualified scanner candidates can be researched.", { status: 403 });
   const date = riyadhDate();
   const existing = await context.store.findReport(context.ownerId, candidate.code, date);

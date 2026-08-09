@@ -43,9 +43,18 @@ export function validateQualifiedResearch(candidate) {
   return candidate;
 }
 
+export function currentQualifiedCandidate(snapshot, symbol, freshness) {
+  if (freshness !== "current") throw new Error("Research requires a fresh daily snapshot.");
+  const candidate = snapshot?.qualified?.find((item) => item.code === symbol);
+  if (!candidate || Number(candidate.conditionsMet) !== 2) {
+    throw new Error("This symbol is not available for research.");
+  }
+  return candidate;
+}
+
 export function buildDeterministicSections(candidate, snapshot) {
   validateQualifiedResearch(candidate);
-  const delayed = snapshot.dataStatus === "preview-delayed" ? " Delayed/daily data — verify your broker quote." : "";
+  const delayed = snapshot.dataStatus === "delayed-daily" ? " Delayed/daily data — verify your broker quote." : "";
   const squeeze = candidate.squeeze ? "Squeeze confirmation is present." : "No squeeze confirmation is present.";
 
   return [

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   AGENT_MONTHLY_STOP_SAR,
   buildDeterministicSections,
+  currentQualifiedCandidate,
   estimateOperationCostSar,
   extractResponseText,
   extractAnnotatedCitations,
@@ -19,6 +20,23 @@ const qualifiedCandidate = {
   conditionsMet: 2,
 };
 
+const storedSnapshot = {
+  asOf: "2026-08-09T06:45:00Z",
+  dataStatus: "delayed-daily",
+  qualified: [qualifiedCandidate],
+};
+
+test("rejects research from a stale dashboard snapshot", () => {
+  assert.throws(
+    () => currentQualifiedCandidate(storedSnapshot, "1150", "stale"),
+    /fresh daily snapshot/i,
+  );
+});
+
+test("returns a current two-condition stored candidate", () => {
+  assert.equal(currentQualifiedCandidate(storedSnapshot, "1150", "current").code, "1150");
+});
+
 test("rejects a scanner candidate that does not meet two conditions", () => {
   assert.throws(
     () => validateQualifiedResearch({ ...qualifiedCandidate, conditionsMet: 1 }),
@@ -29,7 +47,7 @@ test("rejects a scanner candidate that does not meet two conditions", () => {
 test("builds technical setup and entry plan only from the deterministic snapshot", () => {
   const sections = buildDeterministicSections(qualifiedCandidate, {
     asOf: "03 Aug 2026 · 09:40 AST",
-    dataStatus: "preview-delayed",
+    dataStatus: "delayed-daily",
   });
 
   assert.deepEqual(sections.map((section) => section.title), ["Technical Setup", "Entry Plan"]);
