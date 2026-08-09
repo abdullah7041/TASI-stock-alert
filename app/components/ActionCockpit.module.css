@@ -78,6 +78,17 @@
 
 .safetyNote p { margin: 0; font-size: 0.9rem; line-height: 1.5; }
 
+.staleNote {
+  margin-bottom: 14px;
+  padding: 13px 16px;
+  border: 1px solid #855635;
+  border-radius: 12px;
+  background: #2b211b;
+  color: #ffd9ae;
+}
+
+.staleNote p { margin: 0; font-size: 0.9rem; line-height: 1.5; }
+
 .safetyDot {
   width: 8px;
   height: 8px;
