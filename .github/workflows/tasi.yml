@@ -59,11 +59,14 @@ jobs:
       - name: Update private cockpit
         if: steps.mode.outputs.mode == 'digest'
         env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
         run: |
+          test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
           test -n "$COCKPIT_INGEST_TOKEN"
           curl --fail-with-body --retry 3 --retry-delay 2 \
             -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest \
+            -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
             -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
             -H "Content-Type: application/json" \
             --data-binary @dashboard.json
