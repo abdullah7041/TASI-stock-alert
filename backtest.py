@@ -164,10 +164,11 @@ def regime_series(index_df: pd.DataFrame, index_ma: int) -> pd.Series:
 def _regime_at(regimes: pd.Series, when) -> str:
     """Regime as of `when`, using only bars at or before it.
 
-    No blanket except here on purpose: swallowing an error would return
-    'unknown' for every date, which quietly raises the BUY bar to the breakdown
-    cutoff and looks like a market call rather than a bug. Timestamps are
-    normalized instead, so the mismatch that would raise cannot occur.
+    No blanket except here on purpose: swallowing an error would silently
+    relabel every date 'unknown', which would look like a market call rather
+    than a bug in any analysis that later reads the regime feature column.
+    Timestamps are normalized instead, so the mismatch that would raise cannot
+    occur.
     """
     if regimes.empty:
         return "unknown"
