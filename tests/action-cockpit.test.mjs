@@ -41,4 +41,5 @@ test("lint ignores local worktrees and their generated output", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
   assert.match(packageJson.scripts.lint, /--ignore-pattern \.worktrees/);
+  assert.match(packageJson.scripts.lint, /--ignore-pattern \.claude/);
 });
