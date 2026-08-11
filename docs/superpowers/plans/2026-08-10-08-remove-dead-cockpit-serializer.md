@@ -326,6 +326,39 @@ print(json.dumps(snap, indent=2))
 `researchCount`, and `monthlyBudgetSar`, with one entry each in `urgent` and
 `qualified`.
 
+### Step 4b: Wire typecheck into CI (handoff from plan 09)
+
+**Added 2026-08-12.** Plan 09 landed `npm run typecheck` and made `tsc --noEmit`
+exit 0, but deliberately did not touch `.github/`. It left an explicit handoff
+note asking for the CI step to be added by whichever plan next edits `ci.yml` —
+which is this one.
+
+In `.github/workflows/ci.yml`, in the `web` job, insert a step **between**
+`Lint` and `Build and test`:
+
+```yaml
+      - name: Typecheck
+        run: npm run typecheck
+```
+
+Two-space indentation, matching the surrounding steps.
+
+**Verify**:
+
+```bash
+npm run typecheck; echo "typecheck exit=$?"
+python -c "import yaml; d=yaml.safe_load(open('.github/workflows/ci.yml',encoding='utf-8')); names=[s.get('name') for s in d['jobs']['web']['steps']]; print(names)"
+```
+
+→ `typecheck exit=0`, and the printed step names show `Typecheck` sitting
+between `Lint` and `Build and test`.
+
+If `pyyaml` is unavailable, read the file and confirm the ordering by eye, and
+say so in your report.
+
+This step adds `.github/workflows/ci.yml` to your in-scope list. It does not
+change anything else about the plan.
+
 ### Step 5: Delete the dead `_regime` helper
 
 In `main.py`, delete lines 70-72 (the whole `_regime` function) and the blank
