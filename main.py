@@ -67,11 +67,6 @@ def _load_history(code: str) -> "any":
     return dat.get_history(code, cfg.TECH["history_period"])
 
 
-def _regime() -> str:
-    idx = dat.get_index_history(cfg.REGIME["index_code"])
-    return az.market_regime(idx, cfg.REGIME["index_ma"])
-
-
 def _levels_for(code: str, stored: dict | None = None) -> dict:
     if stored is None:  # fallback path; callers in a loop pass the loaded dict.
         stored = _load(LEVELS_FILE, {})
