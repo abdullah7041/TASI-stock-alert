@@ -186,6 +186,35 @@ A stale orphaned directory may remain at
 `.claude/worktrees/agent-a247a4185389f869c`. It is not a registered worktree.
 Deleting it is safe but is the operator's call.
 
+## Parallel branch: `codex/add-ci-gates` — deliberately not used
+
+A branch `codex/add-ci-gates` (`52d2ae1`) appeared during the 2026-08-10
+execution session, built on top of the local merge commit `fcefa1e`. It was not
+produced by this plan set. It duplicates plan 02 (its own `ci.yml`, the
+`test_cockpit.py` addition, a `typecheck` script) and plan 09 (all four
+type-error fixes).
+
+**Decision: ignore it, and execute plan 09 as written.** Plan 02 was already
+merged, so its `ci.yml` would conflict. Its type fixes differ from plan 09's:
+
+| | Plan 09 | `codex/add-ci-gates` |
+|---|---|---|
+| `Fetcher` / `ExecutionContext` | declare globals in `cloudflare-env.d.ts` | local `AssetFetcher` / `WorkerExecutionContext` types in `worker/index.ts` |
+| `import.meta.env` | `/// <reference types="vite/client" />` | `"types": ["vite/client"]` in `tsconfig.json` |
+| `.mjs` return type | dedicated `.d.ts` | inline JSDoc `@returns` |
+| `dashboard-store.latest()` | typed declaration | **`as DashboardSnapshot` cast** |
+
+Its first and third approaches are arguably better than plan 09's and are worth
+stealing if this is ever revisited. Two things are weaker and are why it was not
+adopted wholesale: the `as` cast asserts the contract rather than proving it
+(plan 09 lists `as` as a STOP condition for exactly this reason), and
+`"types": ["vite/client"]` does not merely add Vite's types — it *restricts*
+which `@types` packages are auto-included at all, a side effect nothing in the
+branch acknowledges. Its `lint` script also lacks the `--ignore-pattern .claude`
+fix.
+
+Deleting the branch is an operator action; nothing here depends on it.
+
 ## Findings considered and rejected
 
 Recorded so nobody re-audits them.
