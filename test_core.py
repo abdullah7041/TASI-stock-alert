@@ -433,7 +433,7 @@ def test_unverified_watchlist_never_buys():
     w = {"code": "6015", "name": "Jahez", "sector": "logistics"}
     relaxed = {"rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
     rec = az.evaluate_watchlist(w, price=2.1, df=df, levels={},
-                                risk=BASE_RISK, horizon_cfg=_WL_HORIZON,
+                                horizon_cfg=_WL_HORIZON,
                                 tech=_WL_TECH, buy_criteria=relaxed)
     # evaluate_watchlist still returns BUY on the numbers; the gate that flips
     # unverified names to WATCH lives in main._collect_recs. Assert the gate's
@@ -528,13 +528,6 @@ def test_allocate_budget_weight_pct_reflects_capped_count_not_original():
     az.allocate_budget(buys, 10000.0, current_positions=0, max_positions=2)
     assert buys[0]["sizing"]["weight_pct"] == 50.0
     assert buys[1]["sizing"]["weight_pct"] == 50.0
-
-
-BASE_RISK = {
-    "deployable_cash": 3000.0, "max_positions": 5, "position_pct": 0.25,
-    "stop_loss_pct": 0.09, "max_single_pct": 0.35, "cash_buffer_pct": 0.12,
-    "commission_rate": 0.00155, "min_commission": 0.0, "commission_floor_pct": 0.01,
-}
 
 
 # --- level derivation -------------------------------------------------------
@@ -684,7 +677,7 @@ def test_evaluate_holding_attaches_disclosures():
 def test_evaluate_watchlist_disclosures_defaults_to_none():
     df = _frame(list(range(1, 160)))
     rec = az.evaluate_watchlist({"code": "4015", "name": "Jamjoom"}, price=100.0, df=df,
-                                levels={}, risk=BASE_RISK, horizon_cfg=_WL_HORIZON, tech=_WL_TECH)
+                                levels={}, horizon_cfg=_WL_HORIZON, tech=_WL_TECH)
     assert rec["disclosures"] is None
 
 def test_format_disclosures_fetch_failed_renders_distinctly():
@@ -755,7 +748,7 @@ def test_watchlist_buy_fires_via_rules_no_zone_needed():
     w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
     relaxed = {"rsi_recovery_band": (0, 100), "long_mom_floor_pct": -100.0}
     rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={},
-                                risk=BASE_RISK, horizon_cfg=_WL_HORIZON,
+                                horizon_cfg=_WL_HORIZON,
                                 tech=_WL_TECH, buy_criteria=relaxed)
     assert rec["action"] == "BUY"
     assert rec["sizing"] is None  # sizing happens later, pooled per run.
@@ -770,7 +763,7 @@ def test_watchlist_watch_when_rules_fail_with_reason():
     w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
     strict = {"rsi_recovery_band": (25, 26), "long_mom_floor_pct": -5.0}
     rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={},
-                                risk=BASE_RISK, horizon_cfg=_WL_HORIZON,
+                                horizon_cfg=_WL_HORIZON,
                                 tech=_WL_TECH, buy_criteria=strict)
     assert rec["action"] == "WATCH"
     assert rec["rules_met"] == 2 and rec["rules_total"] == 3
@@ -1341,7 +1334,7 @@ def test_evaluate_watchlist_includes_triggers_key():
     df = _frame(list(range(200, 89, -1)) + list(range(90, 110)))  # falling then flat-ish
     w = {"code": "4015", "name": "Jamjoom", "sector": "pharma"}
     strict = {"rsi_recovery_band": (25, 26), "long_mom_floor_pct": -5.0}
-    rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={}, risk=BASE_RISK,
+    rec = az.evaluate_watchlist(w, price=100.0, df=df, levels={},
                                 horizon_cfg=_WL_HORIZON, tech=_WL_TECH,
                                 buy_criteria=strict)
     assert "triggers" in rec
@@ -2054,6 +2047,14 @@ def test_get_histories_adjusted_end_to_end_fallback_is_tz_naive(monkeypatch):
 
     out = data.get_histories_adjusted(["9955"], "1y_test_e2e_tz")
     assert out["9955"].index.tz is None
+
+
+def test_risk_config_contains_only_keys_the_engine_reads():
+    """Every RISK key must have a real reader. Seven keys were removed in
+    2026-08-10 because README described them as live while nothing read them;
+    this test is what stops one drifting back in."""
+    import config as cfg
+    assert set(cfg.RISK) == {"max_positions", "stop_loss_pct"}
 
 
 if __name__ == "__main__":

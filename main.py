@@ -276,7 +276,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
         price = float(df["Close"].iloc[-1])
         disc = discl.match_company(all_disclosures, disclosures_ok, discl.aliases_for(w))
         rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
-                                    cfg.RISK, cfg.HORIZON, cfg.TECH,
+                                    cfg.HORIZON, cfg.TECH,
                                     news_by_code.get(w["code"]), cfg.BUY_CRITERIA, disc)
         v = verify.get(w["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")

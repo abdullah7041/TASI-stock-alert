@@ -324,7 +324,7 @@ def allocate_budget(buys: list, budget_sar: float,
 
 # --- Watchlist evaluation --------------------------------------------------
 def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
-                       risk: dict, horizon_cfg: dict, tech: dict,
+                       horizon_cfg: dict, tech: dict,
                        news=None, buy_criteria: dict | None = None, disclosures=None) -> dict:
     """Rule-checklist BUY/WATCH call for a name you might buy.
 
@@ -338,6 +338,10 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
     `regime` is no longer a parameter: it only ever fed the conviction cutoff,
     which is gone. The market regime is still computed once per run and shown
     in the digest header.
+
+    `risk` is no longer a parameter either: the function never read it. Position
+    sizing lives in allocate_budget, which takes only what it uses
+    (max_positions and the monthly budget).
     """
     code = item["code"]
     low = levels.get("buy_zone_low")
