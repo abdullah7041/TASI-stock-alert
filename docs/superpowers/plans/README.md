@@ -8,45 +8,45 @@ honor its STOP conditions, and update your row when done.
 Plans dated before 2026-08-10 belong to earlier design cycles and are listed at
 the bottom for context. This index does not track their status.
 
-## Current state (updated 2026-08-10, after execution)
+## Current state (updated 2026-08-12 — all plans executed)
 
-`main` is at **`55cde02`, merged locally and NOT pushed.** It now contains:
+**`main` is at `0f92871`, merged locally and NOT pushed.**
 
-| Commit | What |
+Every plan in this set has been executed, reviewed, and merged. Verified on the
+final tree:
+
+| Check | Result |
 |---|---|
-| `dbbcec4` | `origin/main` merged in (bot `state update` commits) |
-| `fcefa1e` | **The honest-cockpit repair** — one conflict, `dashboard.json`, resolved to the branch's new 11-key schema |
-| `1cda88d` | Plan 05 — regime docstrings |
-| `48cfcf2` | Plan 06 — Next 16.2.11 |
-| `55cde02` | This plan set |
+| `python -m pytest test_core.py research/test_base_rate.py -q` | **203 passed** |
+| `npm run build` | **exit 0** |
+| `npm run lint` | **exit 0** |
+| `npm run typecheck` | **exit 0** |
+| `npm test` | **16 pass / 0 fail** |
 
 Rollback branch: **`rollback-pre-merge-2026-08-10`**.
 
-**Verified on the combined tree** (after `npm ci`, with `next@16.2.11` actually
-installed — an earlier pass was misleading because `node_modules` still held
-16.2.6):
-
-- `python -m pytest test_core.py test_cockpit.py research/test_base_rate.py -q` → **200 passed**
-- `npm run build` → **exit 0**
-- `npm run lint` → **exit 0**
-- `npm test` → **16 pass / 0 fail**
-- `tsc --noEmit` → **4 errors** (never run before; that is plan 09)
-
-**Plan 02 landed at `8048ccf`.** CI now runs on push and pull request: lint, build,
-and both test suites. It does **not** yet run typecheck — that arrives with plan 09.
+On the test count: 199 -> 205 -> **203**. The drop is intentional — plan 08
+deleted `test_cockpit.py` (2 tests) after confirming the live serializer was
+already covered.
 
 ### Still outstanding, and operator-only
 
-In this order:
+Nothing in this plan set is blocked on these; the repository work is finished.
+These are the steps only a human can take:
 
 1. **Add the GitHub Actions secret `COCKPIT_SIWC_BYPASS_TOKEN`.**
-2. `git push`. **Not before step 1** — the merged workflow has a `test -n` guard
-   on that secret, and a failed digest step skips "Commit state", losing that
-   day's `history.json` and `symbols.json`.
+2. `git push`. **Not before step 1** — the workflow has a `test -n` guard on that
+   secret, and a failed digest step skips "Commit state", losing that day's
+   `history.json` and `symbols.json`.
 3. Deploy the private Sites app, keeping the prior version for rollback.
 4. Trigger one manual `digest` run.
 5. Confirm the data actually reached the cockpit. Per the design doc, a green
    workflow is not sufficient evidence.
+
+Optional cleanup, also operator-only: delete the stale branches
+`codex/tasi-research-agent`, `codex/tasi-research-agent-lean`, and
+`codex/add-ci-gates` (see below), plus the `.claude/worktrees/agent-*` scratch
+directories.
 
 ### What the audit originally found
 
@@ -54,26 +54,33 @@ The repair described in
 `docs/superpowers/specs/2026-08-09-tasi-honest-daily-cockpit-repair-design.md`
 was already implemented on `codex/fix-honest-daily-cockpit` but unmerged, while
 `main` — what production runs — still had all three defects. Measured on `main`
-at `6ada068` before the merge:
+at `6ada068` before any of this:
 
-- `npm run lint` → exit 1, `react-hooks/rules-of-hooks` at `ActionCockpit.tsx:21`
-- `npm test` → 10 pass / 2 fail
-- pytest → 199 passed
+- `npm run lint` -> exit 1, `react-hooks/rules-of-hooks` at `ActionCockpit.tsx:21`
+- `npm test` -> 10 pass / **2 fail**
+- pytest -> 199 passed
+- `tsc --noEmit` -> **4 errors** (had never been run)
 
 Both JS checks were red and had been for some time, because **nothing ran them**.
-That is what plan 02 fixes, and it remains the highest-value item still open.
+Plan 02 fixed that; CI now gates lint, typecheck, build, and both suites on every
+push and pull request.
 
-### Two corrections worth carrying forward
+### Corrections carried forward
 
-- **The merge was never a fast-forward.** Every FF claim in this set was measured
-  against a stale local `main`. Against `origin/main` the branch was 18 ahead / 6
-  behind with one `add/add` conflict in `dashboard.json`. Resolved by taking the
-  branch's version. Detail in plan 01's CORRECTION section.
-- **Two done criteria were wrong as written**, both the plan author asserting an
-  unverified outcome: plan 06's "`npm audit` reports 0 vulnerabilities" (bundled
-  `postcss`/`sharp` keep the count at 3; the nine *Next.js* advisories did clear),
-  and plan 02's assumption that the repo typechecks (it never had). Both are
-  corrected in place, and the second became plan 09.
+Four criteria in this plan set were wrong as written. All four shared one cause:
+**the plan author asserted an expected outcome without first running the
+command.** Recorded so the pattern stays visible, not just the fixes.
+
+| Plan | Wrong claim | Reality |
+|---|---|---|
+| 01 | the merge is a fast-forward | measured against a stale local `main`; against `origin/main` it was 18 ahead / 6 behind, with an `add/add` conflict in `dashboard.json` |
+| 06 | `npm audit --omit=dev` reaches 0 | stays at 3 — `next` bundles vulnerable `postcss`/`sharp`. The nine *Next.js* advisories did clear |
+| 02 | the repo typechecks | it never had; 4 errors surfaced, which became plan 09 |
+| 08 | >=4 `dashboard_snapshot` tests exist | 3 — plan 04's third test is named for a different function and never matched the filter |
+
+In every case an executor measured, disagreed with the plan, and stopped rather
+than assuming the plan was right. That is the behaviour the STOP conditions exist
+to produce.
 
 ## Execution order & status
 
@@ -86,7 +93,7 @@ That is what plan 02 fixes, and it remains the highest-value item still open.
 | 05 | [Correct the comments claiming the regime gates BUY](2026-08-10-05-fix-stale-regime-docstrings.md) | P3 | S | — | **DONE — reviewer-approved.** Commit `34e5da1` on branch `worktree-agent-a0c4dc2eb959923fe`. All done criteria re-verified independently; pytest 199 = baseline; diff is prose-only. Merges onto `origin/main` cleanly (`merge-tree` exit 0). **Not merged — operator's call.** |
 | 06 | [Patch Next.js 16.2.6 → 16.2.11](2026-08-10-06-patch-next-to-16-2-11.md) | P3 | S | — | **DONE — reviewer-approved.** Commit `3c662e1` on `worktree-agent-aa641462c2ba53baa`. Nine Next.js advisories cleared; build 0; lint and `npm test` byte-identical to baseline. One done criterion was wrong as written — see the plan's CORRECTION. Took three attempts (see "Executor hazard"). **Not merged.** |
 | 07 | [Bound the unbounded loop in `trend_trigger`](2026-08-10-07-bound-trend-trigger-loop.md) | P3 | S | 01 ✅ | **DONE — merged.** Unbudgeted cent-walk replaced by the existing `_verified_price`. New test proved non-vacuous: it does not terminate against the pre-fix code. pytest 205. |
-| 08 | [Delete the parallel dashboard serializer nothing calls](2026-08-10-08-remove-dead-cockpit-serializer.md) | P3 | S | 01, 02, 04 | TODO |
+| 08 | [Delete the parallel dashboard serializer nothing calls](2026-08-10-08-remove-dead-cockpit-serializer.md) | P3 | S | 01, 02, 04 (all done) | **DONE — merged.** `cockpit/` package and `test_cockpit.py` deleted (186 lines), dead `_regime()` helper removed, `researchCount` assertion added to the live-path test *first* so the deletion was lossless, typecheck wired into CI. pytest 203 = 205 - 2, intentional. |
 | 09 | [Make `tsc` pass, then add a `typecheck` script](2026-08-10-09-fix-typecheck-errors.md) | P2 | S | — | **DONE — merged.** All 4 strict-mode errors fixed by declaration only; no cast, no `tsconfig` weakening. `tsc --noEmit` exits 0. Two forced deviations — see below. CI wiring handed to plan 08 step 4b. |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
