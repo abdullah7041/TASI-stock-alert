@@ -145,8 +145,11 @@ TECH = {
     "min_history_bars": 40,    # skip scoring a name with less history than this.
 }
 
-# --- Market regime (index breakdown filter) --------------------------------
-# When TASI itself is breaking down, suppress BUY signals.
+# --- Market regime (context label, not a filter) ----------------------------
+# Computed once per run and shown in the digest header. It suppresses nothing:
+# BUY is decided by BUY_CRITERIA above, per name, with no market-wide gate. The
+# regime fed the conviction cutoff until conviction was deleted (see
+# docs/backtest-findings-2026-07-23.md); the label was kept, the gate was not.
 REGIME = {
     "index_code":   "^TASI.SR",  # Yahoo symbol for the TASI index.
     "index_ma":     50,          # index below this MA + falling => breakdown.

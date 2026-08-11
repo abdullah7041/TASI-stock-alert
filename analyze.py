@@ -27,8 +27,18 @@ _DEFAULT_LEVELS = {
 
 # --- Market regime ---------------------------------------------------------
 def market_regime(index_df: pd.DataFrame, index_ma: int) -> str:
-    """'ok' or 'breakdown'. Breakdown = index below its MA and the MA is falling.
-    When breakdown, BUY signals are suppressed."""
+    """'ok' / 'breakdown' / 'unknown'. Breakdown = index below its MA and the MA
+    is falling.
+
+    Context, not a gate. This label changes no per-name decision: BUY is decided
+    entirely by buy_decision's three rules. It was a gate once, through the
+    conviction cutoff, and lost that role when conviction was deleted for
+    backtesting inverted against forward return (see
+    docs/backtest-findings-2026-07-23.md). It survives because it is shown in
+    the digest header, carried in the cockpit snapshot, and recorded as a
+    backtest feature column so someone can one day measure whether it ever
+    predicted anything.
+    """
     if index_df is None or index_df.empty or "Close" not in index_df:
         return "unknown"
     closes = index_df["Close"]
