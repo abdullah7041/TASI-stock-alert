@@ -132,6 +132,26 @@ a human, in this order:
 5. Verify the data actually reached the cockpit. Per the design doc, a green
    workflow is not sufficient evidence.
 
+## Executor hazard — agent worktrees start on a stale base (observed 2026-08-10)
+
+Worktrees created for executor agents at this repo are **not** based on current
+`main`. Three separate runs landed on `35cab31` or `8a4e901` — bot
+`state update [skip ci]` commits, up to 20 behind. An executor that trusts its
+worktree HEAD will read an outdated copy of its own plan file and measure a
+baseline that no longer exists.
+
+Every dispatch prompt should therefore begin with a step-zero block that:
+
+1. proves isolation (`git rev-parse --show-toplevel` contains `worktrees`),
+2. prints `git rev-parse --short HEAD` and `git status --porcelain`,
+3. runs `git merge-base --is-ancestor HEAD <target>`, and
+4. **explicitly authorises** `git reset --hard <target>` when that is a clean
+   fast-forward on an empty working tree — otherwise stops.
+
+Getting this wrong in either direction costs a run. A prompt that says only
+"stop if you are not on the base" wastes the dispatch (observed once); saying
+nothing lets the executor silently work from stale plan text (observed once).
+
 ## Executor hazard — worktree deregistration (observed 2026-08-10)
 
 Worth knowing before dispatching any executor at this repo.
