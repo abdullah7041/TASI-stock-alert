@@ -154,11 +154,25 @@ def _budget_record(buys: list) -> None:
 def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    urgent = [
-        {"code": r["code"], "name": r["name"], "action": r["action"], "price": r["price"],
-         "reason": (r.get("reason") or ["No reason recorded."])[0], "pnlPct": r.get("unrealized_pct", 0.0)}
-        for r in recs if r.get("kind") == "holding" and r.get("action") not in ("HOLD", "WATCH")
-    ]
+    urgent = []
+    unknown_cost = []
+    for r in recs:
+        if r.get("kind") != "holding" or r.get("action") in ("HOLD", "WATCH"):
+            continue
+        # `unrealized_pct` is None whenever config.py gives this holding no
+        # usable avg_cost (missing, 0, or 0.0). The snapshot contract requires a
+        # finite number, so send 0.0 -- but never let that read as "flat": an
+        # unknown cost basis is a data-quality problem, not a 0% return, and it
+        # goes in warnings the same way a failed scanner run does.
+        pnl = r.get("unrealized_pct")
+        if pnl is None:
+            unknown_cost.append(str(r.get("code", "?")))
+            pnl = 0.0
+        urgent.append({
+            "code": r["code"], "name": r["name"], "action": r["action"], "price": r["price"],
+            "reason": (r.get("reason") or ["No reason recorded."])[0],
+            "pnlPct": float(pnl),
+        })
     candidates = (scanner_result or {}).get("candidates", [])
     names = (scanner_result or {}).get("names", {})
     qualified = [
@@ -166,8 +180,14 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         for c in candidates if c.get("conditions_met") == 2
     ]
     warning = (scanner_result or {}).get("warning")
+    warnings = [warning] if warning else []
+    if unknown_cost:
+        warnings.append(
+            f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
+            f"P/L shown as 0.0% is unknown, not flat."
+        )
     return {"schemaVersion": 1, "tradeDate": generated_at[:10], "asOf": generated_at,
-            "regime": regime, "dataStatus": "delayed-daily", "warnings": [warning] if warning else [],
+            "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
             "urgent": urgent, "changed": [], "qualified": qualified,
             "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
             "monthlyBudgetSar": budget.get("monthly_cap")}

@@ -1494,6 +1494,55 @@ def test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_can
     }]
 
 
+def test_dashboard_snapshot_sends_zero_and_a_warning_when_avg_cost_is_missing():
+    """A holding with no usable avg_cost must not send null pnlPct: the snapshot
+    validator rejects it, which 400s the ingest, which skips the workflow's
+    commit step and loses that day's history. 0.0 keeps the payload valid; the
+    warning keeps it honest."""
+    import main as m
+
+    snapshot = m._dashboard_snapshot(
+        "ok",
+        [{"kind": "holding", "code": "9999", "name": "No Cost", "action": "SELL (STOP)",
+          "price": 10.0, "reason": ["stop breached"], "unrealized_pct": None}],
+        {"monthly_cap": 500.0},
+        None,
+        as_of="2026-08-10T06:45:00Z",
+    )
+
+    assert snapshot["urgent"][0]["pnlPct"] == 0.0
+    assert isinstance(snapshot["urgent"][0]["pnlPct"], float)
+    assert any("9999" in w for w in snapshot["warnings"])
+
+
+def test_dashboard_snapshot_adds_no_warning_when_every_holding_has_a_cost():
+    import main as m
+
+    snapshot = m._dashboard_snapshot(
+        "ok",
+        [{"kind": "holding", "code": "2320", "name": "Al-Babtain", "action": "SELL (STOP)",
+          "price": 55.85, "reason": ["stop breached"], "unrealized_pct": -13.1}],
+        {"monthly_cap": 500.0},
+        None,
+        as_of="2026-08-10T06:45:00Z",
+    )
+
+    assert snapshot["urgent"][0]["pnlPct"] == -13.1
+    assert snapshot["warnings"] == []
+
+
+def test_evaluate_holding_still_reports_unknown_pnl_as_none():
+    """The engine must keep saying None. Only the cockpit serializer coerces —
+    the Discord digest omits the P/L line entirely, which stays correct."""
+    import pandas as pd
+    df = pd.DataFrame({"Open": [10.0] * 60, "High": [11.0] * 60,
+                       "Low": [9.0] * 60, "Close": [10.0] * 60})
+    rec = az.evaluate_holding({"code": "9999", "name": "No Cost", "shares": 1},
+                              price=10.0, df=df, levels={},
+                              horizon_cfg=cfg.HORIZON, tech=cfg.TECH)
+    assert rec["unrealized_pct"] is None
+
+
 def test_collect_recs_attaches_delta_and_streak(tmp_path, monkeypatch):
     # This test exercises main.py's wiring directly by calling the same
     # snapshot-building logic main.py uses, not by running the full

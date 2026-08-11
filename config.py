@@ -11,7 +11,8 @@ values below are only a fallback used until levels.json exists.
 # code   : Tadawul 4-digit code (string)
 # name   : for readability in alerts
 # shares : how many you hold
-# avg_cost: your average cost per share (SAR)
+# avg_cost: your average cost per share (SAR). Required: without it the digest
+#           cannot compute P/L and the cockpit snapshot flags it as unknown.
 # match_names: optional. disclosures.py filters Argaam's feed by substring on
 #              this name; a few short config names never appear in real filing
 #              titles, which use the full legal name instead. Only names
