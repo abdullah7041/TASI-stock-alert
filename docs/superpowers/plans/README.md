@@ -8,74 +8,83 @@ honor its STOP conditions, and update your row when done.
 Plans dated before 2026-08-10 belong to earlier design cycles and are listed at
 the bottom for context. This index does not track their status.
 
-## The situation this set addresses
+## Current state (updated 2026-08-10, after execution)
+
+`main` is at **`55cde02`, merged locally and NOT pushed.** It now contains:
+
+| Commit | What |
+|---|---|
+| `dbbcec4` | `origin/main` merged in (bot `state update` commits) |
+| `fcefa1e` | **The honest-cockpit repair** — one conflict, `dashboard.json`, resolved to the branch's new 11-key schema |
+| `1cda88d` | Plan 05 — regime docstrings |
+| `48cfcf2` | Plan 06 — Next 16.2.11 |
+| `55cde02` | This plan set |
+
+Rollback branch: **`rollback-pre-merge-2026-08-10`**.
+
+**Verified on the combined tree** (after `npm ci`, with `next@16.2.11` actually
+installed — an earlier pass was misleading because `node_modules` still held
+16.2.6):
+
+- `python -m pytest test_core.py test_cockpit.py research/test_base_rate.py -q` → **200 passed**
+- `npm run build` → **exit 0**
+- `npm run lint` → **exit 0**
+- `npm test` → **16 pass / 0 fail**
+- `tsc --noEmit` → **4 errors** (never run before; that is plan 09)
+
+### Still outstanding, and operator-only
+
+In this order:
+
+1. **Add the GitHub Actions secret `COCKPIT_SIWC_BYPASS_TOKEN`.**
+2. `git push`. **Not before step 1** — the merged workflow has a `test -n` guard
+   on that secret, and a failed digest step skips "Commit state", losing that
+   day's `history.json` and `symbols.json`.
+3. Deploy the private Sites app, keeping the prior version for rollback.
+4. Trigger one manual `digest` run.
+5. Confirm the data actually reached the cockpit. Per the design doc, a green
+   workflow is not sufficient evidence.
+
+### What the audit originally found
 
 The repair described in
 `docs/superpowers/specs/2026-08-09-tasi-honest-daily-cockpit-repair-design.md`
-is **already implemented** on the local branch `codex/fix-honest-daily-cockpit`
-(15 commits ahead of `main`, 0 behind, fast-forward mergeable). `main` — which
-is what production runs — still has all three defects the design describes.
-Plan 01 verifies and stages that merge; almost everything else waits on it.
+was already implemented on `codex/fix-honest-daily-cockpit` but unmerged, while
+`main` — what production runs — still had all three defects. Measured on `main`
+at `6ada068` before the merge:
 
-**Plan 01 executed 2026-08-10 — verdict GO.** Branch tip `172a4e7` verified green
-on all three suites (pytest 200, lint exit 0, `npm test` 16/0); all three defects
-confirmed fixed. Full evidence in
-[the verification report](2026-08-10-01-verification-report.md). Nothing has been
-merged: the secret, the merge, the deploy, and the production check are operator
-actions (see below). **Plans 02, 03, 04, 07, and 08 stay blocked until the merge
-actually lands** — they were written against the post-merge tree.
+- `npm run lint` → exit 1, `react-hooks/rules-of-hooks` at `ActionCockpit.tsx:21`
+- `npm test` → 10 pass / 2 fail
+- pytest → 199 passed
 
-> **✅ MERGED LOCALLY 2026-08-10 — not pushed.** `main` is now `48cfcf2`, holding
-> the cockpit repair (`fcefa1e`), plan 05 (`1cda88d`), and plan 06 (`48cfcf2`).
-> Combined tree verified green: pytest **200**, `npm run build` **0**,
-> `npm run lint` **0**, `npm test` **16/0**, with `next@16.2.11` actually
-> installed. Rollback branch: `rollback-pre-merge-2026-08-10`.
->
-> **Still outstanding and operator-only**: add the `COCKPIT_SIWC_BYPASS_TOKEN`
-> secret, `git push`, deploy the Sites app, run one manual `digest`, and verify
-> the data reached the cockpit. **Do not push before the secret exists** — the
-> merged workflow has a `test -n` guard on it, and a failed digest step skips
-> "Commit state" and loses that day's `history.json` and `symbols.json`.
+Both JS checks were red and had been for some time, because **nothing ran them**.
+That is what plan 02 fixes, and it remains the highest-value item still open.
 
-> **⚠ Correction — the merge was not a fast-forward.** Every fast-forward claim in
-> this plan set was measured against **local** `main` at `6ada068`, which is
-> stale. Local `main` is 1 ahead / 6 behind `origin/main`: it holds one unpushed
-> commit (`6ada068 docs: design honest daily cockpit repair`) while the bot
-> pushed six `state update [skip ci]` commits touching only `dashboard.json` and
-> `state.json`. Against `origin/main` the repair branch is 18 ahead / 6 behind,
-> and `git merge-tree --write-tree` reports exactly one conflict —
-> `CONFLICT (add/add): dashboard.json`. No source file conflicts. The GO verdict
-> stands; only the merge mechanics changed. See the **CORRECTION** section in
-> [plan 01](2026-08-10-01-land-honest-cockpit-repair.md) for the corrected
-> sequence.
->
-> This also means the dependency ordering below is about **when the merge lands**,
-> not about local `main`'s current SHA.
+### Two corrections worth carrying forward
 
-Two facts worth knowing before touching anything, both measured at `6ada068`:
-
-- `npm run lint` **fails** — one error, `react-hooks/rules-of-hooks` at
-  `app/components/ActionCockpit.tsx:21`.
-- `npm test` **fails** — 10 pass, 2 fail in `tests/action-cockpit.test.mjs`.
-- `python -m pytest test_core.py test_cockpit.py research/test_base_rate.py -q`
-  passes — 199 tests.
-
-The JS checks are red because nothing runs them: the only workflow
-(`.github/workflows/tasi.yml`) runs `pytest` on two Python files and nothing
-else. That is plan 02.
+- **The merge was never a fast-forward.** Every FF claim in this set was measured
+  against a stale local `main`. Against `origin/main` the branch was 18 ahead / 6
+  behind with one `add/add` conflict in `dashboard.json`. Resolved by taking the
+  branch's version. Detail in plan 01's CORRECTION section.
+- **Two done criteria were wrong as written**, both the plan author asserting an
+  unverified outcome: plan 06's "`npm audit` reports 0 vulnerabilities" (bundled
+  `postcss`/`sharp` keep the count at 3; the nine *Next.js* advisories did clear),
+  and plan 02's assumption that the repo typechecks (it never had). Both are
+  corrected in place, and the second became plan 09.
 
 ## Execution order & status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 01 | [Verify and stage the honest-cockpit repair branch](2026-08-10-01-land-honest-cockpit-repair.md) | P1 | S | — | **DONE — verdict GO**, see [report](2026-08-10-01-verification-report.md). Merge is an operator action and has **not** happened. |
-| 02 | [Give the TypeScript half a CI verification gate](2026-08-10-02-ci-verification-baseline.md) | P1 | M | 01 | TODO |
+| 02 | [Give the TypeScript half a CI verification gate](2026-08-10-02-ci-verification-baseline.md) | P1 | M | 01 ✅ | TODO — attempt 1 STOPPED correctly at its own typecheck STOP condition. Plan revised: typecheck split out to plan 09, gate now ships lint + build + both suites. Re-dispatch. |
 | 03 | [Delete the seven risk controls that do not exist](2026-08-10-03-resolve-phantom-risk-controls.md) | P1 | S | 01 | TODO |
 | 04 | [Stop a holding with no `avg_cost` from failing the workflow](2026-08-10-04-fix-pnlpct-null-ingest-break.md) | P2 | S | 01 | TODO |
 | 05 | [Correct the comments claiming the regime gates BUY](2026-08-10-05-fix-stale-regime-docstrings.md) | P3 | S | — | **DONE — reviewer-approved.** Commit `34e5da1` on branch `worktree-agent-a0c4dc2eb959923fe`. All done criteria re-verified independently; pytest 199 = baseline; diff is prose-only. Merges onto `origin/main` cleanly (`merge-tree` exit 0). **Not merged — operator's call.** |
 | 06 | [Patch Next.js 16.2.6 → 16.2.11](2026-08-10-06-patch-next-to-16-2-11.md) | P3 | S | — | **DONE — reviewer-approved.** Commit `3c662e1` on `worktree-agent-aa641462c2ba53baa`. Nine Next.js advisories cleared; build 0; lint and `npm test` byte-identical to baseline. One done criterion was wrong as written — see the plan's CORRECTION. Took three attempts (see "Executor hazard"). **Not merged.** |
 | 07 | [Bound the unbounded loop in `trend_trigger`](2026-08-10-07-bound-trend-trigger-loop.md) | P3 | S | 01 | TODO |
 | 08 | [Delete the parallel dashboard serializer nothing calls](2026-08-10-08-remove-dead-cockpit-serializer.md) | P3 | S | 01, 02, 04 | TODO |
+| 09 | [Make `tsc` pass, then add a `typecheck` script](2026-08-10-09-fix-typecheck-errors.md) | P2 | S | — | TODO — split out of plan 02 on 2026-08-10. Four pre-existing strict-mode errors; none is a runtime bug. |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).

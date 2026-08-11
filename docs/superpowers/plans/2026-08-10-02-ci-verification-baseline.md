@@ -152,7 +152,8 @@ whole thing takes about 30 seconds.
 ### There is no typecheck script
 
 `tsconfig.json` sets `"strict": true` and `"noEmit": true`, but nothing invokes
-`tsc`. Adding a typecheck script is in scope for this plan. Note `tsconfig.json`
+`tsc`. Adding one is **out of scope for this plan** — see the removed step 2; it
+is plan 09. Note `tsconfig.json`
 also sets `"incremental": true`, which makes `tsc` write a `.tsbuildinfo` file —
 add `--incremental false` to the script so CI does not produce a stray artifact.
 
@@ -172,7 +173,6 @@ add `--incremental false` to the script so CI does not produce a stray artifact.
 |---|---|---|
 | Python tests (full) | `python -m pytest test_core.py test_cockpit.py research/test_base_rate.py -q` | exit 0, all pass |
 | Lint | `npm run lint` | exit 0, no errors |
-| Typecheck (after step 2) | `npm run typecheck` | exit 0, no errors |
 | JS build + tests | `npm test` | exit 0, all pass |
 | Workflow YAML parses | `python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci.yml',encoding='utf-8')); print('ok')"` | prints `ok` |
 
@@ -223,19 +223,41 @@ If any is red, plan 01 has not fully landed. STOP and report which command
 failed and its output. Do not proceed — adding CI on top of a red tree produces
 a workflow that fails on its first run for reasons that are not yours.
 
-### Step 2: Add a typecheck script
+### Step 2: (REMOVED — moved to plan 09)
 
-In `package.json`, add one entry to `"scripts"`, placed after `"test"`:
+**Revised 2026-08-10 after an executor correctly stopped here.**
 
-```json
-    "typecheck": "tsc --noEmit --incremental false",
+This step used to say "add a `typecheck` script, and STOP if it reports errors."
+An executor did exactly that, added the script, ran it, and hit four
+pre-existing type errors. It stopped, as instructed, having completed nothing
+else.
+
+That was the executor behaving correctly and **the plan being wrong**. The plan
+author asserted the repo would typecheck clean without ever running `tsc` — the
+repo has no typecheck script, so nothing had ever type-checked it. Bundling an
+unknown-outcome cleanup into the CI-gate plan made the whole gate hostage to it.
+
+The four errors, reproduced on `55cde02` with
+`node ./node_modules/typescript/bin/tsc --noEmit --incremental false`:
+
+```
+app/api/research/report/route.ts(9,66): error TS2345: ... Type 'string' is not assignable to type '"delayed-daily"'.
+app/components/ActionCockpit.tsx(50,66): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+worker/index.ts(9,11):  error TS2304: Cannot find name 'Fetcher'.
+worker/index.ts(20,48): error TS2304: Cannot find name 'ExecutionContext'.
 ```
 
-**Verify**: `npm run typecheck` → exit 0, no errors printed.
+None is a runtime bug — `npm run build`, `npm test` (16/0), and pytest (200) are
+all green at that commit. Three are missing type-library configuration; one is a
+real type-narrowing gap.
 
-If it reports type errors, that is a pre-existing condition this plan did not
-create. Record the full error list in your report and STOP — fixing them is a
-separate plan, and you must not weaken `tsconfig.json` to silence them.
+**Adding the `typecheck` script and fixing those four is now plan 09.** Do not
+do it here. This plan ships the CI gate for lint, build, and both test suites —
+all three of which are already green and therefore gateable today. When plan 09
+lands, add a `Typecheck` step to `ci.yml`'s `web` job; that is called out in
+plan 09's own steps.
+
+Skip straight to step 2b.
 
 ### Step 2b: Make `npm run lint` ignore agent worktrees too
 
@@ -353,8 +375,6 @@ jobs:
       - run: npm ci
       - name: Lint
         run: npm run lint
-      - name: Typecheck
-        run: npm run typecheck
       # `npm test` runs `npm run build` first: tests/action-cockpit.test.mjs
       # imports ../dist/server/index.js, so the build is a prerequisite, not
       # a duplicate step.
@@ -376,7 +396,6 @@ python -c "import yaml; d=yaml.safe_load(open('.github/workflows/ci.yml',encodin
 ```bash
 python -m pytest test_core.py test_cockpit.py research/test_base_rate.py -q
 npm run lint
-npm run typecheck
 npm test
 ```
 
@@ -412,7 +431,6 @@ Machine-checkable. ALL must hold:
 - [ ] `.github/workflows/ci.yml` exists and defines jobs `python` and `web`
 - [ ] `grep -c "test_cockpit.py" .github/workflows/tasi.yml` returns `1`
 - [ ] `grep -c "skip ci" .github/workflows/tasi.yml` returns `1` (still there)
-- [ ] `npm run typecheck` exits 0
 - [ ] `npm run lint` exits 0
 - [ ] `npm test` exits 0
 - [ ] `python -m pytest test_core.py test_cockpit.py research/test_base_rate.py -q` exits 0
@@ -426,8 +444,8 @@ Stop and report back (do not improvise) if:
 
 - The pre-flight check in "Dependency" prints `NOT LANDED`.
 - Step 1 finds any command red. Report which, with output.
-- `npm run typecheck` reports type errors in step 2. List them; do not fix them
-  here and do not loosen `tsconfig.json`.
+- You are tempted to add a `typecheck` script or a `Typecheck` CI step. That is
+  plan 09, and this plan was revised specifically to stop blocking on it.
 - You are tempted to edit a test, widen an ignore pattern, add
   `continue-on-error`, or otherwise make a check pass by making it weaker. The
   gate exists to report truth.
