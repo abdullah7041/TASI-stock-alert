@@ -47,7 +47,7 @@ News is an auditable keyword/phrase tally over free Google News headlines — wo
 2. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
    - `DISCORD_WEBHOOK_URL` = your Discord channel webhook URL.
    - `SAHMK_API_KEY` = your SAHMK Free key (optional; only used as a fallback and for the index).
-3. In `config.py`, set `RISK["deployable_cash"]` to your real cash. It ships at a 3000 placeholder.
+3. In `config.py`, set `BUDGET["monthly_budget_sar"]` to what you are willing to commit to new buys per calendar month. It ships at 500.
 4. Commit and push. The schedule runs automatically.
 
 ## First-run checklist (do these in order)
@@ -229,7 +229,7 @@ win rate here should always be read alongside expectancy.
 
 ## Risk rules (in config.py)
 
-Defaults are tuned for a small account: max 5 positions, 25% of deployable cash per buy, 9% stop, 35% cap on any single name, 12% cash buffer, and a commission floor that skips lots too small to be worth the fees. Change any number. The engine reads your values.
+Two numbers, and the engine reads both: `max_positions` (5) caps concurrent open names, and `stop_loss_pct` (9%) caps how far below entry a derived stop may sit. That is the whole list. Seven further keys — deployable-cash sizing, per-name concentration caps, a cash buffer, and commission thresholds — used to be listed here and were never implemented; they were removed in 2026-08-10 rather than left as documentation for behavior that did not exist. New-buy sizing is equal-weight from `BUDGET["monthly_budget_sar"]`, described under "Monthly buy budget" above.
 
 ## Known risks
 

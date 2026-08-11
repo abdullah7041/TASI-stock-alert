@@ -110,18 +110,19 @@ LEVELS = {
     "atr_trim_frac":    0.6,   # take partial profit 60% of the way to target.
 }
 
-# --- Risk rules (small account, balanced) ----------------------------------
-# Every number here is yours to change. The engine reads these, no magic constants.
+# --- Risk rules (small account) ---------------------------------------------
+# Only what the engine actually reads. Seven further keys (deployable_cash,
+# position_pct, max_single_pct, cash_buffer_pct, commission_rate,
+# min_commission, commission_floor_pct) were removed on 2026-08-10: they had
+# never been read by any code path, while README.md described them as live
+# behavior — a configured cap that does not exist is worse than no cap, because
+# it stops you looking. Position sizing is equal-weight from BUDGET, in
+# analyze.allocate_budget. Re-adding any of them means implementing and
+# measuring it first, the same bar conviction failed to clear (see
+# docs/backtest-findings-2026-07-23.md).
 RISK = {
-    "deployable_cash":   3000.0,   # SET THIS to your real deployable cash (SAR).
-    "max_positions":     5,        # max concurrent open names.
-    "position_pct":      0.25,     # target size per new buy, fraction of deployable cash.
-    "stop_loss_pct":     0.09,     # stop distance below entry (technical invalidation cap).
-    "max_single_pct":    0.35,     # no single name above this fraction of portfolio.
-    "cash_buffer_pct":   0.12,     # keep this fraction uninvested (dry powder).
-    "commission_rate":   0.00155,  # Tadawul round-trip ~0.155% (buy+sell). Adjust to your broker.
-    "min_commission":    0.0,      # some brokers have a floor; set if yours does.
-    "commission_floor_pct": 0.01,  # skip a buy if round-trip commission > 1% of trade value.
+    "max_positions":     5,        # max concurrent open names (analyze.allocate_budget).
+    "stop_loss_pct":     0.09,     # stop distance cap below entry (analyze.derive_levels).
 }
 
 # --- Horizons --------------------------------------------------------------
