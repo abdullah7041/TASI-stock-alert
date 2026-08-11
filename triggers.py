@@ -236,16 +236,22 @@ def trend_trigger(closes, short_ma: int, long_ma: int,
     while price <= hi_p:
         price += step
         if is_up(price):
-            # price is a scan step, not necessarily a "clean" 2-decimal
-            # price a real quote could take. Round UP to the nearest cent
-            # (never down) and re-verify: naively round()-ing the raw scan
-            # price to 2dp can round it DOWN past the actual qualifying
-            # boundary, reporting a trigger that would NOT actually flip
-            # trend if that exact price were appended tomorrow.
-            candidate_trigger = math.ceil(price * 100) / 100
-            while not is_up(candidate_trigger):
-                candidate_trigger += 0.01
-            trigger = round(candidate_trigger, 2)
+            # `price` is a scan step, not a price a real quote could take.
+            # Round UP to the nearest cent (never down -- rounding down can
+            # land back below the qualifying boundary and quote a trigger that
+            # would NOT flip trend) and re-verify through the real
+            # indicators.trend. _verified_price does exactly that walk and,
+            # unlike the hand-rolled loop this replaces, it walks on a budget:
+            # this function's own docstring above refuses to assume is_up is
+            # monotone in the appended price, and an unbudgeted walk assumed it
+            # anyway. A non-monotone predicate would have spun here forever, on
+            # the digest path, inside a scheduled job.
+            trigger = _verified_price(price, now, rising=True, holds=is_up,
+                                      max_pct=max_pct)
+            if trigger is None:
+                return {"rule": "trend", "trigger_price": None, "pct_away": None,
+                        "reachable": False,
+                        "plain": "no verifiable trigger price for the trend rule"}
             pct_away = round((trigger - now) / now * 100.0, 2)
             return {"rule": "trend", "trigger_price": trigger,
                     "pct_away": pct_away, "reachable": True,
