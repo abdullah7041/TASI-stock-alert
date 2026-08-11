@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DashboardFixture } from "@/app/fixtures/dashboard";
+import type { Candidate } from "@/app/lib/dashboard-types";
 import styles from "./ResearchWorkspace.module.css";
 
-type Candidate = DashboardFixture["qualified"][number];
 type Citation = { title: string; url: string };
 type Section = { title: string; body: string; provenance: "deterministic" | "research"; citations: Citation[] };
 type Report = { verdict: "RESEARCH" | "WAIT" | "SKIP"; generatedAt: string; dataStatus: string; sections: Section[] };

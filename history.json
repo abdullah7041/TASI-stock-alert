@@ -42,8 +42,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 15.0,
-      "rsi": 52.8,
+      "price": 14.92,
+      "rsi": 51.9,
       "trend": "down",
       "rules_met": null,
       "blocking": null
@@ -92,8 +92,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 61.15,
-      "rsi": 53.1,
+      "price": 60.5,
+      "rsi": 51.2,
       "trend": "down",
       "rules_met": null,
       "blocking": null
@@ -142,8 +142,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 132.6,
-      "rsi": 43.4,
+      "price": 133.0,
+      "rsi": 44.1,
       "trend": "down",
       "rules_met": null,
       "blocking": null
@@ -202,8 +202,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 140.8,
-      "rsi": 41.9,
+      "price": 140.0,
+      "rsi": 40.0,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -269,12 +269,13 @@
     },
     {
       "date": "2026-08-09",
-      "price": 61.0,
-      "rsi": 58.6,
+      "price": 61.3,
+      "rsi": 60.2,
       "trend": "flat",
-      "rules_met": 1,
+      "rules_met": 0,
       "blocking": [
         "momentum_floor",
+        "rsi_band",
         "trend"
       ]
     }
@@ -337,8 +338,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 95.05,
-      "rsi": 57.0,
+      "price": 95.45,
+      "rsi": 59.7,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -408,8 +409,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 27.42,
-      "rsi": 24.2,
+      "price": 26.86,
+      "rsi": 18.2,
       "trend": "down",
       "rules_met": 0,
       "blocking": [
@@ -472,8 +473,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 35.5,
-      "rsi": 51.7,
+      "price": 35.72,
+      "rsi": 54.2,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -539,8 +540,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 12.07,
-      "rsi": 44.9,
+      "price": 12.04,
+      "rsi": 44.2,
       "trend": "down",
       "rules_met": 1,
       "blocking": [
@@ -603,9 +604,9 @@
     },
     {
       "date": "2026-08-09",
-      "price": 172.4,
-      "rsi": 50.1,
-      "trend": "flat",
+      "price": 170.0,
+      "rsi": 46.2,
+      "trend": "down",
       "rules_met": 2,
       "blocking": [
         "trend"
@@ -670,8 +671,8 @@
     },
     {
       "date": "2026-08-09",
-      "price": 118.5,
-      "rsi": 49.9,
+      "price": 119.3,
+      "rsi": 52.8,
       "trend": "down",
       "rules_met": 1,
       "blocking": [

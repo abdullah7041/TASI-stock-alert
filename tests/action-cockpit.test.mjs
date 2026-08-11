@@ -13,31 +13,28 @@ async function renderDashboard() {
   );
 }
 
-test("renders an action-first cockpit instead of a generic loading page", async () => {
+test("renders an action-first cockpit instead of a generic page", async () => {
   const response = await renderDashboard();
   const html = await response.text();
 
   assert.match(html, /TASI Action Cockpit/i);
+  assert.match(html, /Loading the latest saved daily digest/i);
   assert.doesNotMatch(html, /Your site is taking shape/i);
 });
 
-test("limits Home scanner cards to qualified names and labels preview data", async () => {
-  const response = await renderDashboard();
-  const html = await response.text();
+test("does not import preview fixtures and includes an unavailable state", () => {
+  const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
 
-  assert.match(html, /Preview data — delayed\/daily/i);
-  assert.match(html, /Al-Babtain/i);
-  assert.match(html, /Why this action\?/i);
-  assert.equal((html.match(/data-state="qualified"/g) ?? []).length, 1);
-  assert.doesNotMatch(html, /Tabuk Agricultural/i);
+  assert.doesNotMatch(source, /fixtures\/dashboard/);
+  assert.match(source, /No verified daily snapshot is available/i);
+  assert.match(source, /Delayed\/daily data/i);
 });
 
-test("offers research only from a qualified scanner card", async () => {
-  const response = await renderDashboard();
-  const html = await response.text();
+test("uses separate Sites and app credentials for private ingestion", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
 
-  assert.match(html, /aria-label="Research Alinma Bank"/);
-  assert.doesNotMatch(html, /aria-label="Research Tabuk Agricultural"/);
+  assert.match(workflow, /COCKPIT_SIWC_BYPASS_TOKEN/);
+  assert.match(workflow, /OAI-Sites-Authorization: Bearer/);
 });
 
 test("lint ignores local worktrees and their generated output", () => {
