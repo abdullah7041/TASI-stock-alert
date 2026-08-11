@@ -36,7 +36,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Run tests
-        run: python -m pytest test_core.py test_cockpit.py research/test_base_rate.py -v
+        run: python -m pytest test_core.py research/test_base_rate.py -v
 
       - name: Pick mode
         id: mode

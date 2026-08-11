@@ -1492,6 +1492,7 @@ def test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_can
         "code": "1150", "name": "Alinma Bank", "relativeStrengthPct": 10.4,
         "squeeze": True, "conditionsMet": 2,
     }]
+    assert snapshot["researchCount"] == 1
 
 
 def test_dashboard_snapshot_sends_zero_and_a_warning_when_avg_cost_is_missing():
