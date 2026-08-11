@@ -248,17 +248,60 @@ calls are a different symbol and are fine.)
 
 ### Step 2: Confirm the live path is already covered — before deleting anything
 
+**Corrected 2026-08-12.** This gate originally demanded "at least 4" passing
+tests. That number was wrong: it assumed plan 04's three tests all matched
+`-k dashboard_snapshot`, but plan 04's third is
+`test_evaluate_holding_still_reports_unknown_pnl_as_none` — deliberately named
+for a different function, so it does not match the filter. The correct
+expectation is **3**. An executor correctly stopped on the bad threshold; do not
+"fix" that by lowering a number without reading the rest of this step.
+
+Counting tests was the wrong gate anyway. What matters is whether the two
+behaviors `test_cockpit.py` verifies are covered against the **live**
+serializer. Check by name and by behavior:
+
 ```bash
 python -m pytest test_core.py -q -k dashboard_snapshot -v
 ```
 
-**Verify**: at least 4 tests pass, and their names reference
-`_dashboard_snapshot` behavior (actionable holdings, two-condition candidates,
-missing `avg_cost`, warnings). These come from plans 01 and 04.
+**Verify**: exactly these 3 pass —
 
-If fewer than 4 pass, plans 01 and 04 have not both landed. **STOP.** Deleting
-`test_cockpit.py` before its replacement coverage exists is a net loss of
-verification, which is the opposite of this plan's intent.
+- `test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_candidates`
+- `test_dashboard_snapshot_sends_zero_and_a_warning_when_avg_cost_is_missing`
+- `test_dashboard_snapshot_adds_no_warning_when_every_holding_has_a_cost`
+
+If any is missing, **STOP** — plans 01 and 04 have not both landed.
+
+Now the substantive comparison. `test_cockpit.py` asserts three things:
+
+| `test_cockpit.py` assertion | Covered on the live path? |
+|---|---|
+| non-HOLD/WATCH holdings only reach `urgent` | yes — the first test above passes a `HOLD` holding and asserts `urgent` contains only the `SELL (STOP)` |
+| only 2-condition candidates reach `qualified` | yes — same test passes a 1-condition candidate and asserts `qualified` contains only the 2-condition one |
+| `researchCount` counts the 1-condition candidates | **no** — nothing on the live path asserts this |
+
+So one genuine gap exists. Close it **before** deleting anything, so the
+deletion is lossless rather than nearly so.
+
+In `test_core.py`, add one assertion to
+`test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_candidates`.
+Its fixture already supplies exactly one 1-condition candidate (`4015`), so:
+
+```python
+    assert snapshot["researchCount"] == 1
+```
+
+Put it immediately after the existing `assert snapshot["qualified"] == [...]`
+block.
+
+**Verify**:
+
+```bash
+python -m pytest test_core.py -q -k dashboard_snapshot
+```
+→ still 3 passed. The test count does not change; the assertion count does.
+
+This adds `test_core.py` to your in-scope list for this step only.
 
 ### Step 3: Remove `test_cockpit.py` from the workflows first
 
@@ -432,7 +475,7 @@ Machine-checkable. ALL must hold:
 - [ ] `git grep -n "cockpit\.dashboard\|cockpit\.contracts\|build_dashboard_snapshot" -- '*.py' '*.yml'` returns no output
 - [ ] `python -c "import main; print('ok')"` prints `ok`
 - [ ] `python -m pytest test_core.py research/test_base_rate.py -q` exits 0
-- [ ] `python -m pytest test_core.py -q -k dashboard_snapshot` exits 0 with ≥4 passed
+- [ ] `python -m pytest test_core.py -q -k dashboard_snapshot` exits 0 with 3 passed, and one of them now asserts `researchCount`
 - [ ] The step 4 smoke test prints a snapshot containing all eleven fields
 - [ ] `npm run lint` exits 0 and `npm test` exits 0
 - [ ] `git status --porcelain` lists no file outside the in-scope list
@@ -444,8 +487,9 @@ Stop and report back (do not improvise) if:
 
 - Step 1 finds any importer of `cockpit` other than `test_cockpit.py`, or any
   caller of `_regime()`.
-- Step 2 finds fewer than 4 passing `dashboard_snapshot` tests — plans 01 and 04
-  have not both landed, and deleting now loses coverage.
+- Step 2 does not find all three named `dashboard_snapshot` tests — plans 01 and
+  04 have not both landed, and deleting now loses coverage. (The count is 3, not
+  4; see the correction in step 2.)
 - The pre-flight `git grep -n "test_cockpit.py" -- .github/workflows/` returns
   zero lines.
 - Step 4's smoke test prints a snapshot missing any of the eleven fields — that
