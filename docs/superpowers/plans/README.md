@@ -32,6 +32,9 @@ installed — an earlier pass was misleading because `node_modules` still held
 - `npm test` → **16 pass / 0 fail**
 - `tsc --noEmit` → **4 errors** (never run before; that is plan 09)
 
+**Plan 02 landed at `8048ccf`.** CI now runs on push and pull request: lint, build,
+and both test suites. It does **not** yet run typecheck — that arrives with plan 09.
+
 ### Still outstanding, and operator-only
 
 In this order:
@@ -77,7 +80,7 @@ That is what plan 02 fixes, and it remains the highest-value item still open.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 01 | [Verify and stage the honest-cockpit repair branch](2026-08-10-01-land-honest-cockpit-repair.md) | P1 | S | — | **DONE — verdict GO**, see [report](2026-08-10-01-verification-report.md). Merge is an operator action and has **not** happened. |
-| 02 | [Give the TypeScript half a CI verification gate](2026-08-10-02-ci-verification-baseline.md) | P1 | M | 01 ✅ | TODO — attempt 1 STOPPED correctly at its own typecheck STOP condition. Plan revised: typecheck split out to plan 09, gate now ships lint + build + both suites. Re-dispatch. |
+| 02 | [Give the TypeScript half a CI verification gate](2026-08-10-02-ci-verification-baseline.md) | P1 | M | 01 ✅ | **DONE — merged into `main`.** New `.github/workflows/ci.yml` (jobs `python` + `web`, `permissions: contents: read`, no secrets); `test_cockpit.py` added to the scheduled safety gate; lint now ignores `.claude`. Took 3 attempts — see both executor hazards. |
 | 03 | [Delete the seven risk controls that do not exist](2026-08-10-03-resolve-phantom-risk-controls.md) | P1 | S | 01 | TODO |
 | 04 | [Stop a holding with no `avg_cost` from failing the workflow](2026-08-10-04-fix-pnlpct-null-ingest-break.md) | P2 | S | 01 | TODO |
 | 05 | [Correct the comments claiming the regime gates BUY](2026-08-10-05-fix-stale-regime-docstrings.md) | P3 | S | — | **DONE — reviewer-approved.** Commit `34e5da1` on branch `worktree-agent-a0c4dc2eb959923fe`. All done criteria re-verified independently; pytest 199 = baseline; diff is prose-only. Merges onto `origin/main` cleanly (`merge-tree` exit 0). **Not merged — operator's call.** |
