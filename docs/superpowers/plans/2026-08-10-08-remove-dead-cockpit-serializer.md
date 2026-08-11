@@ -147,7 +147,9 @@ test_cockpit.py:1:from cockpit.dashboard import build_dashboard_snapshot
 Plan 01 added `test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_candidates`
 to `test_core.py`, which calls `m._dashboard_snapshot(...)` directly and asserts
 on `schemaVersion`, `tradeDate`, `dataStatus`, `warnings`, `regime`, `urgent`,
-and `qualified`. Plan 04 added three more tests against the same function. So
+and `qualified`. Plan 04 added two more against the same function (its third,
+`test_evaluate_holding_still_reports_unknown_pnl_as_none`, targets
+`analyze.evaluate_holding` instead). So
 the two behaviors `test_cockpit.py` checks — actionable-only holdings, and
 two-condition-only candidates — are already covered against the implementation
 that actually runs. **Confirm this before deleting** (step 2); do not take it on
@@ -181,7 +183,7 @@ just a few lines.
 | Purpose | Command | Expected on success |
 |---|---|---|
 | Python tests (after deletion) | `python -m pytest test_core.py research/test_base_rate.py -q` | exit 0 |
-| Coverage check | `python -m pytest test_core.py -q -k dashboard_snapshot` | exit 0, ≥4 passed |
+| Coverage check | `python -m pytest test_core.py -q -k dashboard_snapshot` | exit 0, 3 passed (see step 2) |
 | Import smoke test | `python -c "import main; print('ok')"` | prints `ok` |
 | Digest smoke test | see step 4 | prints a valid snapshot |
 | Lint | `npm run lint` | exit 0 |
