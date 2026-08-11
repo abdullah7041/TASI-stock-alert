@@ -2106,6 +2106,41 @@ def test_risk_config_contains_only_keys_the_engine_reads():
     assert set(cfg.RISK) == {"max_positions", "stop_loss_pct"}
 
 
+def test_trend_trigger_terminates_when_the_predicate_is_not_monotone(monkeypatch):
+    """trend_trigger's docstring refuses to assume is_up is monotone in the
+    appended price. Its refinement walk used to assume it anyway, with no
+    budget -- a non-monotone predicate hung the digest inside a scheduled job.
+    Here the stub qualifies only at a sub-cent price the cent-rounding steps
+    straight past, so the walk can never succeed. It must return an unreachable
+    trigger, not spin."""
+    import indicators as ind_mod
+
+    closes = [100 - i * 0.04 for i in range(60)]
+    only_qualifying = None
+
+    def fake_trend(series, short_ma, long_ma):
+        nonlocal only_qualifying
+        values = list(series)
+        if len(values) == len(closes):
+            return "down"                      # today's reading: not up yet.
+        appended = float(values[-1])
+        if only_qualifying is None and appended > closes[-1]:
+            only_qualifying = appended         # the first scan step "works"...
+        # ...but nothing else ever does, so the cent-by-cent walk that follows
+        # can never confirm a real 2-decimal quote.
+        return "up" if appended == only_qualifying else "down"
+
+    monkeypatch.setattr(trig.ind, "trend", fake_trend)
+
+    t = trig.trend_trigger(closes, 20, 50)
+
+    assert t["rule"] == "trend"
+    assert t["reachable"] is False
+    assert t["trigger_price"] is None
+    assert t["pct_away"] is None
+    assert "no verifiable trigger price" in t["plain"]
+
+
 if __name__ == "__main__":
     import sys
     fns = [f for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
