@@ -49,6 +49,7 @@ function expectedSnapshotDateInRiyadh(now) {
   return isTradingDay && !beforeDeadline ? current.date : previousTradingDate(current.date);
 }
 
+/** @returns {import("./dashboard-types").DashboardSnapshot} */
 export function parseDashboardSnapshot(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Dashboard snapshot must be an object.");
   if (value.schemaVersion !== 1) throw new Error("Unsupported dashboard snapshot version.");

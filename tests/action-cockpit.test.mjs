@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 async function renderDashboard() {
@@ -37,8 +39,20 @@ test("uses separate Sites and app credentials for private ingestion", () => {
   assert.match(workflow, /OAI-Sites-Authorization: Bearer/);
 });
 
-test("lint ignores local worktrees and their generated output", () => {
-  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+test("lint ignores invalid files inside nested Claude worktrees", () => {
+  const fixtureDir = fileURLToPath(new URL("../.claude/worktrees/lint-fixture", import.meta.url));
+  const projectDir = fileURLToPath(new URL("../", import.meta.url));
 
-  assert.match(packageJson.scripts.lint, /--ignore-pattern \.worktrees/);
+  mkdirSync(fixtureDir, { recursive: true });
+  writeFileSync(`${fixtureDir}/broken.ts`, "const = ;\n");
+  try {
+    const command = process.platform === "win32" ? "cmd.exe" : "npm";
+    const args = process.platform === "win32" ? ["/d", "/s", "/c", "npm run lint"] : ["run", "lint"];
+    execFileSync(command, args, {
+      cwd: projectDir,
+      stdio: "pipe",
+    });
+  } finally {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  }
 });
