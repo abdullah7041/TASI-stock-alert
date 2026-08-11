@@ -26,3 +26,16 @@ declare module "cloudflare:workers" {
     DASHBOARD_INGEST_TOKEN?: string;
   };
 }
+
+// Cloudflare Workers runtime globals used by worker/index.ts. Declared by hand,
+// deliberately: this repo describes only the surface it actually uses rather
+// than depending on @cloudflare/workers-types, the same choice the
+// "cloudflare:workers" module declaration above makes.
+interface Fetcher {
+  fetch(input: Request | string, init?: RequestInit): Promise<Response>;
+}
+
+interface ExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+}
