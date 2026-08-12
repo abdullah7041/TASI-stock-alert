@@ -401,6 +401,15 @@ def mode_digest() -> int:
     return 0 if ok else 1
 
 
+def mode_top10_draft() -> int:
+    """Create a dated draft snapshot; user approval remains required on the site."""
+    regime, recs, budget = _collect_recs(include_news=True, record_history=False)
+    scanner_result = _scanner_result()
+    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result))
+    print("Top 10 evidence draft snapshot written; no list was approved or traded.")
+    return 0
+
+
 def mode_run() -> int:
     regime, recs, budget = _collect_recs(include_news=False, record_history=False)
     # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
@@ -533,6 +542,7 @@ MODES = {
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
+    "top10-draft": mode_top10_draft,
     "run": mode_run,
     "universe": mode_universe,
     "features": mode_features,

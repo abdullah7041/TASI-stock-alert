@@ -36,6 +36,13 @@ def test_dashboard_snapshot_marks_unresearched_top10_as_unavailable_instead_of_i
     assert "no current primary-source evidence" in snapshot["warnings"][-1]
 
 
+def test_workflow_has_separate_weekly_top10_draft_mode():
+    from pathlib import Path
+    workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+    assert "mode=top10-draft" in workflow
+    assert "Delayed bot confirmation" in Path("movement.py").read_text(encoding="utf-8")
+
+
 def test_unusual_price_alert_is_delayed_and_rearms_only_below_two_z():
     observation = {"code": "1303", "excess_move_pct": -2.1, "robust_z": -4.8, "volume_ratio": 1.0, "observed_at": "2026-08-12T10:00:00Z", "received_at": "2026-08-12T10:01:00Z", "fresh": True, "comparable_observations": 30}
     first = detect_unusual_movement(observation, {}, [])
@@ -1504,10 +1511,10 @@ def test_dashboard_snapshot_keeps_only_actionable_holdings_and_two_condition_can
     )
 
     assert snapshot["asOf"] == "2026-08-09T06:45:00Z"
-    assert snapshot["schemaVersion"] == 1
+    assert snapshot["schemaVersion"] == 2
     assert snapshot["tradeDate"] == "2026-08-09"
     assert snapshot["dataStatus"] == "delayed-daily"
-    assert snapshot["warnings"] == []
+    assert snapshot["warnings"] == ["Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."]
     assert snapshot["regime"] == "breakdown"
     assert snapshot["urgent"] == [{
         "code": "2320", "name": "Al-Babtain", "action": "SELL (STOP)", "price": 55.85,
@@ -1541,7 +1548,7 @@ def test_dashboard_snapshot_sends_zero_and_a_warning_when_avg_cost_is_missing():
     assert any("9999" in w for w in snapshot["warnings"])
 
 
-def test_dashboard_snapshot_adds_no_warning_when_every_holding_has_a_cost():
+def test_dashboard_snapshot_adds_only_evidence_warning_when_every_holding_has_a_cost():
     import main as m
 
     snapshot = m._dashboard_snapshot(
@@ -1554,7 +1561,7 @@ def test_dashboard_snapshot_adds_no_warning_when_every_holding_has_a_cost():
     )
 
     assert snapshot["urgent"][0]["pnlPct"] == -13.1
-    assert snapshot["warnings"] == []
+    assert snapshot["warnings"] == ["Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."]
 
 
 def test_evaluate_holding_still_reports_unknown_pnl_as_none():
