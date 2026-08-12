@@ -22,6 +22,21 @@ test("accepts a valid saved dashboard snapshot", () => {
   assert.equal(snapshot.dataStatus, "delayed-daily");
 });
 
+test("accepts separately dated market, research, portfolio, alert, and forecast evidence", () => {
+  const snapshot = parseDashboardSnapshot({
+    ...validSnapshot,
+    schemaVersion: 2,
+    summary: ["No confirmed trade requires action."],
+    top10: { proposalId: "top10-2026-08-12", status: "draft", researchedAt: "2026-08-12T17:00:00Z", entries: [] },
+    portfolio: { confirmedAt: "2026-08-12T17:05:00Z", cashSar: 500, contributionMonth: "2026-08", holdings: [], proposal: null },
+    alerts: [],
+    forecast: { status: "unavailable", asOf: "2026-08-12", reason: "Validation gates not passed." },
+  });
+  assert.equal(snapshot.schemaVersion, 2);
+  assert.equal(snapshot.top10.researchedAt, "2026-08-12T17:00:00Z");
+  assert.equal(snapshot.forecast.status, "unavailable");
+});
+
 test("rejects a dashboard snapshot that exposes a one-condition candidate", () => {
   assert.throws(() => parseDashboardSnapshot({ ...validSnapshot, qualified: [{ code: "4015", name: "Jamjoom", relativeStrengthPct: 7, squeeze: false, conditionsMet: 1 }] }), /two conditions/i);
 });

@@ -25,4 +25,19 @@ export const researchSchemaStatements = [
     message_json TEXT NOT NULL,
     created_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS portfolio_events (
+    operation_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, event_kind TEXT NOT NULL,
+    month_key TEXT, symbol TEXT, name TEXT, shares INTEGER, price_sar REAL,
+    cash_sar REAL, fees_sar REAL NOT NULL DEFAULT 0, reason TEXT, confirmed_at TEXT NOT NULL
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS one_contribution_per_owner_month ON portfolio_events(owner_id, month_key) WHERE event_kind = 'contribution'`,
+  `CREATE TABLE IF NOT EXISTS top10_proposals (
+    proposal_id TEXT PRIMARY KEY, trade_date TEXT NOT NULL, researched_at TEXT NOT NULL,
+    proposal_json TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('draft','approved','rejected')), decided_at TEXT
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS one_approved_top10 ON top10_proposals(status) WHERE status = 'approved'`,
+  `CREATE TABLE IF NOT EXISTS movement_alerts (
+    alert_id TEXT PRIMARY KEY, symbol TEXT NOT NULL, direction TEXT NOT NULL, observed_at TEXT NOT NULL,
+    alert_json TEXT NOT NULL, delivery_state TEXT NOT NULL DEFAULT 'pending'
+  )`,
 ];

@@ -181,11 +181,25 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
             f"P/L shown as 0.0% is unknown, not flat."
         )
-    return {"schemaVersion": 1, "tradeDate": generated_at[:10], "asOf": generated_at,
+    evidence_warning = "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."
+    warnings.append(evidence_warning)
+    holdings = [
+        {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
+        for item in cfg.HOLDINGS
+    ]
+    return {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
             "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
             "urgent": urgent, "changed": [], "qualified": qualified,
             "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
-            "monthlyBudgetSar": budget.get("monthly_cap")}
+            "monthlyBudgetSar": budget.get("monthly_cap"),
+            "summary": [
+                "No confirmed trade requires action." if not urgent else f"{len(urgent)} holding action(s) need review.",
+                "Broker app owns real-time price alerts; this digest is delayed analysis.",
+            ],
+            "top10": {"proposalId": f"top10-{generated_at[:10]}-evidence-pending", "status": "draft", "researchedAt": generated_at, "entries": []},
+            "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
+            "alerts": [],
+            "forecast": {"status": "unavailable", "asOf": generated_at[:10], "reason": "No validated point-in-time forecast model is available."}}
 
 
 # --- modes -----------------------------------------------------------------
@@ -387,6 +401,15 @@ def mode_digest() -> int:
     return 0 if ok else 1
 
 
+def mode_top10_draft() -> int:
+    """Create a dated draft snapshot; user approval remains required on the site."""
+    regime, recs, budget = _collect_recs(include_news=True, record_history=False)
+    scanner_result = _scanner_result()
+    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result))
+    print("Top 10 evidence draft snapshot written; no list was approved or traded.")
+    return 0
+
+
 def mode_run() -> int:
     regime, recs, budget = _collect_recs(include_news=False, record_history=False)
     # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
@@ -519,6 +542,7 @@ MODES = {
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
+    "top10-draft": mode_top10_draft,
     "run": mode_run,
     "universe": mode_universe,
     "features": mode_features,

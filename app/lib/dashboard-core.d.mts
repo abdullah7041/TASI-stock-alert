@@ -5,7 +5,7 @@
 // place the app decides whether a snapshot may be researched against a paid
 // OpenAI budget. Reuses DashboardSnapshot from dashboard-types.ts rather than
 // restating the shape, so the two cannot drift.
-import type { DashboardSnapshot } from "@/app/lib/dashboard-types";
+import type { DashboardSnapshot, DashboardSnapshotV2 } from "@/app/lib/dashboard-types";
 
-export function parseDashboardSnapshot(value: unknown): DashboardSnapshot;
-export function dashboardFreshness(snapshot: DashboardSnapshot, now?: Date): "current" | "stale";
+export function parseDashboardSnapshot(value: unknown): DashboardSnapshot | DashboardSnapshotV2;
+export function dashboardFreshness(snapshot: DashboardSnapshot | DashboardSnapshotV2, now?: Date): "current" | "stale";

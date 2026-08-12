@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "heartbeat | suggest | autolevels | digest | run"
+        description: "heartbeat | suggest | autolevels | digest | run | top10-draft"
         required: true
         default: "run"
   schedule:
@@ -14,6 +14,8 @@ on:
     - cron: "45 6 * * 0,1,2,3,4"
     # Session checks every 15 min, 07:00-11:59 UTC (10:00-14:59 Riyadh), Sun-Thu.
     - cron: "*/15 7-11 * * 0,1,2,3,4"
+    # Thursday 15:30 Riyadh draft review. This remains best-effort delayed analysis.
+    - cron: "30 12 * * 4"
 
 permissions:
   contents: write   # to commit state.json / levels.json back.
@@ -45,6 +47,8 @@ jobs:
             echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "45 6 * * 0,1,2,3,4" ]; then
             echo "mode=digest" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "30 12 * * 4" ]; then
+            echo "mode=top10-draft" >> "$GITHUB_OUTPUT"
           else
             echo "mode=run" >> "$GITHUB_OUTPUT"
           fi
