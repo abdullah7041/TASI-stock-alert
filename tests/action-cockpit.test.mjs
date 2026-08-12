@@ -30,6 +30,15 @@ test("does not import preview fixtures and includes an unavailable state", () =>
   assert.match(source, /Delayed\/daily data/i);
 });
 
+test("keeps dated evidence and the broker boundary visible for version-2 cockpit data", () => {
+  const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
+  assert.match(source, /Today.*summary/i);
+  assert.match(source, /Evidence reviewed/i);
+  assert.match(source, /Delayed bot confirmation/i);
+  assert.match(source, /Broker app.*real-time/i);
+  assert.match(source, /Forecast unavailable/i);
+});
+
 test("uses separate Sites and app credentials for private ingestion", () => {
   const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
 
