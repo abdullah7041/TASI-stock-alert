@@ -46,6 +46,14 @@ test("uses separate Sites and app credentials for private ingestion", () => {
   assert.match(workflow, /OAI-Sites-Authorization: Bearer/);
 });
 
+test("ingestion stores a version-2 draft and alert history without approving it", () => {
+  const source = readFileSync(new URL("../app/api/dashboard/ingest/route.ts", import.meta.url), "utf8");
+  assert.match(source, /Top10Store/);
+  assert.match(source, /saveDraft/);
+  assert.match(source, /AlertStore/);
+  assert.doesNotMatch(source, /\.decide\(/);
+});
+
 test("lint ignores local worktrees and their generated output", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
