@@ -20,6 +20,23 @@ function tradeDate(value) {
   return value;
 }
 
+function timestamp(value, field) {
+  const result = text({ [field]: value }, field);
+  if (!Number.isFinite(Date.parse(result))) throw new Error(`${field} must be a valid timestamp.`);
+  return result;
+}
+
+function nonNegative(item, field) {
+  const value = number(item, field);
+  if (value < 0) throw new Error(`${field} must not be negative.`);
+  return value;
+}
+
+function enumValue(value, field, values) {
+  if (!values.includes(value)) throw new Error(`${field} is invalid.`);
+  return value;
+}
+
 function riyadhParts(now) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: RIYADH, year: "numeric", month: "2-digit", day: "2-digit",
@@ -51,7 +68,7 @@ function expectedSnapshotDateInRiyadh(now) {
 
 export function parseDashboardSnapshot(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Dashboard snapshot must be an object.");
-  if (value.schemaVersion !== 1) throw new Error("Unsupported dashboard snapshot version.");
+  if (![1, 2].includes(value.schemaVersion)) throw new Error("Unsupported dashboard snapshot version.");
   if (value.dataStatus !== "delayed-daily") throw new Error("Dashboard data must be labelled delayed-daily.");
   const asOf = text(value, "asOf");
   if (!Number.isFinite(Date.parse(asOf))) throw new Error("asOf must be a valid timestamp.");
@@ -65,7 +82,7 @@ export function parseDashboardSnapshot(value) {
     if (typeof warning !== "string" || !warning.trim()) throw new Error("warnings must contain text.");
     return warning;
   });
-  return {
+  const common = {
     schemaVersion: 1,
     tradeDate: tradeDate(value.tradeDate),
     asOf,
@@ -77,6 +94,39 @@ export function parseDashboardSnapshot(value) {
     qualified,
     researchCount: number(value, "researchCount"),
     monthlyBudgetSar: number(value, "monthlyBudgetSar"),
+  };
+  if (value.schemaVersion === 1) return common;
+  const sourceStamp = (item) => ({
+    source: text(item, "source"), observedAt: timestamp(item.observedAt, "observedAt"),
+    receivedAt: timestamp(item.receivedAt, "receivedAt"),
+    latency: enumValue(item.latency, "latency", ["delayed-intraday", "delayed-daily", "official-filing", "manual"]),
+    freshness: enumValue(item.freshness, "freshness", ["current", "stale", "unknown"]),
+    ...(typeof item.url === "string" && item.url ? { url: item.url } : {}),
+  });
+  const top10 = value.top10;
+  if (!top10 || typeof top10 !== "object") throw new Error("top10 must be an object.");
+  const entries = list(top10.entries, "top10.entries").map((entry) => ({
+    code: text(entry, "code"), name: text(entry, "name"), sector: text(entry, "sector"), owned: entry.owned === true,
+    totalScore: nonNegative(entry, "totalScore"), reasons: list(entry.reasons, "reasons").map((reason) => text({ reason }, "reason")), evidence: sourceStamp(entry.evidence),
+  }));
+  const portfolio = value.portfolio;
+  if (!portfolio || typeof portfolio !== "object") throw new Error("portfolio must be an object.");
+  const alerts = list(value.alerts, "alerts").map((alert) => ({
+    alertId: text(alert, "alertId"), code: text(alert, "code"), direction: enumValue(alert.direction, "direction", ["upside", "downside"]),
+    observedAt: timestamp(alert.observedAt, "observedAt"), receivedAt: timestamp(alert.receivedAt, "receivedAt"),
+    latency: enumValue(alert.latency, "latency", ["delayed-intraday"]), excessMovePct: number(alert, "excessMovePct"), robustZ: number(alert, "robustZ"),
+    ...(typeof alert.volumeRatio === "number" ? { volumeRatio: nonNegative(alert, "volumeRatio") } : {}), reason: text(alert, "reason"),
+  }));
+  const forecast = value.forecast;
+  if (!forecast || typeof forecast !== "object") throw new Error("forecast must be an object.");
+  const parsedForecast = forecast.status === "unavailable"
+    ? { status: "unavailable", asOf: tradeDate(forecast.asOf), reason: text(forecast, "reason") }
+    : { status: "available", asOf: tradeDate(forecast.asOf), target: nonNegative(forecast, "target"), stop: nonNegative(forecast, "stop"), horizonSessions: 60, targetFirstPct: nonNegative(forecast, "targetFirstPct"), confidence: enumValue(forecast.confidence, "confidence", ["low", "medium", "high"]), modelVersion: text(forecast, "modelVersion") };
+  return {
+    ...common, schemaVersion: 2, summary: list(value.summary, "summary").map((line) => text({ line }, "line")),
+    top10: { proposalId: text(top10, "proposalId"), status: enumValue(top10.status, "top10.status", ["draft", "approved", "rejected"]), researchedAt: timestamp(top10.researchedAt, "top10.researchedAt"), entries },
+    portfolio: { confirmedAt: timestamp(portfolio.confirmedAt, "portfolio.confirmedAt"), cashSar: nonNegative(portfolio, "cashSar"), contributionMonth: portfolio.contributionMonth === null ? null : text(portfolio, "contributionMonth"), holdings: list(portfolio.holdings, "portfolio.holdings").map((holding) => ({ code: text(holding, "code"), name: text(holding, "name"), shares: nonNegative(holding, "shares"), ...(typeof holding.avgCostSar === "number" ? { avgCostSar: nonNegative(holding, "avgCostSar") } : {}) })), proposal: portfolio.proposal === null ? null : portfolio.proposal },
+    alerts, forecast: parsedForecast,
   };
 }
 

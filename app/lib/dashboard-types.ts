@@ -20,4 +20,14 @@ export type DashboardSnapshot = {
   monthlyBudgetSar: number;
 };
 
-export type DashboardPayload = { snapshot: DashboardSnapshot; freshness: "current" | "stale" };
+export type DashboardSnapshotV2 = Omit<DashboardSnapshot, "schemaVersion"> & {
+  schemaVersion: 2;
+  summary: string[];
+  top10: Top10Proposal;
+  portfolio: PortfolioView;
+  alerts: MovementAlert[];
+  forecast: ForecastView;
+};
+
+export type DashboardPayload = { snapshot: DashboardSnapshot | DashboardSnapshotV2; freshness: "current" | "stale" };
+import type { ForecastView, MovementAlert, PortfolioView, Top10Proposal } from "@/app/lib/evidence-types";
