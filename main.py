@@ -181,11 +181,25 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
             f"P/L shown as 0.0% is unknown, not flat."
         )
-    return {"schemaVersion": 1, "tradeDate": generated_at[:10], "asOf": generated_at,
+    evidence_warning = "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."
+    warnings.append(evidence_warning)
+    holdings = [
+        {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
+        for item in cfg.HOLDINGS
+    ]
+    return {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
             "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
             "urgent": urgent, "changed": [], "qualified": qualified,
             "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
-            "monthlyBudgetSar": budget.get("monthly_cap")}
+            "monthlyBudgetSar": budget.get("monthly_cap"),
+            "summary": [
+                "No confirmed trade requires action." if not urgent else f"{len(urgent)} holding action(s) need review.",
+                "Broker app owns real-time price alerts; this digest is delayed analysis.",
+            ],
+            "top10": {"proposalId": f"top10-{generated_at[:10]}-evidence-pending", "status": "draft", "researchedAt": generated_at, "entries": []},
+            "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
+            "alerts": [],
+            "forecast": {"status": "unavailable", "asOf": generated_at[:10], "reason": "No validated point-in-time forecast model is available."}}
 
 
 # --- modes -----------------------------------------------------------------
