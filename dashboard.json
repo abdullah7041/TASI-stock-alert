@@ -1,11 +1,20 @@
 {
   "schemaVersion": 1,
-  "tradeDate": "2026-08-11",
-  "asOf": "2026-08-11T22:27:51Z",
+  "tradeDate": "2026-08-12",
+  "asOf": "2026-08-12T08:03:45Z",
   "regime": "breakdown",
   "dataStatus": "delayed-daily",
   "warnings": [],
-  "urgent": [],
+  "urgent": [
+    {
+      "code": "1303",
+      "name": "EIC",
+      "action": "TRIM",
+      "price": 15.97,
+      "reason": "price 15.97 >= trim 15.89",
+      "pnlPct": 28.7
+    }
+  ],
   "changed": [],
   "qualified": [],
   "researchCount": 10,
