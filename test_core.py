@@ -19,6 +19,23 @@ import backtest as bt
 import config as cfg
 import data
 import news
+from movement import detect_unusual_movement
+
+
+def test_volume_without_unusual_price_never_alerts():
+    decision = detect_unusual_movement({"code": "1303", "excess_move_pct": 0.4, "robust_z": 0.7, "volume_ratio": 4.0, "observed_at": "2026-08-12T10:00:00Z", "received_at": "2026-08-12T10:01:00Z", "fresh": True, "comparable_observations": 30}, {}, [])
+    assert decision["alert"] is None
+    assert decision["suppressed_reason"] == "price gate not met"
+
+
+def test_unusual_price_alert_is_delayed_and_rearms_only_below_two_z():
+    observation = {"code": "1303", "excess_move_pct": -2.1, "robust_z": -4.8, "volume_ratio": 1.0, "observed_at": "2026-08-12T10:00:00Z", "received_at": "2026-08-12T10:01:00Z", "fresh": True, "comparable_observations": 30}
+    first = detect_unusual_movement(observation, {}, [])
+    assert first["alert"]["latency"] == "delayed-intraday"
+    repeated = detect_unusual_movement({**observation, "robust_z": -4.2}, first["state"])
+    assert repeated["alert"] is None
+    rearmed = detect_unusual_movement({**observation, "robust_z": -1.8}, repeated["state"])
+    assert rearmed["state"]["1303:downside"]["armed"] is True
 import notify as nt
 import history as hist
 import disclosures as discl
