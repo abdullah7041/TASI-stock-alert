@@ -36,11 +36,64 @@ def test_dashboard_snapshot_marks_unresearched_top10_as_unavailable_instead_of_i
     assert "no current primary-source evidence" in snapshot["warnings"][-1]
 
 
+def test_dashboard_snapshot_publishes_only_a_supplied_dated_top10_draft():
+    top10 = {"proposalId": "top10-2026-08-12", "status": "draft", "researchedAt": "2026-08-12T12:00:00Z", "entries": [{"code": "4015", "name": "Jamjoom Pharma", "sector": "pharma", "owned": False, "totalScore": 81.5, "reasons": ["dated primary-source evidence"], "evidence": {"source": "Saudi Exchange", "observedAt": "2026-08-12T10:00:00Z", "receivedAt": "2026-08-12T12:00:00Z", "latency": "official-filing", "freshness": "current", "url": "https://example.com/filing"}}]}
+    snapshot = main._dashboard_snapshot("ok", [], {"monthly_cap": 500}, {"candidates": [], "names": {}}, as_of="2026-08-12T12:00:00Z", top10=top10)
+    assert snapshot["top10"] == top10
+    assert not any("Top 10 draft unavailable" in warning for warning in snapshot["warnings"])
+
+
+def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypatch):
+    saved = {}
+    draft = {"proposalId": "top10-2026-08-12", "status": "draft", "researchedAt": "2026-08-12T12:00:00Z", "entries": []}
+    monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
+    monkeypatch.setattr(main, "_evidence_top10", lambda *args: draft)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    assert main.mode_top10_draft() == 0
+    assert saved[main.TOP10_FILE] == draft
+    assert saved[main.DASHBOARD_FILE]["top10"] == draft
+
+
+def test_cockpit_refresh_never_calls_discord(monkeypatch):
+    saved = {}
+    monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("refresh must not send Discord")))
+    assert main.mode_cockpit_refresh() == 0
+    assert main.DASHBOARD_FILE in saved
+
+
+def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(monkeypatch):
+    saved = {}
+    recs = [{"code": "1303", "name": "EIC", "action": "HOLD", "price": 15.0}]
+    monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", recs, {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "a1", "code": "1303", "direction": "upside", "observedAt": "2026-08-12T10:00:00Z", "receivedAt": "2026-08-12T10:01:00Z", "latency": "delayed-intraday", "excessMovePct": 2.0, "robustZ": 4.5, "reason": "Delayed bot confirmation."}])
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    assert main.mode_run() == 0
+    assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "a1"
+
+
 def test_workflow_has_separate_weekly_top10_draft_mode():
     from pathlib import Path
     workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
     assert "mode=top10-draft" in workflow
     assert "Delayed bot confirmation" in Path("movement.py").read_text(encoding="utf-8")
+
+
+def test_release_workflows_require_manual_dispatch_and_safe_smoke_refresh():
+    readiness = Path(".github/workflows/sites-release-readiness.yml").read_text(encoding="utf-8")
+    smoke = Path(".github/workflows/sites-production-smoke.yml").read_text(encoding="utf-8")
+    scheduler = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+    assert "workflow_dispatch:" in readiness
+    assert "merge-base --is-ancestor" in readiness
+    assert "upload-artifact" in readiness
+    assert "workflow_dispatch:" in smoke
+    assert "MODE: cockpit-refresh" in smoke
+    assert "/api/health" in smoke
+    assert "cockpit-refresh" in scheduler
+    assert "movement_alerts.json" in scheduler
 
 
 def test_unusual_price_alert_is_delayed_and_rearms_only_below_two_z():

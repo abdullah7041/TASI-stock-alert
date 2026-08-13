@@ -37,6 +37,7 @@ test("keeps dated evidence and the broker boundary visible for version-2 cockpit
   assert.match(source, /Delayed bot confirmation/i);
   assert.match(source, /Broker app.*real-time/i);
   assert.match(source, /Forecast unavailable/i);
+  assert.match(source, /Asia\/Riyadh/);
 });
 
 test("uses separate Sites and app credentials for private ingestion", () => {
@@ -52,6 +53,27 @@ test("ingestion stores a version-2 draft and alert history without approving it"
   assert.match(source, /saveDraft/);
   assert.match(source, /AlertStore/);
   assert.doesNotMatch(source, /\.decide\(/);
+});
+
+test("exposes release-safe health and separate alert ingestion endpoints", () => {
+  const health = readFileSync(new URL("../app/api/health/route.ts", import.meta.url), "utf8");
+  const alertIngest = readFileSync(new URL("../app/api/alerts/ingest/route.ts", import.meta.url), "utf8");
+
+  assert.match(health, /DEPLOYED_COMMIT_SHA/);
+  assert.match(health, /acceptedSchemaVersions/);
+  assert.doesNotMatch(health, /snapshot_json|portfolio_events/i);
+  assert.match(alertIngest, /DASHBOARD_INGEST_TOKEN/);
+  assert.match(alertIngest, /AlertStore/);
+  assert.match(alertIngest, /appendMany/);
+});
+
+test("connects explicit approval and trade confirmation controls to their APIs", () => {
+  const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /fetch\("\/api\/top10\/approve"/);
+  assert.match(source, /fetch\("\/api\/portfolio\/events"/);
+  assert.match(source, /Confirm trade/);
+  assert.match(source, /window\.confirm/);
 });
 
 test("lint ignores local worktrees and their generated output", () => {

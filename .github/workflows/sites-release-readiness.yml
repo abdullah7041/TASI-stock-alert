@@ -1,0 +1,55 @@
+name: Sites release readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact commit on main to prepare for an approved Sites publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sites-release-readiness-${{ inputs.commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+      - name: Verify requested commit is on main
+        run: |
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest test_core.py research/test_base_rate.py research/test_company_evidence.py research/test_entry_forecast.py research/test_top10.py -q
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint && npm run typecheck && npm test
+      - name: Package exact deployable source
+        run: |
+          tar --exclude-vcs --exclude=node_modules --exclude=dist --exclude=.cache --exclude=.worktrees --exclude=.claude -czf sites-release.tgz .
+          ARCHIVE_SHA=$(sha256sum sites-release.tgz | cut -d ' ' -f1)
+          printf '{"commit":"%s","acceptedDashboardSchemas":[1,2],"node":"%s","python":"%s","archiveSha256":"%s"}\n' "$GITHUB_SHA" "$(node --version)" "$(python --version)" "$ARCHIVE_SHA" > sites-release-manifest.json
+          cat sites-release-manifest.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sites-release-${{ github.sha }}
+          path: |
+            sites-release.tgz
+            sites-release-manifest.json
+          retention-days: 7

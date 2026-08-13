@@ -21,6 +21,7 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -33,6 +34,7 @@ jobs:
 
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -52,3 +54,5 @@ jobs:
       # a duplicate step.
       - name: Build and test
         run: npm test
+      - name: Check repository patch integrity
+        run: git diff --check
