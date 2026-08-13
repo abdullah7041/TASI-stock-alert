@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { dashboardFreshness, parseDashboardSnapshot } from "../app/lib/dashboard-core.mjs";
+import { dashboardSnapshotKey, dashboardSnapshotReadKeys } from "../app/lib/dashboard-storage-core.mjs";
 
 const validSnapshot = {
   schemaVersion: 1,
@@ -47,4 +48,10 @@ test("keeps Thursday's snapshot current during the Riyadh weekend", () => {
 
 test("marks a missing Sunday pre-open snapshot stale after the Riyadh deadline", () => {
   assert.equal(dashboardFreshness({ ...validSnapshot, tradeDate: "2026-08-13" }, new Date("2026-08-16T07:16:00Z")), "stale");
+});
+
+test("keeps v1 rollback data separate while preferring the current v2 snapshot", () => {
+  assert.equal(dashboardSnapshotKey(1), "latest");
+  assert.equal(dashboardSnapshotKey(2), "latest-v2");
+  assert.deepEqual(dashboardSnapshotReadKeys(), ["latest-v2", "latest"]);
 });

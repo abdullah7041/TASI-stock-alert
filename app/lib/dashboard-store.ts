@@ -1,5 +1,6 @@
 import type { D1Database } from "cloudflare:workers";
 import { parseDashboardSnapshot } from "@/app/lib/dashboard-core.mjs";
+import { dashboardSnapshotKey, dashboardSnapshotReadKeys } from "@/app/lib/dashboard-storage-core.mjs";
 
 export class DashboardStore {
   #ready: Promise<void> | undefined;
@@ -10,11 +11,14 @@ export class DashboardStore {
   }
   async latest() {
     await this.ensureReady();
-    const row = await this.db.prepare("SELECT snapshot_json FROM dashboard_snapshots WHERE snapshot_key = 'latest'").first<{ snapshot_json: string }>();
-    return row ? parseDashboardSnapshot(JSON.parse(row.snapshot_json)) : null;
+    for (const key of dashboardSnapshotReadKeys()) {
+      const row = await this.db.prepare("SELECT snapshot_json FROM dashboard_snapshots WHERE snapshot_key = ?").bind(key).first<{ snapshot_json: string }>();
+      if (row) return parseDashboardSnapshot(JSON.parse(row.snapshot_json));
+    }
+    return null;
   }
   async save(snapshot: ReturnType<typeof parseDashboardSnapshot>) {
     await this.ensureReady();
-    await this.db.prepare("INSERT INTO dashboard_snapshots (snapshot_key, snapshot_json, updated_at) VALUES ('latest', ?, ?) ON CONFLICT(snapshot_key) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at").bind(JSON.stringify(snapshot), new Date().toISOString()).run();
+    await this.db.prepare("INSERT INTO dashboard_snapshots (snapshot_key, snapshot_json, updated_at) VALUES (?, ?, ?) ON CONFLICT(snapshot_key) DO UPDATE SET snapshot_json = excluded.snapshot_json, updated_at = excluded.updated_at").bind(dashboardSnapshotKey(snapshot.schemaVersion), JSON.stringify(snapshot), new Date().toISOString()).run();
   }
 }

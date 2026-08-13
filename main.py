@@ -23,8 +23,10 @@ from __future__ import annotations
 
 import json
 import os
+import statistics
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 import config as cfg
@@ -34,6 +36,10 @@ import notify as nt
 import indicators as ind
 import history as histmod
 import disclosures as discl
+from movement import detect_unusual_movement
+from research.company_evidence import load_evidence_records
+from research.entry_forecast import unavailable_forecast
+from research.top10 import score_company, select_top10
 
 HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
@@ -42,6 +48,11 @@ STATE_FILE = HERE / "state.json"
 BUDGET_FILE = HERE / "budget_state.json"
 HISTORY_FILE = HERE / "history.json"
 DASHBOARD_FILE = HERE / "dashboard.json"
+TOP10_FILE = HERE / "top10_draft.json"
+MOVEMENT_STATE_FILE = HERE / "movement_state.json"
+ALERTS_FILE = HERE / "movement_alerts.json"
+EVIDENCE_FILE = HERE / "research" / "evidence.json"
+FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -146,7 +157,50 @@ def _budget_record(buys: list) -> None:
     _save(BUDGET_FILE, state)
 
 
-def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None) -> dict:
+def _unavailable_top10(generated_at: str) -> dict:
+    return {"proposalId": f"top10-{generated_at[:10]}-evidence-pending", "status": "draft", "researchedAt": generated_at, "entries": []}
+
+
+def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) -> dict | None:
+    """Build a draft only from dated, local primary-source reviews; never fill it from price data alone."""
+    raw_records = _load(EVIDENCE_FILE, [])
+    if not raw_records:
+        return None
+    try:
+        records = load_evidence_records(raw_records, date.fromisoformat(generated_at[:10]))
+    except (TypeError, ValueError) as exc:
+        print(f"Top 10 evidence unavailable: {exc}")
+        return None
+    candidates = {item.get("code"): item for item in (scanner_result or {}).get("candidates", [])}
+    reads = {item.get("code"): item for item in recs}
+    owned = {item["code"] for item in cfg.HOLDINGS}
+    scored = []
+    for symbol, evidence in records.items():
+        candidate = candidates.get(symbol, {})
+        read = reads.get(symbol, {})
+        scored.append(score_company(symbol, evidence.company_name, evidence.sector, symbol in owned, evidence,
+                                    float(candidate.get("rel_strength") or 0.0),
+                                    read.get("long_term", {}).get("trend") == "up", 2.0))
+    chosen = select_top10(scored, [], owned)
+    if not chosen:
+        return None
+    entries = []
+    for item in chosen:
+        evidence = records[item.symbol]
+        entries.append({"code": item.symbol, "name": item.name, "sector": item.sector, "owned": item.owned,
+                        "totalScore": item.total_score, "reasons": list(item.reasons),
+                        "evidence": {"source": evidence.source_name, "observedAt": evidence.published_at,
+                                     "receivedAt": evidence.retrieved_at, "latency": "official-filing",
+                                     "freshness": "current", "url": evidence.source_url}})
+    return {"proposalId": f"top10-{generated_at[:10]}-evidence", "status": "draft", "researchedAt": generated_at, "entries": entries}
+
+
+def _forecast(generated_at: str) -> dict:
+    metrics = _load(FORECAST_METRICS_FILE, {})
+    return unavailable_forecast(generated_at[:10], metrics, bool(metrics.get("survivorship_limited", True)))
+
+
+def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     urgent = []
@@ -181,8 +235,9 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
             f"P/L shown as 0.0% is unknown, not flat."
         )
-    evidence_warning = "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."
-    warnings.append(evidence_warning)
+    top10 = top10 if top10 is not None else _load(TOP10_FILE, _unavailable_top10(generated_at))
+    if not top10.get("entries"):
+        warnings.append("Top 10 draft unavailable: no current primary-source evidence has been reviewed yet.")
     holdings = [
         {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
         for item in cfg.HOLDINGS
@@ -196,10 +251,10 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
                 "No confirmed trade requires action." if not urgent else f"{len(urgent)} holding action(s) need review.",
                 "Broker app owns real-time price alerts; this digest is delayed analysis.",
             ],
-            "top10": {"proposalId": f"top10-{generated_at[:10]}-evidence-pending", "status": "draft", "researchedAt": generated_at, "entries": []},
+            "top10": top10,
             "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
-            "alerts": [],
-            "forecast": {"status": "unavailable", "asOf": generated_at[:10], "reason": "No validated point-in-time forecast model is available."}}
+            "alerts": alerts or [],
+            "forecast": _forecast(generated_at)}
 
 
 # --- modes -----------------------------------------------------------------
@@ -393,7 +448,7 @@ def mode_digest() -> int:
                            budget=budget)
     scanner_result = _scanner_result()
     msg = msg + "\n\n" + _scanner_block(scanner_result)
-    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result))
+    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result, top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())))))
     ok = nt.send_discord(msg)
     if not ok:
         print(msg)  # no webhook configured (e.g. local run) — show the digest here.
@@ -405,13 +460,62 @@ def mode_top10_draft() -> int:
     """Create a dated draft snapshot; user approval remains required on the site."""
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)
     scanner_result = _scanner_result()
-    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result))
+    generated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    draft = _evidence_top10(scanner_result, recs, generated_at) or _unavailable_top10(generated_at)
+    _save(TOP10_FILE, draft)
+    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result, as_of=generated_at, top10=draft))
     print("Top 10 evidence draft snapshot written; no list was approved or traded.")
     return 0
 
 
+def mode_cockpit_refresh() -> int:
+    """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions."""
+    regime, recs, budget = _collect_recs(include_news=True, record_history=False)
+    scanner_result = _scanner_result()
+    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result))
+    print("cockpit refresh written; no Discord message or order was sent.")
+    return 0
+
+
+def _movement_alerts(recs: list, received_at: str | None = None) -> list:
+    """Detect statistically unusual delayed moves without changing the daily snapshot."""
+    received_at = received_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    state = _load(MOVEMENT_STATE_FILE, {})
+    alerts = []
+    for rec in recs:
+        code = rec.get("code")
+        if not code:
+            continue
+        try:
+            frame = _load_history(code)
+            closes = [float(value) for value in frame["Close"].dropna().tolist()]
+            volumes = [float(value) for value in frame["Volume"].dropna().tolist()]
+            returns = [100 * (closes[index] / closes[index - 1] - 1) for index in range(1, len(closes)) if closes[index - 1] > 0]
+            baseline = returns[-21:-1]
+            if len(baseline) < 20:
+                result = detect_unusual_movement({"code": code, "fresh": False, "comparable_observations": len(baseline)}, state)
+            else:
+                median = statistics.median(baseline)
+                mad = statistics.median(abs(value - median) for value in baseline)
+                robust_z = 0.6745 * (returns[-1] - median) / mad if mad > 0 else 0.0
+                volume_baseline = statistics.median(volumes[-21:-1]) if len(volumes) >= 21 else 0.0
+                result = detect_unusual_movement({"code": code, "excess_move_pct": returns[-1] - median, "robust_z": robust_z,
+                                                   "volume_ratio": volumes[-1] / volume_baseline if volume_baseline > 0 else 0.0,
+                                                   "observed_at": received_at, "received_at": received_at, "fresh": True,
+                                                   "comparable_observations": len(baseline)}, state)
+            state = result["state"]
+            if result["alert"]:
+                alerts.append(result["alert"])
+        except Exception as exc:
+            print(f"movement check unavailable for {code}: {exc}")
+    _save(MOVEMENT_STATE_FILE, state)
+    return alerts
+
+
 def mode_run() -> int:
     regime, recs, budget = _collect_recs(include_news=False, record_history=False)
+    movement_alerts = _movement_alerts(recs)
+    _save(ALERTS_FILE, {"alerts": movement_alerts})
     # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
     actionable = [r for r in recs if r["action"] not in ("HOLD", "WATCH")]
 
@@ -543,6 +647,7 @@ MODES = {
     "autolevels": mode_autolevels,
     "digest": mode_digest,
     "top10-draft": mode_top10_draft,
+    "cockpit-refresh": mode_cockpit_refresh,
     "run": mode_run,
     "universe": mode_universe,
     "features": mode_features,
