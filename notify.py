@@ -269,6 +269,33 @@ def build_message(recs: list, header: str, quote_note: str = "",
     return "\n\n".join(parts)
 
 
+def build_dashboard_digest(snapshot: dict) -> str:
+    """Render the persisted delayed dashboard summary for one routine digest."""
+    summary = dict(snapshot.get("summaryV1") or {})
+    cards = list(summary.get("cards") or [])
+    if not cards:
+        raise ValueError("dashboard summaryV1 cards are required for the daily digest")
+    lines = [f"__**TASI delayed digest ({snapshot['tradeDate']})**__"]
+    lines.extend(f"- {card['text']}" for card in cards)
+    lateness = summary.get("latenessMinutes")
+    if lateness:
+        lines.append(f"- Digest started {lateness} minutes after its scheduled time.")
+    return "\n".join(lines)
+
+
+def build_movement_alert_message(alerts: list[dict], as_of: str) -> str:
+    """Render one delayed-only Discord delivery for newly detected movements."""
+    lines = [f"__**TASI unusual movement ({as_of})**__", "_Delayed analysis; verify live pricing in your broker app._"]
+    for alert in sorted(alerts, key=lambda item: str(item.get("observedAt", ""))):
+        lines.extend([
+            f"**{alert['code']} {alert['direction']}**",
+            f"- {alert['reason']}",
+            f"- Observed {alert['observedAt']}; received {alert['receivedAt']}.",
+        ])
+    lines.append("Broker app owns real-time price alerts; this bot never places an order.")
+    return "\n".join(lines)
+
+
 def pack_discord_content(content: str, limit: int = 1900) -> list[str]:
     """Pack complete digest cards into Discord-sized messages.
 

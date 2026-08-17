@@ -20,6 +20,7 @@ import config as cfg
 import data
 import news
 import main
+import summary_contract
 from movement import detect_unusual_movement
 
 
@@ -41,6 +42,27 @@ def test_dashboard_snapshot_publishes_only_a_supplied_dated_top10_draft():
     snapshot = main._dashboard_snapshot("ok", [], {"monthly_cap": 500}, {"candidates": [], "names": {}}, as_of="2026-08-12T12:00:00Z", top10=top10)
     assert snapshot["top10"] == top10
     assert not any("Top 10 draft unavailable" in warning for warning in snapshot["warnings"])
+
+
+def test_summary_v1_is_dated_and_keeps_missing_evidence_honest():
+    snapshot = {
+        "asOf": "2026-08-17T07:38:24Z", "tradeDate": "2026-08-17",
+        "urgent": [],
+        "warnings": ["Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."],
+        "monthlyBudgetSar": 500,
+        "top10": {"status": "draft", "entries": [], "researchedAt": "2026-08-17T07:38:24Z"},
+        "forecast": {"status": "unavailable", "asOf": "2026-08-17", "reason": "Validation gates not passed."},
+    }
+
+    summary = summary_contract.build_summary_v1(snapshot, scheduled_for="2026-08-17T06:45:00Z")
+
+    assert summary["latenessMinutes"] == 53
+    assert summary["cards"] == [
+        {"kind": "portfolio", "state": "clear", "text": "No confirmed trade requires action."},
+        {"kind": "top10", "state": "evidence-pending", "text": "Top 10: evidence pending; no current primary-source review."},
+        {"kind": "safety", "state": "delayed", "text": "Broker app owns real-time price alerts; this digest is delayed analysis."},
+        {"kind": "forecast", "state": "unavailable", "text": "Forecast unavailable: validation gates not passed."},
+    ]
 
 
 def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypatch):
@@ -75,11 +97,50 @@ def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(mo
     assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "a1"
 
 
+def test_digest_sends_the_canonical_snapshot_summary(monkeypatch):
+    saved = {}
+    sent = []
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
+    monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
+
+    assert main.mode_digest() == 0
+    assert "Top 10: evidence pending; no current primary-source review." in sent[0]
+    assert "Forecast unavailable: validation gates not passed." in sent[0]
+
+
+def test_session_mode_sends_only_new_delayed_movement_cards(monkeypatch):
+    saved = {}
+    sent = []
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "m-1303-20260817", "code": "1303", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}])
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
+    monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
+
+    assert main.mode_run() == 0
+    assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "m-1303-20260817"
+    assert "1303" in sent[0] and "Delayed analysis" in sent[0]
+    assert "TASI alert" not in sent[0]
+
+
 def test_workflow_has_separate_weekly_top10_draft_mode():
     from pathlib import Path
     workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
     assert "mode=top10-draft" in workflow
     assert "Delayed bot confirmation" in Path("movement.py").read_text(encoding="utf-8")
+
+
+def test_scheduler_records_lateness_and_does_not_hide_state_commit_failures():
+    workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+    assert "research-evidence" in workflow
+    assert 'cron: "15 5 * * 3"' in workflow
+    assert "SCHEDULED_FOR" in workflow
+    assert "for path in" in workflow and '[ -e "$path" ]' in workflow
+    assert "git add state.json" not in workflow
+    assert "git push 2>/dev/null" not in workflow
 
 
 def test_release_workflows_require_manual_dispatch_and_safe_smoke_refresh():
@@ -94,6 +155,15 @@ def test_release_workflows_require_manual_dispatch_and_safe_smoke_refresh():
     assert "/api/health" in smoke
     assert "cockpit-refresh" in scheduler
     assert "movement_alerts.json" in scheduler
+
+
+def test_production_smoke_checks_composed_alerts_without_discord():
+    smoke = Path(".github/workflows/sites-production-smoke.yml").read_text(encoding="utf-8")
+    assert "/api/dashboard" in smoke
+    assert "dashboard-response.json" in smoke
+    assert "alerts" in smoke
+    assert "MODE: cockpit-refresh" in smoke
+    assert "DISCORD_WEBHOOK_URL" not in smoke
 
 
 def test_unusual_price_alert_is_delayed_and_rearms_only_below_two_z():

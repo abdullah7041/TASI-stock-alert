@@ -67,6 +67,17 @@ test("exposes release-safe health and separate alert ingestion endpoints", () =>
   assert.match(alertIngest, /appendMany/);
 });
 
+test("composes independently ingested alerts into the dashboard response", () => {
+  const route = readFileSync(new URL("../app/api/dashboard/route.ts", import.meta.url), "utf8");
+  const cockpit = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
+
+  assert.match(route, /AlertStore/);
+  assert.match(route, /latest\(20\)/);
+  assert.match(route, /freshness: dashboardFreshness\(snapshot\), alerts/);
+  assert.match(cockpit, /summaryV1\?\.cards/);
+  assert.match(cockpit, /payload\.alerts/);
+});
+
 test("connects explicit approval and trade confirmation controls to their APIs", () => {
   const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
 

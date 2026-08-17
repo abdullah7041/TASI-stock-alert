@@ -40,6 +40,8 @@ from movement import detect_unusual_movement
 from research.company_evidence import load_evidence_records
 from research.entry_forecast import unavailable_forecast
 from research.top10 import score_company, select_top10
+from research import official_sources
+from summary_contract import build_summary_v1, summary_lines
 
 HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
@@ -53,6 +55,7 @@ MOVEMENT_STATE_FILE = HERE / "movement_state.json"
 ALERTS_FILE = HERE / "movement_alerts.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
+EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -200,7 +203,7 @@ def _forecast(generated_at: str) -> dict:
     return unavailable_forecast(generated_at[:10], metrics, bool(metrics.get("survivorship_limited", True)))
 
 
-def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None) -> dict:
+def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None, scheduled_for: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     urgent = []
@@ -242,19 +245,16 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
         for item in cfg.HOLDINGS
     ]
-    return {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
-            "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
-            "urgent": urgent, "changed": [], "qualified": qualified,
-            "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
-            "monthlyBudgetSar": budget.get("monthly_cap"),
-            "summary": [
-                "No confirmed trade requires action." if not urgent else f"{len(urgent)} holding action(s) need review.",
-                "Broker app owns real-time price alerts; this digest is delayed analysis.",
-            ],
-            "top10": top10,
-            "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
-            "alerts": alerts or [],
-            "forecast": _forecast(generated_at)}
+    snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
+                "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
+                "urgent": urgent, "changed": [], "qualified": qualified,
+                "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
+                "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
+                "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
+                "alerts": alerts or [], "forecast": _forecast(generated_at)}
+    snapshot["summaryV1"] = build_summary_v1(snapshot, scheduled_for=scheduled_for)
+    snapshot["summary"] = summary_lines(snapshot["summaryV1"])
+    return snapshot
 
 
 # --- modes -----------------------------------------------------------------
@@ -443,17 +443,36 @@ def _scanner_block(result: dict | None = None) -> str:
 
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True, record_history=True)
-    msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
-                           quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
-                           budget=budget)
     scanner_result = _scanner_result()
-    msg = msg + "\n\n" + _scanner_block(scanner_result)
-    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result, top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())))))
+    snapshot = _dashboard_snapshot(
+        regime, recs, budget, scanner_result,
+        top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))),
+        scheduled_for=os.environ.get("SCHEDULED_FOR"),
+    )
+    _save(DASHBOARD_FILE, snapshot)
+    msg = nt.build_dashboard_digest(snapshot)
     ok = nt.send_discord(msg)
     if not ok:
         print(msg)  # no webhook configured (e.g. local run) — show the digest here.
     print("digest sent:", ok, "| recs:", len(recs))
     return 0 if ok else 1
+
+
+def mode_research_evidence() -> int:
+    """Collect official announcement links into a human-review queue only."""
+    import requests
+
+    retrieved_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        announcements = official_sources.collect_official_announcements(
+            requests.Session(), retrieved_at, lookback_days=7
+        )
+    except Exception as exc:
+        print(f"official evidence collection unavailable: {exc}")
+        return 1
+    official_sources.write_review_queue(EVIDENCE_QUEUE_FILE, announcements, retrieved_at)
+    print(f"official evidence review queue written: {len(announcements)} candidates; no Top 10 was changed.")
+    return 0
 
 
 def mode_top10_draft() -> int:
@@ -513,34 +532,16 @@ def _movement_alerts(recs: list, received_at: str | None = None) -> list:
 
 
 def mode_run() -> int:
-    regime, recs, budget = _collect_recs(include_news=False, record_history=False)
+    _regime, recs, _budget = _collect_recs(include_news=False, record_history=False)
     movement_alerts = _movement_alerts(recs)
     _save(ALERTS_FILE, {"alerts": movement_alerts})
-    # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
-    actionable = [r for r in recs if r["action"] not in ("HOLD", "WATCH")]
-
-    state = _load(STATE_FILE, {})
-    today = _today()
-    fresh = []
-    for r in actionable:
-        key = f"{r['code']}:{r['action']}:{today}"
-        if state.get(key):
-            continue  # already alerted this level today.
-        state[key] = int(time.time())
-        fresh.append(r)
-
-    if fresh:
-        msg = nt.build_message(fresh, f"TASI alert ({today}) - regime: {regime}",
-                               quote_note="Delayed/daily data. Verify the live price before acting.",
-                               budget=budget)
+    if movement_alerts:
+        as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        msg = nt.build_movement_alert_message(movement_alerts, as_of)
         ok = nt.send_discord(msg)
-        print("alert sent:", ok, "| fresh recs:", len(fresh))
+        print("movement alert sent:", ok, "| alerts:", len(movement_alerts))
     else:
-        print("no fresh actionable recs; nothing sent.")
-
-    # prune old state keys (keep today only).
-    state = {k: v for k, v in state.items() if k.endswith(today)}
-    _save(STATE_FILE, state)
+        print("no new unusual movement; nothing sent.")
     return 0
 
 
@@ -646,6 +647,7 @@ MODES = {
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
+    "research-evidence": mode_research_evidence,
     "top10-draft": mode_top10_draft,
     "cockpit-refresh": mode_cockpit_refresh,
     "run": mode_run,
