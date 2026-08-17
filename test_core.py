@@ -20,6 +20,7 @@ import config as cfg
 import data
 import news
 import main
+import summary_contract
 from movement import detect_unusual_movement
 
 
@@ -41,6 +42,27 @@ def test_dashboard_snapshot_publishes_only_a_supplied_dated_top10_draft():
     snapshot = main._dashboard_snapshot("ok", [], {"monthly_cap": 500}, {"candidates": [], "names": {}}, as_of="2026-08-12T12:00:00Z", top10=top10)
     assert snapshot["top10"] == top10
     assert not any("Top 10 draft unavailable" in warning for warning in snapshot["warnings"])
+
+
+def test_summary_v1_is_dated_and_keeps_missing_evidence_honest():
+    snapshot = {
+        "asOf": "2026-08-17T07:38:24Z", "tradeDate": "2026-08-17",
+        "urgent": [],
+        "warnings": ["Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."],
+        "monthlyBudgetSar": 500,
+        "top10": {"status": "draft", "entries": [], "researchedAt": "2026-08-17T07:38:24Z"},
+        "forecast": {"status": "unavailable", "asOf": "2026-08-17", "reason": "Validation gates not passed."},
+    }
+
+    summary = summary_contract.build_summary_v1(snapshot, scheduled_for="2026-08-17T06:45:00Z")
+
+    assert summary["latenessMinutes"] == 53
+    assert summary["cards"] == [
+        {"kind": "portfolio", "state": "clear", "text": "No confirmed trade requires action."},
+        {"kind": "top10", "state": "evidence-pending", "text": "Top 10: evidence pending; no current primary-source review."},
+        {"kind": "safety", "state": "delayed", "text": "Broker app owns real-time price alerts; this digest is delayed analysis."},
+        {"kind": "forecast", "state": "unavailable", "text": "Forecast unavailable: validation gates not passed."},
+    ]
 
 
 def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypatch):

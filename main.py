@@ -40,6 +40,7 @@ from movement import detect_unusual_movement
 from research.company_evidence import load_evidence_records
 from research.entry_forecast import unavailable_forecast
 from research.top10 import score_company, select_top10
+from summary_contract import build_summary_v1, summary_lines
 
 HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
@@ -200,7 +201,7 @@ def _forecast(generated_at: str) -> dict:
     return unavailable_forecast(generated_at[:10], metrics, bool(metrics.get("survivorship_limited", True)))
 
 
-def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None) -> dict:
+def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None, scheduled_for: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     urgent = []
@@ -242,19 +243,16 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
         for item in cfg.HOLDINGS
     ]
-    return {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
-            "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
-            "urgent": urgent, "changed": [], "qualified": qualified,
-            "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
-            "monthlyBudgetSar": budget.get("monthly_cap"),
-            "summary": [
-                "No confirmed trade requires action." if not urgent else f"{len(urgent)} holding action(s) need review.",
-                "Broker app owns real-time price alerts; this digest is delayed analysis.",
-            ],
-            "top10": top10,
-            "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
-            "alerts": alerts or [],
-            "forecast": _forecast(generated_at)}
+    snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
+                "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
+                "urgent": urgent, "changed": [], "qualified": qualified,
+                "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
+                "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
+                "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
+                "alerts": alerts or [], "forecast": _forecast(generated_at)}
+    snapshot["summaryV1"] = build_summary_v1(snapshot, scheduled_for=scheduled_for)
+    snapshot["summary"] = summary_lines(snapshot["summaryV1"])
+    return snapshot
 
 
 # --- modes -----------------------------------------------------------------
