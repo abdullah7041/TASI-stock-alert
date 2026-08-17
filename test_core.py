@@ -157,6 +157,15 @@ def test_release_workflows_require_manual_dispatch_and_safe_smoke_refresh():
     assert "movement_alerts.json" in scheduler
 
 
+def test_production_smoke_checks_composed_alerts_without_discord():
+    smoke = Path(".github/workflows/sites-production-smoke.yml").read_text(encoding="utf-8")
+    assert "/api/dashboard" in smoke
+    assert "dashboard-response.json" in smoke
+    assert "alerts" in smoke
+    assert "MODE: cockpit-refresh" in smoke
+    assert "DISCORD_WEBHOOK_URL" not in smoke
+
+
 def test_unusual_price_alert_is_delayed_and_rearms_only_below_two_z():
     observation = {"code": "1303", "excess_move_pct": -2.1, "robust_z": -4.8, "volume_ratio": 1.0, "observed_at": "2026-08-12T10:00:00Z", "received_at": "2026-08-12T10:01:00Z", "fresh": True, "comparable_observations": 30}
     first = detect_unusual_movement(observation, {}, [])
