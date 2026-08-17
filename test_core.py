@@ -133,6 +133,16 @@ def test_workflow_has_separate_weekly_top10_draft_mode():
     assert "Delayed bot confirmation" in Path("movement.py").read_text(encoding="utf-8")
 
 
+def test_scheduler_records_lateness_and_does_not_hide_state_commit_failures():
+    workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+    assert "research-evidence" in workflow
+    assert 'cron: "15 5 * * 3"' in workflow
+    assert "SCHEDULED_FOR" in workflow
+    assert "for path in" in workflow and '[ -e "$path" ]' in workflow
+    assert "git add state.json" not in workflow
+    assert "git push 2>/dev/null" not in workflow
+
+
 def test_release_workflows_require_manual_dispatch_and_safe_smoke_refresh():
     readiness = Path(".github/workflows/sites-release-readiness.yml").read_text(encoding="utf-8")
     smoke = Path(".github/workflows/sites-production-smoke.yml").read_text(encoding="utf-8")

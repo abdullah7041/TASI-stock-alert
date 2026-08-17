@@ -442,7 +442,11 @@ def _scanner_block(result: dict | None = None) -> str:
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True, record_history=True)
     scanner_result = _scanner_result()
-    snapshot = _dashboard_snapshot(regime, recs, budget, scanner_result, top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))))
+    snapshot = _dashboard_snapshot(
+        regime, recs, budget, scanner_result,
+        top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))),
+        scheduled_for=os.environ.get("SCHEDULED_FOR"),
+    )
     _save(DASHBOARD_FILE, snapshot)
     msg = nt.build_dashboard_digest(snapshot)
     ok = nt.send_discord(msg)

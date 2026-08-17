@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "heartbeat | suggest | autolevels | digest | run | top10-draft | cockpit-refresh"
+        description: "heartbeat | suggest | autolevels | digest | run | top10-draft | cockpit-refresh | research-evidence"
         required: true
         default: "run"
   schedule:
@@ -16,6 +16,8 @@ on:
     - cron: "*/15 7-11 * * 0,1,2,3,4"
     # Thursday 15:30 Riyadh draft review. This remains best-effort delayed analysis.
     - cron: "30 12 * * 4"
+    # Wednesday 08:15 Riyadh official-source evidence collection. Review is still required.
+    - cron: "15 5 * * 3"
 
 permissions:
   contents: write   # to commit state.json / levels.json back.
@@ -46,20 +48,53 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=manual" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "45 6 * * 0,1,2,3,4" ]; then
             echo "mode=digest" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%F)T06:45:00Z" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "30 12 * * 4" ]; then
             echo "mode=top10-draft" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%F)T12:30:00Z" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "15 5 * * 3" ]; then
+            echo "mode=research-evidence" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%F)T05:15:00Z" >> "$GITHUB_OUTPUT"
           else
             echo "mode=run" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%F)T07:00:00Z" >> "$GITHUB_OUTPUT"
           fi
+          echo "actual_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Run
         env:
           MODE: ${{ steps.mode.outputs.mode }}
+          SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
           SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python main.py
+
+      - name: Record job telemetry
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+          SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
+          ACTUAL_UTC: ${{ steps.mode.outputs.actual_utc }}
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          print(f"mode={os.environ['MODE']}")
+          print(f"commit={os.environ['GITHUB_SHA']}")
+          print(f"scheduled_for={os.environ['SCHEDULED_FOR']}")
+          print(f"actual_utc={os.environ['ACTUAL_UTC']}")
+          if Path("dashboard.json").exists():
+              snapshot = json.loads(Path("dashboard.json").read_text(encoding="utf-8"))
+              print(f"dashboard_as_of={snapshot.get('asOf')}")
+              print(f"snapshot_schema={snapshot.get('schemaVersion')}")
+          if Path("movement_alerts.json").exists():
+              alerts = json.loads(Path("movement_alerts.json").read_text(encoding="utf-8"))
+              print(f"movement_alert_count={len(alerts.get('alerts') or [])}")
+          PY
 
       - name: Update private cockpit
         if: contains('digest,top10-draft,cockpit-refresh', steps.mode.outputs.mode)
@@ -94,6 +129,8 @@ jobs:
         run: |
           git config user.name "tasi-bot"
           git config user.email "tasi-bot@users.noreply.github.com"
-          git add state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json 2>/dev/null || true
-          git commit -m "state update [skip ci]" 2>/dev/null || echo "nothing to commit"
-          git push 2>/dev/null || echo "nothing to push"
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json research/evidence_queue.json; do
+            if [ -e "$path" ]; then git add -- "$path"; fi
+          done
+          if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi
+          git push
