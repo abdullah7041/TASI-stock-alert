@@ -183,6 +183,14 @@ def test_scheduler_records_lateness_and_does_not_hide_state_commit_failures():
     assert "git push 2>/dev/null" not in workflow
 
 
+def test_workflow_exposes_manual_discord_smoke_without_cockpit_ingest():
+    workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+
+    assert "discord-smoke" in workflow.split("schedule:", 1)[0]
+    assert "contains('digest,top10-draft,cockpit-refresh', steps.mode.outputs.mode)" in workflow
+    assert "steps.mode.outputs.mode == 'run'" in workflow
+
+
 def test_release_workflows_require_manual_dispatch_and_safe_smoke_refresh():
     readiness = Path(".github/workflows/sites-release-readiness.yml").read_text(encoding="utf-8")
     smoke = Path(".github/workflows/sites-production-smoke.yml").read_text(encoding="utf-8")
