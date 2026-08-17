@@ -264,6 +264,17 @@ def mode_heartbeat() -> int:
     return 0 if ok else 1
 
 
+def mode_discord_smoke() -> int:
+    as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    message = (
+        "__**TASI Discord delivery smoke test**__\n"
+        f"Executed {as_of}. No market data, dashboard update, alert, or order was created."
+    )
+    ok = nt.send_discord(message)
+    print("discord smoke sent:", ok)
+    return 0 if ok else 1
+
+
 def mode_suggest() -> int:
     dat.get_histories([x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST],
                       cfg.TECH["history_period"])  # one batch; loop reads cache.
@@ -540,8 +551,8 @@ def mode_run() -> int:
         msg = nt.build_movement_alert_message(movement_alerts, as_of)
         ok = nt.send_discord(msg)
         print("movement alert sent:", ok, "| alerts:", len(movement_alerts))
-    else:
-        print("no new unusual movement; nothing sent.")
+        return 0 if ok else 1
+    print("no new unusual movement; nothing sent.")
     return 0
 
 
@@ -644,6 +655,7 @@ def mode_backtest() -> int:
 
 MODES = {
     "heartbeat": mode_heartbeat,
+    "discord-smoke": mode_discord_smoke,
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
