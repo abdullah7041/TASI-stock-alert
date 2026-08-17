@@ -97,6 +97,35 @@ def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(mo
     assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "a1"
 
 
+def test_digest_sends_the_canonical_snapshot_summary(monkeypatch):
+    saved = {}
+    sent = []
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
+    monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
+
+    assert main.mode_digest() == 0
+    assert "Top 10: evidence pending; no current primary-source review." in sent[0]
+    assert "Forecast unavailable: validation gates not passed." in sent[0]
+
+
+def test_session_mode_sends_only_new_delayed_movement_cards(monkeypatch):
+    saved = {}
+    sent = []
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "m-1303-20260817", "code": "1303", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}])
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
+    monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
+
+    assert main.mode_run() == 0
+    assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "m-1303-20260817"
+    assert "1303" in sent[0] and "Delayed analysis" in sent[0]
+    assert "TASI alert" not in sent[0]
+
+
 def test_workflow_has_separate_weekly_top10_draft_mode():
     from pathlib import Path
     workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")

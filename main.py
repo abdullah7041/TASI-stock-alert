@@ -441,12 +441,10 @@ def _scanner_block(result: dict | None = None) -> str:
 
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True, record_history=True)
-    msg = nt.build_message(recs, f"TASI pre-open digest ({_today()}) - regime: {regime}",
-                           quote_note="Delayed/daily data. Long-term reads are the reliable ones.",
-                           budget=budget)
     scanner_result = _scanner_result()
-    msg = msg + "\n\n" + _scanner_block(scanner_result)
-    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result, top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())))))
+    snapshot = _dashboard_snapshot(regime, recs, budget, scanner_result, top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))))
+    _save(DASHBOARD_FILE, snapshot)
+    msg = nt.build_dashboard_digest(snapshot)
     ok = nt.send_discord(msg)
     if not ok:
         print(msg)  # no webhook configured (e.g. local run) — show the digest here.
@@ -511,34 +509,16 @@ def _movement_alerts(recs: list, received_at: str | None = None) -> list:
 
 
 def mode_run() -> int:
-    regime, recs, budget = _collect_recs(include_news=False, record_history=False)
+    _regime, recs, _budget = _collect_recs(include_news=False, record_history=False)
     movement_alerts = _movement_alerts(recs)
     _save(ALERTS_FILE, {"alerts": movement_alerts})
-    # Keep only actionable ones (a level was hit / BUY / SELL / TRIM).
-    actionable = [r for r in recs if r["action"] not in ("HOLD", "WATCH")]
-
-    state = _load(STATE_FILE, {})
-    today = _today()
-    fresh = []
-    for r in actionable:
-        key = f"{r['code']}:{r['action']}:{today}"
-        if state.get(key):
-            continue  # already alerted this level today.
-        state[key] = int(time.time())
-        fresh.append(r)
-
-    if fresh:
-        msg = nt.build_message(fresh, f"TASI alert ({today}) - regime: {regime}",
-                               quote_note="Delayed/daily data. Verify the live price before acting.",
-                               budget=budget)
+    if movement_alerts:
+        as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        msg = nt.build_movement_alert_message(movement_alerts, as_of)
         ok = nt.send_discord(msg)
-        print("alert sent:", ok, "| fresh recs:", len(fresh))
+        print("movement alert sent:", ok, "| alerts:", len(movement_alerts))
     else:
-        print("no fresh actionable recs; nothing sent.")
-
-    # prune old state keys (keep today only).
-    state = {k: v for k, v in state.items() if k.endswith(today)}
-    _save(STATE_FILE, state)
+        print("no new unusual movement; nothing sent.")
     return 0
 
 
