@@ -40,6 +40,7 @@ from movement import detect_unusual_movement
 from research.company_evidence import load_evidence_records
 from research.entry_forecast import unavailable_forecast
 from research.top10 import score_company, select_top10
+from research import official_sources
 from summary_contract import build_summary_v1, summary_lines
 
 HERE = Path(__file__).parent
@@ -54,6 +55,7 @@ MOVEMENT_STATE_FILE = HERE / "movement_state.json"
 ALERTS_FILE = HERE / "movement_alerts.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
+EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -456,6 +458,23 @@ def mode_digest() -> int:
     return 0 if ok else 1
 
 
+def mode_research_evidence() -> int:
+    """Collect official announcement links into a human-review queue only."""
+    import requests
+
+    retrieved_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        announcements = official_sources.collect_official_announcements(
+            requests.Session(), retrieved_at, lookback_days=7
+        )
+    except Exception as exc:
+        print(f"official evidence collection unavailable: {exc}")
+        return 1
+    official_sources.write_review_queue(EVIDENCE_QUEUE_FILE, announcements, retrieved_at)
+    print(f"official evidence review queue written: {len(announcements)} candidates; no Top 10 was changed.")
+    return 0
+
+
 def mode_top10_draft() -> int:
     """Create a dated draft snapshot; user approval remains required on the site."""
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)
@@ -628,6 +647,7 @@ MODES = {
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
+    "research-evidence": mode_research_evidence,
     "top10-draft": mode_top10_draft,
     "cockpit-refresh": mode_cockpit_refresh,
     "run": mode_run,
