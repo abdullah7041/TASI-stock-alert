@@ -1,1 +1,37 @@
-{"schemaVersion":1,"alerts":{}}
+{
+  "schemaVersion": 1,
+  "alerts": {},
+  "1303:downside": {
+    "armed": true
+  },
+  "2320:upside": {
+    "armed": true
+  },
+  "8313:upside": {
+    "armed": true
+  },
+  "4015:upside": {
+    "armed": true
+  },
+  "4016:downside": {
+    "armed": true
+  },
+  "4164:downside": {
+    "armed": true
+  },
+  "4262:upside": {
+    "armed": true
+  },
+  "4017:downside": {
+    "armed": true
+  },
+  "6017:upside": {
+    "armed": true
+  },
+  "4263:upside": {
+    "armed": true
+  },
+  "4018:upside": {
+    "armed": true
+  }
+}
