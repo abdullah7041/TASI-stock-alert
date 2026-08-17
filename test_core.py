@@ -87,12 +87,52 @@ def test_cockpit_refresh_never_calls_discord(monkeypatch):
     assert main.DASHBOARD_FILE in saved
 
 
+def test_discord_smoke_sends_one_labelled_delivery_only_message(monkeypatch):
+    sent = []
+    monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: (_ for _ in ()).throw(AssertionError("smoke must not collect market data")))
+    monkeypatch.setattr(main, "_save", lambda *_: (_ for _ in ()).throw(AssertionError("smoke must not write state")))
+
+    assert main.mode_discord_smoke() == 0
+    assert len(sent) == 1
+    assert "TASI Discord delivery smoke test" in sent[0]
+    assert "No market data, dashboard update, alert, or order was created." in sent[0]
+
+
+def test_discord_smoke_returns_failure_when_delivery_fails(monkeypatch):
+    monkeypatch.setattr(main.nt, "send_discord", lambda _content: False)
+
+    assert main.mode_discord_smoke() == 1
+
+
+def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch):
+    saved = {}
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [], {"monthly_cap": 500.0}))
+    monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [])
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("no movement must not post")))
+
+    assert main.mode_run() == 0
+    assert saved[main.ALERTS_FILE] == {"alerts": []}
+
+
+def test_session_mode_fails_when_movement_delivery_fails(monkeypatch):
+    alert = {"alertId": "m-1303", "code": "1303", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500.0}))
+    monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [alert])
+    monkeypatch.setattr(main, "_save", lambda *_: None)
+    monkeypatch.setattr(main.nt, "send_discord", lambda _content: False)
+
+    assert main.mode_run() == 1
+
+
 def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(monkeypatch):
     saved = {}
     recs = [{"code": "1303", "name": "EIC", "action": "HOLD", "price": 15.0}]
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", recs, {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "a1", "code": "1303", "direction": "upside", "observedAt": "2026-08-12T10:00:00Z", "receivedAt": "2026-08-12T10:01:00Z", "latency": "delayed-intraday", "excessMovePct": 2.0, "robustZ": 4.5, "reason": "Delayed bot confirmation."}])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda _content: True)
     assert main.mode_run() == 0
     assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "a1"
 
@@ -141,6 +181,14 @@ def test_scheduler_records_lateness_and_does_not_hide_state_commit_failures():
     assert "for path in" in workflow and '[ -e "$path" ]' in workflow
     assert "git add state.json" not in workflow
     assert "git push 2>/dev/null" not in workflow
+
+
+def test_workflow_exposes_manual_discord_smoke_without_cockpit_ingest():
+    workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+
+    assert "discord-smoke" in workflow.split("schedule:", 1)[0]
+    assert "contains('digest,top10-draft,cockpit-refresh', steps.mode.outputs.mode)" in workflow
+    assert "steps.mode.outputs.mode == 'run'" in workflow
 
 
 def test_release_workflows_require_manual_dispatch_and_safe_smoke_refresh():
