@@ -122,11 +122,27 @@ export function parseDashboardSnapshot(value) {
   const parsedForecast = forecast.status === "unavailable"
     ? { status: "unavailable", asOf: tradeDate(forecast.asOf), reason: text(forecast, "reason") }
     : { status: "available", asOf: tradeDate(forecast.asOf), target: nonNegative(forecast, "target"), stop: nonNegative(forecast, "stop"), horizonSessions: 60, targetFirstPct: nonNegative(forecast, "targetFirstPct"), confidence: enumValue(forecast.confidence, "confidence", ["low", "medium", "high"]), modelVersion: text(forecast, "modelVersion") };
+  let summaryV1;
+  if (value.summaryV1 !== undefined) {
+    const summary = value.summaryV1;
+    if (!summary || typeof summary !== "object" || summary.version !== 1) throw new Error("summaryV1 version is invalid.");
+    summaryV1 = {
+      version: 1,
+      generatedAt: timestamp(summary.generatedAt, "summaryV1.generatedAt"),
+      scheduledFor: summary.scheduledFor === null ? null : timestamp(summary.scheduledFor, "summaryV1.scheduledFor"),
+      latenessMinutes: summary.latenessMinutes === null ? null : nonNegative(summary, "latenessMinutes"),
+      cards: list(summary.cards, "summaryV1.cards").map((card) => ({
+        kind: text({ kind: card.kind }, "kind"),
+        state: text({ state: card.state }, "state"),
+        text: text({ text: card.text }, "text"),
+      })),
+    };
+  }
   return {
     ...common, schemaVersion: 2, summary: list(value.summary, "summary").map((line) => text({ line }, "line")),
     top10: { proposalId: text(top10, "proposalId"), status: enumValue(top10.status, "top10.status", ["draft", "approved", "rejected"]), researchedAt: timestamp(top10.researchedAt, "top10.researchedAt"), entries },
     portfolio: { confirmedAt: timestamp(portfolio.confirmedAt, "portfolio.confirmedAt"), cashSar: nonNegative(portfolio, "cashSar"), contributionMonth: portfolio.contributionMonth === null ? null : text(portfolio, "contributionMonth"), holdings: list(portfolio.holdings, "portfolio.holdings").map((holding) => ({ code: text(holding, "code"), name: text(holding, "name"), shares: nonNegative(holding, "shares"), ...(typeof holding.avgCostSar === "number" ? { avgCostSar: nonNegative(holding, "avgCostSar") } : {}) })), proposal: portfolio.proposal === null ? null : portfolio.proposal },
-    alerts, forecast: parsedForecast,
+    ...(summaryV1 ? { summaryV1 } : {}), alerts, forecast: parsedForecast,
   };
 }
 

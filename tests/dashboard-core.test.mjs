@@ -38,6 +38,40 @@ test("accepts separately dated market, research, portfolio, alert, and forecast 
   assert.equal(snapshot.forecast.status, "unavailable");
 });
 
+test("preserves an optional canonical summary in a version-2 snapshot", () => {
+  const snapshot = parseDashboardSnapshot({
+    ...validSnapshot,
+    schemaVersion: 2,
+    summary: ["legacy line"],
+    summaryV1: {
+      version: 1,
+      generatedAt: "2026-08-17T07:38:24Z",
+      scheduledFor: "2026-08-17T06:45:00Z",
+      latenessMinutes: 53,
+      cards: [{ kind: "top10", state: "evidence-pending", text: "Top 10: evidence pending; no current primary-source review." }],
+    },
+    top10: { proposalId: "top10-2026-08-17", status: "draft", researchedAt: "2026-08-17T07:38:24Z", entries: [] },
+    portfolio: { confirmedAt: "2026-08-17T07:38:24Z", cashSar: 0, contributionMonth: null, holdings: [], proposal: null },
+    alerts: [],
+    forecast: { status: "unavailable", asOf: "2026-08-17", reason: "Validation gates not passed." },
+  });
+  assert.equal(snapshot.summaryV1.cards[0].kind, "top10");
+  assert.equal(snapshot.summaryV1.latenessMinutes, 53);
+});
+
+test("keeps old version-2 snapshots readable without a canonical summary", () => {
+  const snapshot = parseDashboardSnapshot({
+    ...validSnapshot,
+    schemaVersion: 2,
+    summary: ["legacy line"],
+    top10: { proposalId: "top10-2026-08-17", status: "draft", researchedAt: "2026-08-17T07:38:24Z", entries: [] },
+    portfolio: { confirmedAt: "2026-08-17T07:38:24Z", cashSar: 0, contributionMonth: null, holdings: [], proposal: null },
+    alerts: [],
+    forecast: { status: "unavailable", asOf: "2026-08-17", reason: "Validation gates not passed." },
+  });
+  assert.equal(snapshot.summaryV1, undefined);
+});
+
 test("rejects a dashboard snapshot that exposes a one-condition candidate", () => {
   assert.throws(() => parseDashboardSnapshot({ ...validSnapshot, qualified: [{ code: "4015", name: "Jamjoom", relativeStrengthPct: 7, squeeze: false, conditionsMet: 1 }] }), /two conditions/i);
 });

@@ -23,11 +23,26 @@ export type DashboardSnapshot = {
 export type DashboardSnapshotV2 = Omit<DashboardSnapshot, "schemaVersion"> & {
   schemaVersion: 2;
   summary: string[];
+  summaryV1?: SummaryV1;
   top10: Top10Proposal;
   portfolio: PortfolioView;
   alerts: MovementAlert[];
   forecast: ForecastView;
 };
 
-export type DashboardPayload = { snapshot: DashboardSnapshot | DashboardSnapshotV2; freshness: "current" | "stale" };
+export type SummaryCard = { kind: string; state: string; text: string };
+
+export type SummaryV1 = {
+  version: 1;
+  generatedAt: string;
+  scheduledFor: string | null;
+  latenessMinutes: number | null;
+  cards: SummaryCard[];
+};
+
+export type DashboardPayload = {
+  snapshot: DashboardSnapshot | DashboardSnapshotV2;
+  freshness: "current" | "stale";
+  alerts: MovementAlert[];
+};
 import type { ForecastView, MovementAlert, PortfolioView, Top10Proposal } from "@/app/lib/evidence-types";

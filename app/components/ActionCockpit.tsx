@@ -57,6 +57,7 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
   if (state.kind === "unavailable") return <UnavailableCockpit message={state.message} />;
 
   const { snapshot, freshness } = state.payload;
+  const alerts = state.payload.alerts;
   const qualified = snapshot.qualified.slice(0, 3);
   const researchEnabled = freshness === "current" && import.meta.env.VITE_AGENT_ENABLED !== "false";
   const v2 = isV2(snapshot) ? snapshot : null;
@@ -123,11 +124,11 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
       {v2 && <>
         <section className={styles.section} aria-labelledby="summary-heading">
           <div className={styles.sectionHeading}><div><p className={styles.kicker}>DISCORD-STYLE DIGEST</p><h2 id="summary-heading">Today&apos;s summary</h2></div></div>
-          <ul className={styles.changeList}>{v2.summary.map((line) => <li className={styles.changeCard} key={line}>{line}</li>)}</ul>
+          <ul className={styles.changeList}>{v2.summaryV1?.cards ? v2.summaryV1.cards.map((card) => <li className={styles.changeCard} key={`${card.kind}-${card.state}`}>{card.text}</li>) : v2.summary.map((line) => <li className={styles.changeCard} key={line}>{line}</li>)}</ul>
         </section>
         <section className={styles.section} aria-labelledby="alerts-heading">
           <div className={styles.sectionHeading}><div><p className={styles.kicker}>DELAYED ALERTS</p><h2 id="alerts-heading">Unusual movement</h2></div></div>
-          {v2.alerts.length === 0 ? <p className={styles.quiet}>No delayed price movement met the unusualness gate.</p> : <div className={styles.actionList}>{v2.alerts.map((alert) => <article className={styles.actionCard} key={alert.alertId}><p className={styles.actionLabel}>{alert.direction}</p><h3>{alert.code}</h3><p>{alert.reason}</p><p className={styles.reason}>Delayed bot confirmation · observed <time dateTime={alert.observedAt}>{formatTimestamp(alert.observedAt)}</time></p></article>)}</div>}
+          {alerts.length === 0 ? <p className={styles.quiet}>No delayed price movement met the unusualness gate.</p> : <div className={styles.actionList}>{alerts.map((alert) => <article className={styles.actionCard} key={alert.alertId}><p className={styles.actionLabel}>{alert.direction}</p><h3>{alert.code}</h3><p>{alert.reason}</p><p className={styles.reason}>Delayed bot confirmation · observed <time dateTime={alert.observedAt}>{formatTimestamp(alert.observedAt)}</time></p></article>)}</div>}
         </section>
         <section className={styles.section} aria-labelledby="portfolio-heading">
           <div className={styles.sectionHeading}><div><p className={styles.kicker}>CONFIRMED PORTFOLIO</p><h2 id="portfolio-heading">Cash and holdings</h2></div><span className={styles.count}>{v2.portfolio.cashSar.toFixed(2)} SAR cash</span></div>
