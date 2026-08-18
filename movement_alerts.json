@@ -1,3 +1,28 @@
 {
-  "alerts": []
+  "alerts": [
+    {
+      "alertId": "ce30200cb0cdc42bb6eb",
+      "code": "4164",
+      "direction": "downside",
+      "observedAt": "2026-08-18T07:26:38Z",
+      "receivedAt": "2026-08-18T07:26:38Z",
+      "latency": "delayed-intraday",
+      "excessMovePct": -2.7801541975746913,
+      "robustZ": -4.279443272648148,
+      "volumeRatio": 0.025284772947846965,
+      "reason": "Delayed bot confirmation of statistically unusual price movement."
+    },
+    {
+      "alertId": "ecced58036a6b1d916db",
+      "code": "6017",
+      "direction": "upside",
+      "observedAt": "2026-08-18T07:26:38Z",
+      "receivedAt": "2026-08-18T07:26:38Z",
+      "latency": "delayed-intraday",
+      "excessMovePct": 3.954601567949023,
+      "robustZ": 4.978662345949722,
+      "volumeRatio": 1.1671660932725052,
+      "reason": "Delayed bot confirmation of statistically unusual price movement."
+    }
+  ]
 }
