@@ -1,22 +1,87 @@
 {
-  "schemaVersion": 1,
-  "tradeDate": "2026-08-12",
-  "asOf": "2026-08-12T08:03:45Z",
-  "regime": "breakdown",
+  "schemaVersion": 2,
+  "tradeDate": "2026-08-18",
+  "asOf": "2026-08-18T07:23:47Z",
+  "regime": "unknown",
   "dataStatus": "delayed-daily",
-  "warnings": [],
-  "urgent": [
-    {
-      "code": "1303",
-      "name": "EIC",
-      "action": "TRIM",
-      "price": 15.97,
-      "reason": "price 15.97 >= trim 15.89",
-      "pnlPct": 28.7
-    }
+  "warnings": [
+    "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."
   ],
+  "urgent": [],
   "changed": [],
   "qualified": [],
   "researchCount": 10,
-  "monthlyBudgetSar": 500.0
+  "monthlyBudgetSar": 500.0,
+  "top10": {
+    "proposalId": "top10-2026-08-18-evidence-pending",
+    "status": "draft",
+    "researchedAt": "2026-08-18T07:23:47Z",
+    "entries": []
+  },
+  "portfolio": {
+    "confirmedAt": "2026-08-18T07:23:47Z",
+    "cashSar": 0.0,
+    "contributionMonth": null,
+    "holdings": [
+      {
+        "code": "1303",
+        "name": "EIC",
+        "shares": 104,
+        "avgCostSar": 12.41
+      },
+      {
+        "code": "2320",
+        "name": "Al-Babtain",
+        "shares": 12,
+        "avgCostSar": 64.26
+      },
+      {
+        "code": "8313",
+        "name": "Rasan",
+        "shares": 11,
+        "avgCostSar": 107.45
+      }
+    ],
+    "proposal": null
+  },
+  "alerts": [],
+  "forecast": {
+    "status": "unavailable",
+    "asOf": "2026-08-18",
+    "reason": "Brier score did not beat the base rate. Log loss did not beat the base rate. Calibration error exceeds 0.05. After-cost expectancy is not positive. Out-of-sample skill is not stable across periods and regimes. Sample size is inadequate. Bootstrap uncertainty includes zero skill. Dataset is survivorship-limited."
+  },
+  "summaryV1": {
+    "version": 1,
+    "generatedAt": "2026-08-18T07:23:47Z",
+    "scheduledFor": "2026-08-18T06:45:00Z",
+    "latenessMinutes": 38,
+    "cards": [
+      {
+        "kind": "portfolio",
+        "state": "clear",
+        "text": "No confirmed trade requires action."
+      },
+      {
+        "kind": "top10",
+        "state": "evidence-pending",
+        "text": "Top 10: evidence pending; no current primary-source review."
+      },
+      {
+        "kind": "safety",
+        "state": "delayed",
+        "text": "Broker app owns real-time price alerts; this digest is delayed analysis."
+      },
+      {
+        "kind": "forecast",
+        "state": "unavailable",
+        "text": "Forecast unavailable: validation gates not passed."
+      }
+    ]
+  },
+  "summary": [
+    "No confirmed trade requires action.",
+    "Top 10: evidence pending; no current primary-source review.",
+    "Broker app owns real-time price alerts; this digest is delayed analysis.",
+    "Forecast unavailable: validation gates not passed."
+  ]
 }
