@@ -128,9 +128,12 @@ def test_delivery_is_disabled_unless_explicitly_enabled(monkeypatch):
 
     monkeypatch.delenv("TASI_DELIVERY_ENABLED", raising=False)
     assert job.delivery_enabled() is False
-    for value in ("", "false", "0", "yes", "TRUE "):
+    # Literal expectations, not a re-implementation of the parsing rule: a
+    # change to that rule has to fail here rather than move both sides.
+    for value, expected in (("", False), ("false", False), ("0", False), ("yes", False), ("no", False),
+                            ("true", True), ("TRUE ", True), (" True", True)):
         monkeypatch.setenv("TASI_DELIVERY_ENABLED", value)
-        assert job.delivery_enabled() is (value.strip().lower() == "true")
+        assert job.delivery_enabled() is expected, value
 
 
 def test_shadow_mode_never_reaches_cockpit_ingestion(monkeypatch):
@@ -140,6 +143,20 @@ def test_shadow_mode_never_reaches_cockpit_ingestion(monkeypatch):
     monkeypatch.delenv("TASI_DELIVERY_ENABLED", raising=False)
 
     assert ingest_alerts([alert()]) == {"ok": True, "status": "skipped: delivery disabled (shadow mode)"}
+
+
+def test_a_job_that_owns_nothing_ingests_nothing(monkeypatch):
+    monkeypatch.setenv("COCKPIT_ALERT_INGEST_URL", "https://example.invalid/api/alerts/ingest")
+    monkeypatch.setenv("COCKPIT_SIWC_BYPASS_TOKEN", "sites")
+    monkeypatch.setenv("COCKPIT_INGEST_TOKEN", "app")
+    monkeypatch.setenv("TASI_DELIVERY_ENABLED", "true")
+    store = InMemoryStateStore()
+
+    deliver_alerts([alert()], store, lambda _owned: True, enabled=True)
+    losing_run = deliver_alerts([alert()], store, lambda _owned: True, enabled=True)
+
+    assert losing_run["owned"] == []
+    assert ingest_alerts(losing_run["owned"]) == {"ok": True, "status": "skipped: no owned alerts"}
 
 
 def test_distinct_observations_are_separate_events():

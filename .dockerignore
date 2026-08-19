@@ -1,0 +1,22 @@
+# Keeps the Cloud Run image to the Python producer. Without this, `COPY . .`
+# in deploy/Dockerfile pulls the Node toolchain and every local worktree into
+# the image.
+.git
+.github
+.worktrees
+.claude
+.cache
+.wrangler
+.pytest_cache
+__pycache__
+**/__pycache__
+node_modules
+dist
+build
+.next
+tests
+app
+cockpit
+worker
+db
+*.md

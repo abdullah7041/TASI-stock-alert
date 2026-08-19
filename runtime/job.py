@@ -80,7 +80,7 @@ def deliver_alerts(alerts: list[dict], store: StateStore, send, *, enabled: bool
         claimed.append((identifier, alert))
 
     if not claimed:
-        return {"delivered": 0, "skipped": len(skipped), "shadowed": len(shadowed), "ok": True, "reason": None}
+        return {"delivered": 0, "skipped": len(skipped), "shadowed": len(shadowed), "ok": True, "reason": None, "owned": []}
 
     try:
         ok = bool(send([alert for _identifier, alert in claimed]))
@@ -92,7 +92,8 @@ def deliver_alerts(alerts: list[dict], store: StateStore, send, *, enabled: bool
         store.record_delivery(identifier, DISCORD, ok, reason or "")
         if not ok:
             store.release_event(identifier)
-    return {"delivered": len(claimed) if ok else 0, "skipped": len(skipped), "shadowed": len(shadowed), "ok": ok, "reason": reason}
+    return {"delivered": len(claimed) if ok else 0, "skipped": len(skipped), "shadowed": len(shadowed), "ok": ok,
+            "reason": reason, "owned": [alert for _identifier, alert in claimed] if ok else []}
 
 
 def run(mode: str, store: StateStore | None = None, now: datetime | None = None) -> int:
@@ -152,7 +153,7 @@ def _run_session(main, store: StateStore) -> int:
     alerts = main._movement_alerts(recs, state=movement_state, save_state=store.save_movement_state)
     as_of = _now()
     result = deliver_alerts(alerts, store, lambda owned: main.nt.send_discord(main.nt.build_movement_alert_message(owned, as_of)))
-    ingest = ingest_alerts(alerts)
+    ingest = ingest_alerts(result["owned"])
     log_event(mode="session", status="detected", alertCount=len(alerts), delivered=result["delivered"],
               skipped=result["skipped"], shadowed=result["shadowed"], discordOk=result["ok"],
               discordReason=result["reason"], ingestResult=ingest["status"],
@@ -161,7 +162,14 @@ def _run_session(main, store: StateStore) -> int:
 
 
 def ingest_alerts(alerts: list[dict]) -> dict:
-    """Push alerts into the Sites cockpit, with Sites auth and app auth kept apart."""
+    """Push this job's own alerts into the Sites cockpit.
+
+    Only claimed-and-delivered alerts are passed in. A job that lost every
+    claim ingests nothing, so `ingestResult` in the logs cannot read as a
+    successful ingest for a run that owned no events.
+    """
+    if not alerts:
+        return {"ok": True, "status": "skipped: no owned alerts"}
     endpoint = os.environ.get("COCKPIT_ALERT_INGEST_URL", "")
     sites_token = os.environ.get("COCKPIT_SIWC_BYPASS_TOKEN", "")
     app_token = os.environ.get("COCKPIT_INGEST_TOKEN", "")
