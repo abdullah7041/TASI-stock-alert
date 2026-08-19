@@ -57,5 +57,8 @@
   },
   "8313:downside": {
     "armed": true
+  },
+  "4016:upside": {
+    "armed": true
   }
 }
