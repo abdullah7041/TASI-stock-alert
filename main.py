@@ -264,11 +264,33 @@ def mode_heartbeat() -> int:
     return 0 if ok else 1
 
 
+# A fixed, obviously-synthetic company. Using a real watchlist name here would
+# make the smoke message indistinguishable from a genuine movement alert.
+SMOKE_ALERT = {
+    "alertId": "discord-smoke",
+    "code": "0000",
+    "name": "Synthetic Smoke Test Company",
+    "direction": "upside",
+    "latency": "delayed-intraday",
+    "excessMovePct": 2.5,
+    "robustZ": 4.5,
+    "volumeRatio": 3.0,
+    "reason": "SYNTHETIC SMOKE TEST. No market data was collected and no state was written.",
+}
+
+
 def mode_discord_smoke() -> int:
+    """Prove real Discord delivery through the real formatter, touching nothing else.
+
+    This deliberately reuses build_movement_alert_message instead of a private
+    string: a smoke test that renders its own format cannot detect drift in the
+    format production actually sends.
+    """
     as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    alert = {**SMOKE_ALERT, "observedAt": as_of, "receivedAt": as_of}
     message = (
-        "__**TASI Discord delivery smoke test**__\n"
-        f"Executed {as_of}. No market data, dashboard update, alert, or order was created."
+        "__**DISCORD SMOKE TEST — SYNTHETIC ALERT, NOT A REAL SIGNAL**__\n"
+        + nt.build_movement_alert_message([alert], as_of)
     )
     ok = nt.send_discord(message)
     print("discord smoke sent:", ok)
@@ -507,15 +529,52 @@ def mode_cockpit_refresh() -> int:
     return 0
 
 
-def _movement_alerts(recs: list, received_at: str | None = None) -> list:
-    """Detect statistically unusual delayed moves without changing the daily snapshot."""
+def _verified_name(code: str | None, catalog: dict | None = None) -> str:
+    """Resolve a company name from the verified symbol catalog, never from the code."""
+    entry = (catalog if catalog is not None else _load(SYMBOLS_FILE, {})).get(str(code or ""), {})
+    return str(entry.get("config_name") or "").strip() if entry.get("verified") else ""
+
+
+def mode_reconcile() -> int:
+    """After the close: refresh the cockpit snapshot and print a health summary.
+
+    Deliberately silent on Discord. The reconciliation run exists to answer
+    "did today's schedule actually do its job", and a message at 15:10 saying
+    nothing happened is noise, not evidence.
+    """
+    exit_code = mode_cockpit_refresh()
+    snapshot = _load(DASHBOARD_FILE, {}) or {}
+    alerts = (_load(ALERTS_FILE, {}) or {}).get("alerts") or []
+    summary = {
+        "tradeDate": snapshot.get("tradeDate"),
+        "asOf": snapshot.get("asOf"),
+        "schemaVersion": snapshot.get("schemaVersion"),
+        "movementAlertCount": len(alerts),
+        "unnamedAlertCount": sum(1 for alert in alerts if not str(alert.get("name") or "").strip()),
+        "warnings": snapshot.get("warnings") or [],
+    }
+    print("reconciliation:", json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return exit_code
+
+
+def _movement_alerts(recs: list, received_at: str | None = None, state: dict | None = None,
+                     save_state=None) -> list:
+    """Detect statistically unusual delayed moves without changing the daily snapshot.
+
+    `state` and `save_state` exist for the managed runtime: a Cloud Run job has
+    no disk that survives the run, so it supplies the re-arm map from Firestore
+    and writes it back there. Both default to the repository file the GitHub
+    schedule already uses.
+    """
     received_at = received_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    state = _load(MOVEMENT_STATE_FILE, {})
+    state = _load(MOVEMENT_STATE_FILE, {}) if state is None else dict(state)
+    catalog = _load(SYMBOLS_FILE, {})
     alerts = []
     for rec in recs:
         code = rec.get("code")
         if not code:
             continue
+        name = rec.get("name") or _verified_name(code, catalog)
         try:
             frame = _load_history(code)
             closes = [float(value) for value in frame["Close"].dropna().tolist()]
@@ -523,13 +582,13 @@ def _movement_alerts(recs: list, received_at: str | None = None) -> list:
             returns = [100 * (closes[index] / closes[index - 1] - 1) for index in range(1, len(closes)) if closes[index - 1] > 0]
             baseline = returns[-21:-1]
             if len(baseline) < 20:
-                result = detect_unusual_movement({"code": code, "fresh": False, "comparable_observations": len(baseline)}, state)
+                result = detect_unusual_movement({"code": code, "name": name, "fresh": False, "comparable_observations": len(baseline)}, state)
             else:
                 median = statistics.median(baseline)
                 mad = statistics.median(abs(value - median) for value in baseline)
                 robust_z = 0.6745 * (returns[-1] - median) / mad if mad > 0 else 0.0
                 volume_baseline = statistics.median(volumes[-21:-1]) if len(volumes) >= 21 else 0.0
-                result = detect_unusual_movement({"code": code, "excess_move_pct": returns[-1] - median, "robust_z": robust_z,
+                result = detect_unusual_movement({"code": code, "name": name, "excess_move_pct": returns[-1] - median, "robust_z": robust_z,
                                                    "volume_ratio": volumes[-1] / volume_baseline if volume_baseline > 0 else 0.0,
                                                    "observed_at": received_at, "received_at": received_at, "fresh": True,
                                                    "comparable_observations": len(baseline)}, state)
@@ -538,7 +597,7 @@ def _movement_alerts(recs: list, received_at: str | None = None) -> list:
                 alerts.append(result["alert"])
         except Exception as exc:
             print(f"movement check unavailable for {code}: {exc}")
-    _save(MOVEMENT_STATE_FILE, state)
+    (save_state or (lambda value: _save(MOVEMENT_STATE_FILE, value)))(state)
     return alerts
 
 
@@ -662,6 +721,7 @@ MODES = {
     "research-evidence": mode_research_evidence,
     "top10-draft": mode_top10_draft,
     "cockpit-refresh": mode_cockpit_refresh,
+    "reconcile": mode_reconcile,
     "run": mode_run,
     "universe": mode_universe,
     "features": mode_features,

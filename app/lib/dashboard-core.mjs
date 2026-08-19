@@ -1,3 +1,5 @@
+import { resolveAlertName } from "./alert-names.mjs";
+
 const RIYADH = "Asia/Riyadh";
 
 function list(value, field) {
@@ -112,7 +114,7 @@ export function parseDashboardSnapshot(value) {
   const portfolio = value.portfolio;
   if (!portfolio || typeof portfolio !== "object") throw new Error("portfolio must be an object.");
   const alerts = list(value.alerts, "alerts").map((alert) => ({
-    alertId: text(alert, "alertId"), code: text(alert, "code"), direction: enumValue(alert.direction, "direction", ["upside", "downside"]),
+    alertId: text(alert, "alertId"), code: text(alert, "code"), name: resolveAlertName(alert), direction: enumValue(alert.direction, "direction", ["upside", "downside"]),
     observedAt: timestamp(alert.observedAt, "observedAt"), receivedAt: timestamp(alert.receivedAt, "receivedAt"),
     latency: enumValue(alert.latency, "latency", ["delayed-intraday"]), excessMovePct: number(alert, "excessMovePct"), robustZ: number(alert, "robustZ"),
     ...(typeof alert.volumeRatio === "number" ? { volumeRatio: nonNegative(alert, "volumeRatio") } : {}), reason: text(alert, "reason"),

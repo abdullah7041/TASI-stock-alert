@@ -3,3 +3,5 @@ pandas>=2.0
 numpy>=1.24
 requests>=2.31
 pytest>=8.0
+# Tests parse the committed workflow and Cloud Scheduler definitions.
+PyYAML>=6.0

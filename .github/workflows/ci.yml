@@ -29,8 +29,13 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      # test_runtime.py asserts on the committed workflow and Cloud Scheduler
+      # definitions, so workflow validation rides in the same job rather than
+      # needing a separate linter.
+      - name: Validate scheduled runtime modules
+        run: python -m compileall -q main.py movement.py session_gate.py runtime research
       - name: Tests
-        run: python -m pytest test_core.py research/test_base_rate.py -q
+        run: python -m pytest test_core.py test_alert_names.py test_runtime.py research/test_base_rate.py -q
 
   web:
     runs-on: ubuntu-latest
@@ -51,7 +56,8 @@ jobs:
         run: npm run typecheck
       # `npm test` runs `npm run build` first: tests/action-cockpit.test.mjs
       # imports ../dist/server/index.js, so the build is a prerequisite, not
-      # a duplicate step.
+      # a duplicate step. It then runs the jsdom component tests (`test:ui`),
+      # which render the cockpit and drive it with real clicks and keys.
       - name: Build and test
         run: npm test
       - name: Check repository patch integrity

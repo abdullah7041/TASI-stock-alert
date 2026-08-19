@@ -1,0 +1,55 @@
+name: Manual operations
+
+# Everything an operator triggers by hand and nothing a schedule may fire.
+# Split out from tasi.yml so a scheduled run can never post a smoke message or
+# a recovery run by accident, and so the smoke test is auditable on its own.
+#
+# discord-smoke posts one clearly labelled synthetic alert through the real
+# production formatter. It collects no market data and writes no state, and the
+# job fails when delivery fails.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "discord-smoke | heartbeat | cockpit-refresh | digest | run"
+        required: true
+        default: discord-smoke
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tasi-manual-operations
+  cancel-in-progress: false
+
+jobs:
+  operate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run operation
+        env:
+          MODE: ${{ github.event.inputs.operation }}
+          SCHEDULED_FOR: manual
+          SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        # No `continue-on-error`: a failed Discord delivery must fail the run,
+        # otherwise the smoke test proves nothing.
+        run: python main.py
+
+      - name: Record operation telemetry
+        if: always()
+        env:
+          OPERATION: ${{ github.event.inputs.operation }}
+        run: |
+          printf 'operation=%s\ncommit=%s\nactor=%s\nresult=%s\n' \
+            "$OPERATION" "$GITHUB_SHA" "$GITHUB_ACTOR" "${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

@@ -95,8 +95,12 @@ def test_discord_smoke_sends_one_labelled_delivery_only_message(monkeypatch):
 
     assert main.mode_discord_smoke() == 0
     assert len(sent) == 1
-    assert "TASI Discord delivery smoke test" in sent[0]
-    assert "No market data, dashboard update, alert, or order was created." in sent[0]
+    assert "DISCORD SMOKE TEST — SYNTHETIC ALERT, NOT A REAL SIGNAL" in sent[0]
+    assert "No market data was collected and no state was written." in sent[0]
+    # The smoke message must be produced by the production formatter, so a
+    # format regression is caught by the smoke run rather than hidden by it.
+    assert "Synthetic Smoke Test Company (0000) — upside" in sent[0]
+    assert "Broker app owns real-time price alerts" in sent[0]
 
 
 def test_discord_smoke_returns_failure_when_delivery_fails(monkeypatch):
@@ -117,7 +121,7 @@ def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch)
 
 
 def test_session_mode_fails_when_movement_delivery_fails(monkeypatch):
-    alert = {"alertId": "m-1303", "code": "1303", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}
+    alert = {"alertId": "m-1303", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500.0}))
     monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [alert])
     monkeypatch.setattr(main, "_save", lambda *_: None)
@@ -130,7 +134,7 @@ def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(mo
     saved = {}
     recs = [{"code": "1303", "name": "EIC", "action": "HOLD", "price": 15.0}]
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", recs, {"monthly_cap": 500}))
-    monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "a1", "code": "1303", "direction": "upside", "observedAt": "2026-08-12T10:00:00Z", "receivedAt": "2026-08-12T10:01:00Z", "latency": "delayed-intraday", "excessMovePct": 2.0, "robustZ": 4.5, "reason": "Delayed bot confirmation."}])
+    monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "a1", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-12T10:00:00Z", "receivedAt": "2026-08-12T10:01:00Z", "latency": "delayed-intraday", "excessMovePct": 2.0, "robustZ": 4.5, "reason": "Delayed bot confirmation."}])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
     monkeypatch.setattr(main.nt, "send_discord", lambda _content: True)
     assert main.mode_run() == 0
@@ -155,14 +159,14 @@ def test_session_mode_sends_only_new_delayed_movement_cards(monkeypatch):
     saved = {}
     sent = []
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500}))
-    monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "m-1303-20260817", "code": "1303", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}])
+    monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "m-1303-20260817", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
     monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
     monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
 
     assert main.mode_run() == 0
     assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "m-1303-20260817"
-    assert "1303" in sent[0] and "Delayed analysis" in sent[0]
+    assert "EIC (1303) — upside" in sent[0] and "Delayed analysis" in sent[0]
     assert "TASI alert" not in sent[0]
 
 
@@ -215,7 +219,7 @@ def test_production_smoke_checks_composed_alerts_without_discord():
 
 
 def test_unusual_price_alert_is_delayed_and_rearms_only_below_two_z():
-    observation = {"code": "1303", "excess_move_pct": -2.1, "robust_z": -4.8, "volume_ratio": 1.0, "observed_at": "2026-08-12T10:00:00Z", "received_at": "2026-08-12T10:01:00Z", "fresh": True, "comparable_observations": 30}
+    observation = {"code": "1303", "name": "EIC", "excess_move_pct": -2.1, "robust_z": -4.8, "volume_ratio": 1.0, "observed_at": "2026-08-12T10:00:00Z", "received_at": "2026-08-12T10:01:00Z", "fresh": True, "comparable_observations": 30}
     first = detect_unusual_movement(observation, {}, [])
     assert first["alert"]["latency"] == "delayed-intraday"
     repeated = detect_unusual_movement({**observation, "robust_z": -4.2}, first["state"])

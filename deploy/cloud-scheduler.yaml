@@ -1,0 +1,51 @@
+# Cloud Scheduler definitions for the TASI producer Cloud Run Job.
+#
+# Machine-parseable on purpose: tests assert the timezone and the mode set from
+# this file, which prose in a runbook could not guarantee. Cron fields are read
+# in `timezone`, so they are Riyadh local times, not UTC.
+#
+# Cron day-of-week: Sunday=0 ... Thursday=4. Tadawul trades Sunday-Thursday.
+project: tasi-alert-system
+region: me-central1
+timezone: Asia/Riyadh
+job:
+  name: tasi-producer
+  image: me-central1-docker.pkg.dev/tasi-alert-system/tasi/producer
+  serviceAccount: tasi-producer@tasi-alert-system.iam.gserviceaccount.com
+  taskTimeout: 600s
+  maxRetries: 1
+  # Values come from Secret Manager at run time; no secret value is ever stored
+  # in this file, in an image layer, or in a log line.
+  secrets:
+    SAHMK_API_KEY: projects/tasi-alert-system/secrets/SAHMK_API_KEY/versions/latest
+    DISCORD_WEBHOOK_URL: projects/tasi-alert-system/secrets/DISCORD_WEBHOOK_URL/versions/latest
+    COCKPIT_SIWC_BYPASS_TOKEN: projects/tasi-alert-system/secrets/COCKPIT_SIWC_BYPASS_TOKEN/versions/latest
+    COCKPIT_INGEST_TOKEN: projects/tasi-alert-system/secrets/COCKPIT_INGEST_TOKEN/versions/latest
+  env:
+    # Shadow mode until the canary passes. Flipping this to "true" is the whole
+    # cutover, and it happens only after the GitHub digest/session cron is off.
+    TASI_DELIVERY_ENABLED: "false"
+    COCKPIT_ALERT_INGEST_URL: https://tasi-action-cockpit.busaud7041.chatgpt.site/api/alerts/ingest
+    COCKPIT_DASHBOARD_INGEST_URL: https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest
+
+schedules:
+  - name: tasi-pre-open-digest
+    mode: digest
+    # 09:40 Riyadh, Sunday-Thursday, twenty minutes before the 10:00 open.
+    schedule: "40 9 * * 0,1,2,3,4"
+    timezone: Asia/Riyadh
+    description: Pre-open delayed digest and cockpit snapshot.
+
+  - name: tasi-session-monitor
+    mode: session
+    # Every 10 minutes from 10:00 through 14:50 Riyadh, Sunday-Thursday.
+    schedule: "0,10,20,30,40,50 10-14 * * 0,1,2,3,4"
+    timezone: Asia/Riyadh
+    description: Delayed movement detection, claim-before-send Discord delivery.
+
+  - name: tasi-reconciliation
+    mode: reconcile
+    # 15:10 Riyadh, ten minutes after the 15:00 close.
+    schedule: "10 15 * * 0,1,2,3,4"
+    timezone: Asia/Riyadh
+    description: Close-out cockpit refresh and health summary. Sends no Discord message.
