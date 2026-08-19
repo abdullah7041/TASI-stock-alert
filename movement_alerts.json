@@ -1,16 +1,3 @@
 {
-  "alerts": [
-    {
-      "alertId": "782ff31d4b1e7c160370",
-      "code": "6017",
-      "direction": "upside",
-      "observedAt": "2026-08-19T10:45:53Z",
-      "receivedAt": "2026-08-19T10:45:53Z",
-      "latency": "delayed-intraday",
-      "excessMovePct": 4.46332415274826,
-      "robustZ": 4.6785140005277235,
-      "volumeRatio": 2.5047932395077224,
-      "reason": "Delayed bot confirmation of statistically unusual price movement. Volume confirms participation."
-    }
-  ]
+  "alerts": []
 }
