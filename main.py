@@ -529,22 +529,52 @@ def mode_cockpit_refresh() -> int:
     return 0
 
 
-def _verified_name(code: str | None) -> str:
+def _verified_name(code: str | None, catalog: dict | None = None) -> str:
     """Resolve a company name from the verified symbol catalog, never from the code."""
-    entry = _load(SYMBOLS_FILE, {}).get(str(code or ""), {})
+    entry = (catalog if catalog is not None else _load(SYMBOLS_FILE, {})).get(str(code or ""), {})
     return str(entry.get("config_name") or "").strip() if entry.get("verified") else ""
 
 
-def _movement_alerts(recs: list, received_at: str | None = None) -> list:
-    """Detect statistically unusual delayed moves without changing the daily snapshot."""
+def mode_reconcile() -> int:
+    """After the close: refresh the cockpit snapshot and print a health summary.
+
+    Deliberately silent on Discord. The reconciliation run exists to answer
+    "did today's schedule actually do its job", and a message at 15:10 saying
+    nothing happened is noise, not evidence.
+    """
+    exit_code = mode_cockpit_refresh()
+    snapshot = _load(DASHBOARD_FILE, {}) or {}
+    alerts = (_load(ALERTS_FILE, {}) or {}).get("alerts") or []
+    summary = {
+        "tradeDate": snapshot.get("tradeDate"),
+        "asOf": snapshot.get("asOf"),
+        "schemaVersion": snapshot.get("schemaVersion"),
+        "movementAlertCount": len(alerts),
+        "unnamedAlertCount": sum(1 for alert in alerts if not str(alert.get("name") or "").strip()),
+        "warnings": snapshot.get("warnings") or [],
+    }
+    print("reconciliation:", json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return exit_code
+
+
+def _movement_alerts(recs: list, received_at: str | None = None, state: dict | None = None,
+                     save_state=None) -> list:
+    """Detect statistically unusual delayed moves without changing the daily snapshot.
+
+    `state` and `save_state` exist for the managed runtime: a Cloud Run job has
+    no disk that survives the run, so it supplies the re-arm map from Firestore
+    and writes it back there. Both default to the repository file the GitHub
+    schedule already uses.
+    """
     received_at = received_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    state = _load(MOVEMENT_STATE_FILE, {})
+    state = _load(MOVEMENT_STATE_FILE, {}) if state is None else dict(state)
+    catalog = _load(SYMBOLS_FILE, {})
     alerts = []
     for rec in recs:
         code = rec.get("code")
-        name = rec.get("name") or _verified_name(code)
         if not code:
             continue
+        name = rec.get("name") or _verified_name(code, catalog)
         try:
             frame = _load_history(code)
             closes = [float(value) for value in frame["Close"].dropna().tolist()]
@@ -567,7 +597,7 @@ def _movement_alerts(recs: list, received_at: str | None = None) -> list:
                 alerts.append(result["alert"])
         except Exception as exc:
             print(f"movement check unavailable for {code}: {exc}")
-    _save(MOVEMENT_STATE_FILE, state)
+    (save_state or (lambda value: _save(MOVEMENT_STATE_FILE, value)))(state)
     return alerts
 
 
@@ -691,6 +721,7 @@ MODES = {
     "research-evidence": mode_research_evidence,
     "top10-draft": mode_top10_draft,
     "cockpit-refresh": mode_cockpit_refresh,
+    "reconcile": mode_reconcile,
     "run": mode_run,
     "universe": mode_universe,
     "features": mode_features,

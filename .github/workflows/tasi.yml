@@ -41,7 +41,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Validate scheduled runtime
-        run: python -m compileall -q main.py movement.py research
+        run: python -m compileall -q main.py movement.py session_gate.py research
 
       - name: Pick mode
         id: mode

@@ -1,0 +1,4 @@
+# Managed-runtime only. Deliberately separate from requirements.txt: the CI
+# python job and the GitHub fallback must keep installing and running without
+# any Google Cloud dependency or credentials.
+google-cloud-firestore==2.21.0

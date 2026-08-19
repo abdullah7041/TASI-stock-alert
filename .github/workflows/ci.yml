@@ -29,8 +29,13 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+      # test_runtime.py asserts on the committed workflow and Cloud Scheduler
+      # definitions, so workflow validation rides in the same job rather than
+      # needing a separate linter.
+      - name: Validate scheduled runtime modules
+        run: python -m compileall -q main.py movement.py session_gate.py runtime research
       - name: Tests
-        run: python -m pytest test_core.py test_alert_names.py research/test_base_rate.py -q
+        run: python -m pytest test_core.py test_alert_names.py test_runtime.py research/test_base_rate.py -q
 
   web:
     runs-on: ubuntu-latest
