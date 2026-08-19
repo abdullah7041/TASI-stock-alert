@@ -264,11 +264,33 @@ def mode_heartbeat() -> int:
     return 0 if ok else 1
 
 
+# A fixed, obviously-synthetic company. Using a real watchlist name here would
+# make the smoke message indistinguishable from a genuine movement alert.
+SMOKE_ALERT = {
+    "alertId": "discord-smoke",
+    "code": "0000",
+    "name": "Synthetic Smoke Test Company",
+    "direction": "upside",
+    "latency": "delayed-intraday",
+    "excessMovePct": 2.5,
+    "robustZ": 4.5,
+    "volumeRatio": 3.0,
+    "reason": "SYNTHETIC SMOKE TEST. No market data was collected and no state was written.",
+}
+
+
 def mode_discord_smoke() -> int:
+    """Prove real Discord delivery through the real formatter, touching nothing else.
+
+    This deliberately reuses build_movement_alert_message instead of a private
+    string: a smoke test that renders its own format cannot detect drift in the
+    format production actually sends.
+    """
     as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    alert = {**SMOKE_ALERT, "observedAt": as_of, "receivedAt": as_of}
     message = (
-        "__**TASI Discord delivery smoke test**__\n"
-        f"Executed {as_of}. No market data, dashboard update, alert, or order was created."
+        "__**DISCORD SMOKE TEST — SYNTHETIC ALERT, NOT A REAL SIGNAL**__\n"
+        + nt.build_movement_alert_message([alert], as_of)
     )
     ok = nt.send_discord(message)
     print("discord smoke sent:", ok)
@@ -507,6 +529,12 @@ def mode_cockpit_refresh() -> int:
     return 0
 
 
+def _verified_name(code: str | None) -> str:
+    """Resolve a company name from the verified symbol catalog, never from the code."""
+    entry = _load(SYMBOLS_FILE, {}).get(str(code or ""), {})
+    return str(entry.get("config_name") or "").strip() if entry.get("verified") else ""
+
+
 def _movement_alerts(recs: list, received_at: str | None = None) -> list:
     """Detect statistically unusual delayed moves without changing the daily snapshot."""
     received_at = received_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -514,6 +542,7 @@ def _movement_alerts(recs: list, received_at: str | None = None) -> list:
     alerts = []
     for rec in recs:
         code = rec.get("code")
+        name = rec.get("name") or _verified_name(code)
         if not code:
             continue
         try:
@@ -523,13 +552,13 @@ def _movement_alerts(recs: list, received_at: str | None = None) -> list:
             returns = [100 * (closes[index] / closes[index - 1] - 1) for index in range(1, len(closes)) if closes[index - 1] > 0]
             baseline = returns[-21:-1]
             if len(baseline) < 20:
-                result = detect_unusual_movement({"code": code, "fresh": False, "comparable_observations": len(baseline)}, state)
+                result = detect_unusual_movement({"code": code, "name": name, "fresh": False, "comparable_observations": len(baseline)}, state)
             else:
                 median = statistics.median(baseline)
                 mad = statistics.median(abs(value - median) for value in baseline)
                 robust_z = 0.6745 * (returns[-1] - median) / mad if mad > 0 else 0.0
                 volume_baseline = statistics.median(volumes[-21:-1]) if len(volumes) >= 21 else 0.0
-                result = detect_unusual_movement({"code": code, "excess_move_pct": returns[-1] - median, "robust_z": robust_z,
+                result = detect_unusual_movement({"code": code, "name": name, "excess_move_pct": returns[-1] - median, "robust_z": robust_z,
                                                    "volume_ratio": volumes[-1] / volume_baseline if volume_baseline > 0 else 0.0,
                                                    "observed_at": received_at, "received_at": received_at, "fresh": True,
                                                    "comparable_observations": len(baseline)}, state)

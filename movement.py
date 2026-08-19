@@ -9,6 +9,10 @@ MIN_COMPARABLE_OBSERVATIONS = 20
 REARM_Z = 2.0
 VOLUME_CONFIRMATION_RATIO = 2.0
 
+class UnnamedAlertError(ValueError):
+    """A newly produced alert has no company name, so it can never be rendered."""
+
+
 def detect_unusual_movement(observation: dict, state: dict, official_evidence: list | None = None) -> dict:
     direction = "upside" if observation.get("excess_move_pct", 0) > 0 else "downside"
     key = f"{observation.get('code')}:{direction}"
@@ -31,6 +35,11 @@ def detect_unusual_movement(observation: dict, state: dict, official_evidence: l
     volume_ratio = float(observation.get("volume_ratio", 0))
     evidence_note = " Volume confirms participation." if volume_ratio >= VOLUME_CONFIRMATION_RATIO else ""
     if official_evidence: evidence_note += " Recent official evidence is linked."
+    name = str(observation.get("name") or "").strip()
+    if not name:
+        # A code alone is unreadable in Discord and on the cockpit. Refusing here
+        # keeps the unnamed alert out of the stored history entirely.
+        raise UnnamedAlertError(f"movement alert for {observation['code']} has no company name")
     prior["armed"] = False
     next_state[key] = prior
-    return {"alert": {"alertId": alert_id, "code": observation["code"], "direction": direction, "observedAt": observed_at, "receivedAt": observation["received_at"], "latency": "delayed-intraday", "excessMovePct": float(observation["excess_move_pct"]), "robustZ": robust_z, "volumeRatio": volume_ratio, "reason": "Delayed bot confirmation of statistically unusual price movement." + evidence_note}, "suppressed_reason": None, "state": next_state}
+    return {"alert": {"alertId": alert_id, "code": observation["code"], "name": name, "direction": direction, "observedAt": observed_at, "receivedAt": observation["received_at"], "latency": "delayed-intraday", "excessMovePct": float(observation["excess_move_pct"]), "robustZ": robust_z, "volumeRatio": volume_ratio, "reason": "Delayed bot confirmation of statistically unusual price movement." + evidence_note}, "suppressed_reason": None, "state": next_state}

@@ -283,12 +283,17 @@ def build_dashboard_digest(snapshot: dict) -> str:
     return "\n".join(lines)
 
 
+def _alert_company(alert: dict) -> str:
+    """A stored alert from before names were required still has to read honestly."""
+    return str(alert.get("name") or "").strip() or "Company name unavailable"
+
+
 def build_movement_alert_message(alerts: list[dict], as_of: str) -> str:
     """Render one delayed-only Discord delivery for newly detected movements."""
     lines = [f"__**TASI unusual movement ({as_of})**__", "_Delayed analysis; verify live pricing in your broker app._"]
     for alert in sorted(alerts, key=lambda item: str(item.get("observedAt", ""))):
         lines.extend([
-            f"**{alert['code']} {alert['direction']}**",
+            f"**{_alert_company(alert)} ({alert['code']}) — {alert['direction']}**",
             f"- {alert['reason']}",
             f"- Observed {alert['observedAt']}; received {alert['receivedAt']}.",
         ])

@@ -30,7 +30,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Tests
-        run: python -m pytest test_core.py research/test_base_rate.py -q
+        run: python -m pytest test_core.py test_alert_names.py research/test_base_rate.py -q
 
   web:
     runs-on: ubuntu-latest
@@ -51,7 +51,8 @@ jobs:
         run: npm run typecheck
       # `npm test` runs `npm run build` first: tests/action-cockpit.test.mjs
       # imports ../dist/server/index.js, so the build is a prerequisite, not
-      # a duplicate step.
+      # a duplicate step. It then runs the jsdom component tests (`test:ui`),
+      # which render the cockpit and drive it with real clicks and keys.
       - name: Build and test
         run: npm test
       - name: Check repository patch integrity

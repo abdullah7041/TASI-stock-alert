@@ -49,6 +49,8 @@ export type PortfolioView = {
 export type MovementAlert = {
   alertId: string;
   code: string;
+  /** Display name of the company. Required: a bare code is not a readable alert. */
+  name: string;
   direction: "upside" | "downside";
   observedAt: string;
   receivedAt: string;
@@ -58,6 +60,12 @@ export type MovementAlert = {
   volumeRatio?: number;
   reason: string;
 };
+
+/**
+ * An alert as it sits in storage. Alerts written before the name became
+ * required have no name, so every read path normalizes before rendering.
+ */
+export type StoredMovementAlert = Omit<MovementAlert, "name"> & { name?: string };
 
 export type ForecastView =
   | { status: "unavailable"; asOf: string; reason: string }

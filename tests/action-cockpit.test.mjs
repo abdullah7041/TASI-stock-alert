@@ -31,10 +31,14 @@ test("does not import preview fixtures and includes an unavailable state", () =>
 });
 
 test("keeps dated evidence and the broker boundary visible for version-2 cockpit data", () => {
-  const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
+  // The alert surface moved into its own component, so the guarantees are now
+  // spread across two files. tests/ui/action-cockpit.test.tsx checks the
+  // rendered result; this keeps the wording itself from drifting silently.
+  const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8")
+    + readFileSync(new URL("../app/components/AlertBoard.tsx", import.meta.url), "utf8");
   assert.match(source, /Today.*summary/i);
   assert.match(source, /Evidence reviewed/i);
-  assert.match(source, /Delayed bot confirmation/i);
+  assert.match(source, /delayed bot confirmation/i);
   assert.match(source, /Broker app.*real-time/i);
   assert.match(source, /Forecast unavailable/i);
   assert.match(source, /Asia\/Riyadh/);
