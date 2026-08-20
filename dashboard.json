@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "tradeDate": "2026-08-20",
-  "asOf": "2026-08-20T07:27:16Z",
+  "asOf": "2026-08-20T13:26:40Z",
   "regime": "unknown",
   "dataStatus": "delayed-daily",
   "warnings": [
@@ -15,11 +15,11 @@
   "top10": {
     "proposalId": "top10-2026-08-20-evidence-pending",
     "status": "draft",
-    "researchedAt": "2026-08-20T07:27:16Z",
+    "researchedAt": "2026-08-20T13:26:40Z",
     "entries": []
   },
   "portfolio": {
-    "confirmedAt": "2026-08-20T07:27:16Z",
+    "confirmedAt": "2026-08-20T13:26:40Z",
     "cashSar": 0.0,
     "contributionMonth": null,
     "holdings": [
@@ -52,9 +52,9 @@
   },
   "summaryV1": {
     "version": 1,
-    "generatedAt": "2026-08-20T07:27:16Z",
-    "scheduledFor": "2026-08-20T06:45:00Z",
-    "latenessMinutes": 42,
+    "generatedAt": "2026-08-20T13:26:40Z",
+    "scheduledFor": null,
+    "latenessMinutes": null,
     "cards": [
       {
         "kind": "portfolio",
