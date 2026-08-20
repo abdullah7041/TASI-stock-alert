@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "tradeDate": "2026-08-19",
-  "asOf": "2026-08-19T07:24:41Z",
+  "tradeDate": "2026-08-20",
+  "asOf": "2026-08-20T07:27:16Z",
   "regime": "unknown",
   "dataStatus": "delayed-daily",
   "warnings": [
@@ -9,67 +9,17 @@
   ],
   "urgent": [],
   "changed": [],
-  "qualified": [
-    {
-      "code": "2130",
-      "name": "Saudi Industrial Development Co.",
-      "relativeStrengthPct": 39.0,
-      "squeeze": true,
-      "conditionsMet": 2
-    },
-    {
-      "code": "8120",
-      "name": "Gulf Union Alahlia Cooperative Insurance Company",
-      "relativeStrengthPct": 32.1,
-      "squeeze": true,
-      "conditionsMet": 2
-    },
-    {
-      "code": "2180",
-      "name": "Filling and Packing Materials Manufacturing Company",
-      "relativeStrengthPct": 31.3,
-      "squeeze": true,
-      "conditionsMet": 2
-    },
-    {
-      "code": "4005",
-      "name": "National Medical Care Company",
-      "relativeStrengthPct": 31.2,
-      "squeeze": true,
-      "conditionsMet": 2
-    },
-    {
-      "code": "1050",
-      "name": "Banque Saudi Fransi",
-      "relativeStrengthPct": 19.6,
-      "squeeze": true,
-      "conditionsMet": 2
-    },
-    {
-      "code": "1180",
-      "name": "The Saudi National Bank",
-      "relativeStrengthPct": 16.7,
-      "squeeze": true,
-      "conditionsMet": 2
-    },
-    {
-      "code": "2070",
-      "name": "Saudi Pharmaceutical Industries and Medical Appliances Corporation",
-      "relativeStrengthPct": 15.2,
-      "squeeze": true,
-      "conditionsMet": 2
-    }
-  ],
-  "researchCount": 3,
+  "qualified": [],
+  "researchCount": 10,
   "monthlyBudgetSar": 500.0,
   "top10": {
-    "proposalId": "top10-2026-08-19-evidence-pending",
+    "proposalId": "top10-2026-08-20-evidence-pending",
     "status": "draft",
-    "researchedAt": "2026-08-19T07:24:41Z",
+    "researchedAt": "2026-08-20T07:27:16Z",
     "entries": []
   },
   "portfolio": {
-    "confirmedAt": "2026-08-19T07:24:41Z",
+    "confirmedAt": "2026-08-20T07:27:16Z",
     "cashSar": 0.0,
     "contributionMonth": null,
     "holdings": [
@@ -97,14 +47,14 @@
   "alerts": [],
   "forecast": {
     "status": "unavailable",
-    "asOf": "2026-08-19",
+    "asOf": "2026-08-20",
     "reason": "Brier score did not beat the base rate. Log loss did not beat the base rate. Calibration error exceeds 0.05. After-cost expectancy is not positive. Out-of-sample skill is not stable across periods and regimes. Sample size is inadequate. Bootstrap uncertainty includes zero skill. Dataset is survivorship-limited."
   },
   "summaryV1": {
     "version": 1,
-    "generatedAt": "2026-08-19T07:24:41Z",
-    "scheduledFor": "2026-08-19T06:45:00Z",
-    "latenessMinutes": 39,
+    "generatedAt": "2026-08-20T07:27:16Z",
+    "scheduledFor": "2026-08-20T06:45:00Z",
+    "latenessMinutes": 42,
     "cards": [
       {
         "kind": "portfolio",
