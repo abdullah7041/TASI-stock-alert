@@ -2892,3 +2892,82 @@ def test_grade_leans_leaves_the_latest_session_ungraded_not_wrong():
     history = _hist("1303", [("2026-08-19", 100.0, "positive")])
     out = main.grade_leans(history, "2026-08-20")
     assert out["graded"] == 0 and out["misses"] == 0
+
+
+# --- Charts -----------------------------------------------------------------
+# Charts are an enhancement to a digest that already reads as text, so every
+# test here is really about one property: a chart problem must cost the picture
+# and never the message.
+
+def _ohlcv(n=60):
+    idx = pd.bdate_range("2026-05-01", periods=n)
+    close = pd.Series(np.linspace(10.0, 12.0, n), index=idx)
+    return pd.DataFrame({
+        "Open": close - 0.05, "High": close + 0.10,
+        "Low": close - 0.10, "Close": close,
+        "Volume": pd.Series([1000.0] * n, index=idx),
+    }, index=idx)
+
+
+def test_chart_renders_a_png_with_levels(tmp_path):
+    import charts as chartmod
+    path = chartmod.render("1303", "EIC", _ohlcv(),
+                           {"stop": 9.5, "trim": 11.5, "target": 12.5}, tmp_path)
+    assert path is not None and path.exists()
+    assert path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_chart_returns_none_on_thin_history_instead_of_raising(tmp_path):
+    import charts as chartmod
+    assert chartmod.render("1303", "EIC", _ohlcv(3), None, tmp_path) is None
+    assert chartmod.render("1303", "EIC", pd.DataFrame(), None, tmp_path) is None
+    assert chartmod.render("1303", "EIC", None, None, tmp_path) is None
+
+
+def test_chart_renders_without_any_levels(tmp_path):
+    """levels.json is empty until autolevels has run at least once."""
+    import charts as chartmod
+    assert chartmod.render("9999", "New Name", _ohlcv(), None, tmp_path) is not None
+
+
+def test_digest_degrades_to_text_when_charts_fail(monkeypatch):
+    """A matplotlib failure must not cost the digest."""
+    monkeypatch.setattr(main.dat, "get_histories",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(RuntimeError("no net")))
+    by_code, files = main._render_charts([_embed_rec()])
+    assert by_code == {} and files == {}
+
+
+def test_embed_references_its_chart_as_a_discord_attachment():
+    embed = nt.build_name_embed(_embed_rec(), chart="1303.png")
+    assert embed["image"]["url"] == "attachment://1303.png"
+
+
+def test_embed_has_no_image_when_no_chart_was_rendered():
+    assert "image" not in nt.build_name_embed(_embed_rec())
+
+
+def test_uploads_ride_the_same_message_as_the_embed_that_references_them():
+    """Discord resolves attachment:// only within one request.
+
+    A chart uploaded in a different message than its embed renders as a broken
+    image, which is why this pairing is asserted rather than assumed.
+    """
+    payloads = [
+        {"embeds": [{"title": "a", "image": {"url": "attachment://1303.png"}}]},
+        {"embeds": [{"title": "b", "image": {"url": "attachment://2320.png"}}]},
+    ]
+    files = {"1303.png": Path("/tmp/1303.png"), "2320.png": Path("/tmp/2320.png")}
+    grouped = nt._files_for_payloads(payloads, files)
+    assert grouped == [[files["1303.png"]], [files["2320.png"]]]
+
+
+def test_an_upload_no_embed_references_is_dropped():
+    grouped = nt._files_for_payloads([{"embeds": [{"title": "a"}]}],
+                                     {"1303.png": Path("/tmp/1303.png")})
+    assert grouped == [[]]
+
+
+def test_matplotlib_is_declared_as_a_runtime_dependency():
+    """charts.py is imported by mode_digest, which runs from requirements.txt."""
+    assert "matplotlib" in Path("requirements.txt").read_text(encoding="utf-8")

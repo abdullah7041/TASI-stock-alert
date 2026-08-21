@@ -7,6 +7,7 @@ pure (testable offline); only send_discord touches the network.
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -464,7 +465,7 @@ def _fmt_delta(delta: dict | None) -> str | None:
 
 
 def build_name_embed(rec: dict, *, levels: dict | None = None,
-                     today: date | None = None) -> dict:
+                     today: date | None = None, chart: str | None = None) -> dict:
     """One Discord embed for one name.
 
     Every field here is data the engine already computed on every run and then
@@ -572,13 +573,17 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
             f"code {rec['code']} resolves to '{rec.get('yahoo_name') or 'no data'}' — "
             f"fix it in config.py"))
 
+    if chart:
+        embed["image"] = {"url": f"attachment://{chart}"}
+
     embed["fields"] = embed["fields"][:EMBED_FIELDS_LIMIT]
     return embed
 
 
 def build_digest_embeds(recs: list, *, regime: str, trade_date: str,
                         budget: dict | None = None, levels_by_code: dict | None = None,
-                        warnings: list | None = None, today: date | None = None) -> list:
+                        warnings: list | None = None, today: date | None = None,
+                        charts_by_code: dict | None = None) -> list:
     """The pre-open digest as embeds: a header, then one embed per name.
 
     Replaces build_dashboard_digest's four-card message as the digest body.
@@ -620,8 +625,10 @@ def build_digest_embeds(recs: list, *, regime: str, trade_date: str,
     shown = [r for r in watch if _noteworthy(r)]
     quiet = [r for r in watch if r not in shown]
 
+    charts_by_code = charts_by_code or {}
     embeds = [header]
-    embeds += [build_name_embed(r, levels=levels_by_code.get(r["code"]), today=today)
+    embeds += [build_name_embed(r, levels=levels_by_code.get(r["code"]), today=today,
+                                chart=charts_by_code.get(r["code"]))
                for r in holdings + shown]
 
     footer_bits = []
@@ -689,7 +696,7 @@ def pack_discord_content(content: str, limit: int = 1900) -> list[str]:
 
 
 def send_discord(content: str | None = None, webhook_url: str | None = None,
-                 embeds: list | None = None) -> bool:
+                 embeds: list | None = None, files: dict | None = None) -> bool:
     """POST to Discord. Returns True on 2xx. Never raises.
 
     `content` keeps the original plain-text behaviour byte for byte, so every
@@ -719,11 +726,43 @@ def send_discord(content: str | None = None, webhook_url: str | None = None,
     else:
         return False
 
+    # Attachments ride the batch whose embeds reference them. Discord resolves
+    # attachment://<name> only against files uploaded in the SAME request, so a
+    # chart sent in a different message renders as a broken image.
+    by_batch = _files_for_payloads(payloads, files or {})
+
     ok = True
-    for payload in payloads:
+    for payload, batch_files in zip(payloads, by_batch):
         try:
-            r = requests.post(url, json=payload, timeout=15)
+            if batch_files:
+                r = requests.post(url, timeout=60, data={"payload_json": json.dumps(payload)},
+                                  files={
+                                      f"files[{i}]": (path.name, path.read_bytes(), "image/png")
+                                      for i, path in enumerate(batch_files)
+                                  })
+            else:
+                r = requests.post(url, json=payload, timeout=15)
             ok = ok and (200 <= r.status_code < 300)
         except Exception:
             ok = False
     return ok
+
+
+def _files_for_payloads(payloads: list, files: dict) -> list:
+    """Which uploads belong with which message, keyed by the embed image name.
+
+    `files` maps a filename ("1303.png") to a Path. An embed asks for it via
+    image.url == "attachment://1303.png". A file with no embed referencing it
+    is dropped rather than uploaded as a bare attachment nothing points at.
+    """
+    out = []
+    for payload in payloads:
+        wanted = []
+        for embed in payload.get("embeds") or []:
+            ref = ((embed.get("image") or {}).get("url") or "")
+            if ref.startswith("attachment://"):
+                path = files.get(ref[len("attachment://"):])
+                if path is not None:
+                    wanted.append(path)
+        out.append(wanted)
+    return out

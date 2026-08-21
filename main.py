@@ -543,6 +543,49 @@ def _scanner_block(result: dict | None = None) -> str:
                                    index_unavailable=result["indexUnavailable"])
 
 
+CHART_DIR = HERE / ".charts"
+
+
+def _render_charts(recs: list) -> tuple[dict, dict]:
+    """Render one candlestick+volume chart per name for the pre-open digest.
+
+    Returns ({code: filename}, {filename: Path}) -- the first for the embeds,
+    the second for the upload. Pre-open only: the session mode runs ~20 times a
+    day and eleven PNGs on each would be slow and rate-limited for no gain.
+
+    Fail-soft throughout, like _scanner_result. A chart is an enhancement to a
+    digest that already reads well as text, so a matplotlib problem or a thin
+    history must cost you the picture, never the message.
+    """
+    try:
+        import charts as chartmod
+    except Exception as exc:
+        print(f"charts unavailable ({type(exc).__name__}: {exc}) — sending text only")
+        return {}, {}
+
+    codes = [r["code"] for r in recs]
+    try:
+        frames = dat.get_histories(codes, cfg.TECH["history_period"])
+    except Exception as exc:
+        print(f"charts: history fetch failed ({type(exc).__name__}) — sending text only")
+        return {}, {}
+
+    stored_levels = _load(LEVELS_FILE, {})
+    by_code, by_name = {}, {}
+    for rec in recs:
+        try:
+            path = chartmod.render(rec["code"], rec["name"], frames.get(rec["code"]),
+                                   stored_levels.get(rec["code"]), CHART_DIR)
+        except Exception as exc:
+            print(f"charts: {rec['code']} failed ({type(exc).__name__}: {exc})")
+            continue
+        if path is not None:
+            by_code[rec["code"]] = path.name
+            by_name[path.name] = path
+    print(f"charts rendered: {len(by_code)}/{len(recs)}")
+    return by_code, by_name
+
+
 def _attach_leans(recs: list) -> None:
     """Ask the model for a pre-open lean and attach it to each rec, in place.
 
@@ -587,11 +630,13 @@ def mode_digest() -> int:
     _save(DASHBOARD_FILE, snapshot)
     _attach_leans(recs)
 
+    charts_by_code, chart_files = _render_charts(recs)
     embeds = nt.build_digest_embeds(
         recs, regime=regime, trade_date=snapshot["tradeDate"], budget=budget,
         levels_by_code=_load(LEVELS_FILE, {}), warnings=snapshot.get("warnings"),
+        charts_by_code=charts_by_code,
     )
-    ok = nt.send_discord(embeds=embeds)
+    ok = nt.send_discord(embeds=embeds, files=chart_files)
     if not ok:
         # No webhook configured (a local run), or Discord is down. Either way
         # the digest itself succeeded and its state is already on disk.

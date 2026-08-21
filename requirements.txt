@@ -5,3 +5,5 @@ requests>=2.31
 pytest>=8.0
 # Tests parse the committed workflow and Cloud Scheduler definitions.
 PyYAML>=6.0
+# Digest charts (charts.py). Headless Agg backend; no display needed.
+matplotlib>=3.8
