@@ -56,6 +56,7 @@ ALERTS_FILE = HERE / "movement_alerts.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
 EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
+PROBE_FILE = HERE / "research" / "intraday_probe.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -784,6 +785,78 @@ def mode_backtest() -> int:
     return 0
 
 
+def mode_intraday_probe() -> int:
+    """Answer one question with evidence: does Yahoo serve intraday bars for .SR?
+
+    Everything intraday in this repo rests on an assumption nobody has ever
+    tested. data.get_quote returns the last DAILY close, and movement.py runs
+    its robust-z over DAILY returns -- yet the workflow invokes them every 15
+    minutes and labels the result "delayed-intraday". If Yahoo does serve real
+    intraday bars for Tadawul codes, that whole path can become what it claims
+    to be. If it does not, the honest move is to stop pretending and run
+    movement once after the close.
+
+    Free-tier Yahoo is also known to serve intraday bars with a null volume
+    column for some venues, which would look like working data right up until
+    the volume ratio came out as None -- so bars alone are not the test.
+    Volume coverage is measured per interval and reported separately.
+
+    Writes research/intraday_probe.json. The workflow commits it, so the answer
+    survives as evidence rather than a log line that scrolls away.
+    """
+    import yfinance as yf
+
+    codes = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST] + [cfg.REGIME["index_code"]]
+    attempts = [("5m", "5d"), ("15m", "5d"), ("15m", "1mo"), ("60m", "1mo")]
+    results = []
+    for code in codes:
+        symbol = dat.yahoo_symbol(code)
+        for interval, period in attempts:
+            row = {"code": code, "symbol": symbol, "interval": interval, "period": period}
+            try:
+                df = yf.Ticker(symbol).history(period=period, interval=interval)
+            except Exception as exc:
+                row.update({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
+                results.append(row)
+                continue
+            if df is None or df.empty:
+                row.update({"ok": True, "bars": 0, "note": "empty frame"})
+                results.append(row)
+                continue
+            volume = df["Volume"] if "Volume" in df.columns else None
+            row.update({
+                "ok": True,
+                "bars": int(len(df)),
+                "first": str(df.index[0]),
+                "last": str(df.index[-1]),
+                "distinct_days": int(len({str(ts)[:10] for ts in df.index})),
+                "volume_column": volume is not None,
+                "volume_non_null": int(volume.notna().sum()) if volume is not None else 0,
+                "volume_non_zero": int((volume.fillna(0) > 0).sum()) if volume is not None else 0,
+            })
+            results.append(row)
+
+    # The rule was written before the answer was known, so the answer cannot
+    # move the bar: intraday ships only if most names return usable bars WITH
+    # real volume at 15m or finer.
+    usable = {
+        r["code"] for r in results
+        if r.get("ok") and r["interval"] in ("5m", "15m")
+        and r.get("bars", 0) >= 20 and r.get("volume_non_zero", 0) >= 20
+    }
+    verdict = {
+        "decidedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "codesProbed": len(codes),
+        "codesWithUsableIntraday": sorted(usable),
+        "threshold": "at least 8 of 11 codes with >=20 bars and >=20 non-zero volumes at 15m or finer",
+        "intradayViable": len(usable) >= 8,
+    }
+    _save(PROBE_FILE, {"verdict": verdict, "attempts": results})
+    print(json.dumps(verdict, indent=2))
+    print(f"wrote {PROBE_FILE}")
+    return 0
+
+
 MODES = {
     "heartbeat": mode_heartbeat,
     "discord-smoke": mode_discord_smoke,
@@ -798,6 +871,7 @@ MODES = {
     "universe": mode_universe,
     "features": mode_features,
     "backtest": mode_backtest,
+    "intraday-probe": mode_intraday_probe,
 }
 
 

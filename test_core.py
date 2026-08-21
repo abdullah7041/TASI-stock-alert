@@ -8,6 +8,8 @@ and the two evaluators. Data is synthetic so these are deterministic.
 
 import io
 import json
+import sys
+import types
 from datetime import date
 from pathlib import Path
 
@@ -2610,3 +2612,82 @@ def test_changed_entries_read_the_deltas_that_were_being_discarded():
 
 def test_changed_entries_exclude_a_first_session_rather_than_calling_it_flat():
     assert main._changed_entries([_embed_rec(delta=None)]) == []
+
+
+# --- Intraday probe ---------------------------------------------------------
+# The probe exists because "delayed-intraday" is currently a label, not a fact:
+# data.get_quote returns the last daily close and movement.py runs its robust-z
+# over daily returns, while the workflow calls both every 15 minutes. These
+# tests pin the decision rule, not the answer -- the answer comes from Actions,
+# where Yahoo is reachable.
+
+class _FakeTicker:
+    def __init__(self, frames):
+        self._frames = frames
+
+    def history(self, period, interval):
+        return self._frames.get(interval, pd.DataFrame())
+
+
+def _intraday_frame(bars, *, volume=1000.0, days=5):
+    idx = pd.date_range("2026-08-17 10:00", periods=bars, freq="15min")
+    return pd.DataFrame({"Close": [10.0] * bars, "Volume": [volume] * bars}, index=idx)
+
+
+def _run_probe(monkeypatch, frames_for_code):
+    saved = {}
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.Ticker = lambda symbol: _FakeTicker(frames_for_code(symbol))
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    assert main.mode_intraday_probe() == 0
+    return saved[main.PROBE_FILE]
+
+
+def test_intraday_probe_declares_viable_when_bars_and_volume_are_real(monkeypatch):
+    out = _run_probe(monkeypatch, lambda _s: {"5m": _intraday_frame(60),
+                                              "15m": _intraday_frame(40)})
+    assert out["verdict"]["intradayViable"] is True
+
+
+def test_intraday_probe_rejects_bars_that_carry_no_volume(monkeypatch):
+    """Yahoo can serve intraday bars with an all-zero volume column.
+
+    That is the failure this probe exists to catch: the frame looks healthy,
+    len(df) is large, and the volume ratio only comes out wrong much later.
+    """
+    out = _run_probe(monkeypatch, lambda _s: {"5m": _intraday_frame(60, volume=0.0),
+                                              "15m": _intraday_frame(40, volume=0.0)})
+    assert out["verdict"]["intradayViable"] is False
+    assert out["verdict"]["codesWithUsableIntraday"] == []
+
+
+def test_intraday_probe_records_a_failure_without_raising(monkeypatch):
+    def boom(_symbol):
+        raise RuntimeError("Yahoo said no")
+
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.Ticker = boom
+    saved = {}
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+
+    assert main.mode_intraday_probe() == 0
+    attempts = saved[main.PROBE_FILE]["attempts"]
+    assert attempts and all(a["ok"] is False for a in attempts)
+    assert "Yahoo said no" in attempts[0]["error"]
+
+
+def test_intraday_probe_threshold_is_recorded_with_the_verdict(monkeypatch):
+    """The bar must travel with the answer, so it cannot be moved to fit it."""
+    out = _run_probe(monkeypatch, lambda _s: {"15m": _intraday_frame(40)})
+    assert "at least 8 of 11" in out["verdict"]["threshold"]
+
+
+def test_intraday_probe_is_registered_as_a_dispatchable_mode():
+    assert main.MODES["intraday-probe"] is main.mode_intraday_probe
+    workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+    # It must ride tasi.yml, not manual-operations.yml: the probe's output is
+    # evidence that has to be committed, and manual-operations is contents:read.
+    assert "intraday-probe" in workflow
+    assert "research/intraday_probe.json" in workflow

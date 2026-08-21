@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "heartbeat | discord-smoke | suggest | autolevels | digest | run | top10-draft | cockpit-refresh | research-evidence"
+        description: "heartbeat | discord-smoke | suggest | autolevels | digest | run | top10-draft | cockpit-refresh | research-evidence | intraday-probe"
         required: true
         default: "run"
   schedule:
