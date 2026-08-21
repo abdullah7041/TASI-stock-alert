@@ -36,6 +36,7 @@ import notify as nt
 import indicators as ind
 import history as histmod
 import disclosures as discl
+import session_gate
 from movement import detect_unusual_movement
 from research.company_evidence import load_evidence_records
 from research.entry_forecast import unavailable_forecast
@@ -1017,6 +1018,33 @@ MODES = {
 }
 
 
+# Which live modes are bound to the Tadawul calendar, and under which of
+# session_gate's windows. Research and manual modes are deliberately absent:
+# you must be able to run a backtest or a smoke test on a Friday.
+GATED_MODES = {"digest": "digest", "run": "session", "reconcile": "reconcile"}
+
+
+def gate_or_none(mode: str) -> str | None:
+    """Why `mode` must not run right now, or None to proceed.
+
+    session_gate.py has been complete, tested and dependency-free since it was
+    written -- and imported only by runtime/job.py, the Cloud Run job that was
+    never provisioned. The GitHub path, which is the one that actually runs,
+    had no session gate and no holiday gate at all: it relied entirely on cron
+    day-of-week. That is fine for weekends and wrong for Eid, where the
+    schedule fires into a closed market and the digest reports stale bars as
+    though they were this morning's.
+
+    market_holidays.json currently records no closures, so this changes nothing
+    until dates are added to it -- but the wiring has to exist first, otherwise
+    adding them does nothing either.
+    """
+    window = GATED_MODES.get(mode)
+    if window is None:
+        return None
+    return session_gate.gate_reason(window)
+
+
 def main() -> int:
     # Digest/reasons carry Arabic news + a ⚠ marker; force utf-8 so a Windows
     # cp1252 console does not crash on print (Discord delivery is utf-8 already).
@@ -1029,6 +1057,14 @@ def main() -> int:
     if not fn:
         print(f"unknown mode '{mode}'. choose: {', '.join(MODES)}")
         return 2
+
+    blocked = gate_or_none(mode)
+    if blocked:
+        # Exit 0, not a failure: a scheduled run landing on a closed market did
+        # its job by declining. A non-zero here would fail the workflow step and
+        # skip "Commit state" for the same reason a Discord outage used to.
+        print(f"skipping '{mode}': {blocked}")
+        return 0
     return fn()
 
 

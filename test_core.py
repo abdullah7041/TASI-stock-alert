@@ -20,6 +20,7 @@ import pandas as pd
 import indicators as ind
 import analyze as az
 import llm
+import session_gate
 import backtest as bt
 import config as cfg
 import data
@@ -2971,3 +2972,45 @@ def test_an_upload_no_embed_references_is_dropped():
 def test_matplotlib_is_declared_as_a_runtime_dependency():
     """charts.py is imported by mode_digest, which runs from requirements.txt."""
     assert "matplotlib" in Path("requirements.txt").read_text(encoding="utf-8")
+
+
+# --- Session and holiday gate -----------------------------------------------
+# session_gate.py was complete and tested from the day it was written, and
+# imported only by runtime/job.py -- a Cloud Run job that was never
+# provisioned. The path that actually runs had no session or holiday gate at
+# all. These pin the wiring, not session_gate's own logic, which has its own
+# tests.
+
+def test_live_modes_are_bound_to_the_tadawul_calendar():
+    assert main.GATED_MODES == {"digest": "digest", "run": "session",
+                                "reconcile": "reconcile"}
+
+
+def test_research_and_manual_modes_are_never_calendar_gated():
+    """You must be able to smoke-test or backtest on a Friday."""
+    for mode in ("heartbeat", "discord-smoke", "backtest", "universe",
+                 "features", "autolevels", "suggest", "intraday-probe"):
+        assert main.gate_or_none(mode) is None, mode
+
+
+def test_a_closed_market_skips_the_mode_without_failing_the_workflow(monkeypatch):
+    """Exit 0 on a closed day.
+
+    A non-zero fails the Actions step, which skips "Commit state" -- the exact
+    mechanism by which a Discord outage used to discard a day of history.
+    """
+    monkeypatch.setattr(main, "gate_or_none", lambda _m: "market closed (recorded holiday)")
+    monkeypatch.setattr(sys, "argv", ["main.py", "digest"])
+    monkeypatch.setattr(main, "mode_digest",
+                        lambda: (_ for _ in ()).throw(AssertionError("must not run")))
+    monkeypatch.setitem(main.MODES, "digest", main.mode_digest)
+    assert main.main() == 0
+
+
+def test_the_gate_reads_the_recorded_holiday_list():
+    """market_holidays.json is the file an operator edits before Eid."""
+    holidays = json.loads(Path("market_holidays.json").read_text(encoding="utf-8"))
+    assert "closed" in holidays and isinstance(holidays["closed"], list)
+    # Empty today, so the gate changes nothing until dates are added -- but the
+    # wiring must exist first, or adding them would change nothing either.
+    assert session_gate.gate_reason("digest", holidays={"2026-08-21"}) is not None
