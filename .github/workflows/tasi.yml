@@ -14,6 +14,9 @@ on:
     - cron: "45 6 * * 0,1,2,3,4"
     # Session checks every 15 min, 07:00-11:59 UTC (10:00-14:59 Riyadh), Sun-Thu.
     - cron: "*/15 7-11 * * 0,1,2,3,4"
+    # Post-close reconciliation at 12:15 UTC (15:15 Riyadh), Sun-Thu. Grades the
+    # previous session's pre-open leans against what the price actually did.
+    - cron: "15 12 * * 0,1,2,3,4"
     # Thursday 15:30 Riyadh draft review. This remains best-effort delayed analysis.
     - cron: "30 12 * * 4"
     # Wednesday 08:15 Riyadh official-source evidence collection. Review is still required.
@@ -52,6 +55,9 @@ jobs:
           elif [ "${{ github.event.schedule }}" = "45 6 * * 0,1,2,3,4" ]; then
             echo "mode=digest" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T06:45:00Z" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "15 12 * * 0,1,2,3,4" ]; then
+            echo "mode=reconcile" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%F)T12:15:00Z" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "30 12 * * 4" ]; then
             echo "mode=top10-draft" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T12:30:00Z" >> "$GITHUB_OUTPUT"
@@ -70,6 +76,10 @@ jobs:
           SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
           SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          # Optional. Absent, the digest still ships every fact it has and each
+          # name reads "Pre-open lean: unavailable — no ANTHROPIC_API_KEY
+          # configured", which is the truth rather than a missing section.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python main.py
 
       - name: Record job telemetry
@@ -97,7 +107,7 @@ jobs:
           PY
 
       - name: Update private cockpit
-        if: contains('digest,top10-draft,cockpit-refresh', steps.mode.outputs.mode)
+        if: contains('digest,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
@@ -129,7 +139,7 @@ jobs:
         run: |
           git config user.name "tasi-bot"
           git config user.email "tasi-bot@users.noreply.github.com"
-          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json budget_state.json research/evidence_queue.json research/intraday_probe.json; do
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi

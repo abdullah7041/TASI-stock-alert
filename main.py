@@ -141,8 +141,15 @@ def _snapshot_for(rec: dict) -> dict:
     if rec["kind"] == "watchlist":
         rules_met = rec.get("rules_met")
         blocking = sorted(r["rule"] for r in rec.get("rules", []) if not r["passed"])
+    # The lean is stored with the day's price so mode_reconcile can grade it
+    # later against what actually happened. A lean that is never scored is the
+    # conviction score all over again (docs/backtest-findings-2026-07-23.md):
+    # a number nobody can falsify. Storing the claim is what makes it
+    # falsifiable, and history.record_snapshot already caps at 90 days per code.
+    lean = rec.get("lean") or {}
     return {"price": rec["price"], "rsi": lt.get("rsi"), "trend": lt.get("trend"),
-            "rules_met": rules_met, "blocking": blocking}
+            "rules_met": rules_met, "blocking": blocking,
+            "lean": lean.get("lean"), "lean_confidence": lean.get("confidence")}
 
 
 def _budget_record(buys: list) -> None:
@@ -536,6 +543,39 @@ def _scanner_block(result: dict | None = None) -> str:
                                    index_unavailable=result["indexUnavailable"])
 
 
+def _attach_leans(recs: list) -> None:
+    """Ask the model for a pre-open lean and attach it to each rec, in place.
+
+    Deliberately runs AFTER the dashboard snapshot is saved. The lean is the one
+    part of the digest that depends on a third-party API, and a model outage
+    must not be able to cost the run its state -- the same failure mode that
+    made a Discord outage discard a day of history until this change set.
+
+    Every rec gets a `lean`: either a take, or an `unavailable` reason. A name
+    the model skipped is marked as skipped rather than left bare, so a partial
+    response is visible instead of looking like a quiet name.
+    """
+    try:
+        import llm
+        leans = llm.get_leans(recs)
+    except Exception as exc:  # a bad import must not take the digest down
+        leans = {"_status": {"ok": False, "reason": f"lean unavailable ({type(exc).__name__})"}}
+
+    status = leans.get("_status") or {}
+    if not status.get("ok"):
+        reason = status.get("reason", "unknown")
+        print(f"pre-open lean unavailable: {reason}")
+        for rec in recs:
+            rec["lean"] = {"unavailable": reason}
+        return
+
+    print(f"pre-open lean: {len(leans) - 1} takes from {status.get('model')}, "
+          f"{status.get('calls_left')} calls left this month")
+    for rec in recs:
+        take = leans.get(rec["code"])
+        rec["lean"] = take or {"unavailable": "the model returned no take for this name"}
+
+
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True, record_history=True)
     scanner_result = _scanner_result()
@@ -545,6 +585,7 @@ def mode_digest() -> int:
         scheduled_for=os.environ.get("SCHEDULED_FOR"),
     )
     _save(DASHBOARD_FILE, snapshot)
+    _attach_leans(recs)
 
     embeds = nt.build_digest_embeds(
         recs, regime=regime, trade_date=snapshot["tradeDate"], budget=budget,
@@ -608,6 +649,56 @@ def _verified_name(code: str | None, catalog: dict | None = None) -> str:
     return str(entry.get("config_name") or "").strip() if entry.get("verified") else ""
 
 
+# A move smaller than this is called flat rather than scored as a direction.
+# Without it, a +0.02% session would grade a "positive" lean as correct, and the
+# hit rate would measure rounding noise instead of skill.
+LEAN_FLAT_BAND_PCT = 0.5
+
+
+def grade_leans(history: dict, today: str) -> dict:
+    """Score each recorded lean against the move that followed it.
+
+    Reads only history.json, which already holds one dated snapshot per code
+    with the lean attached by _snapshot_for. Pure: takes history, returns a
+    report, writes nothing.
+
+    A lean is graded against the NEXT session's close, so the entry being
+    scored is the one the reader could actually have acted on. Sessions with no
+    following bar yet are ungraded, not counted as misses.
+    """
+    graded, hits, misses, flat = [], 0, 0, 0
+    for code, entries in history.items():
+        ordered = sorted((e for e in entries if e.get("date") <= today),
+                         key=lambda e: e["date"])
+        for prior, following in zip(ordered, ordered[1:]):
+            lean = prior.get("lean")
+            if lean not in ("positive", "negative"):
+                continue  # neutral and absent leans make no directional claim
+            before, after = prior.get("price"), following.get("price")
+            if not before or after is None:
+                continue
+            move = (after - before) / before * 100
+            if abs(move) < LEAN_FLAT_BAND_PCT:
+                outcome = "flat"
+                flat += 1
+            elif (move > 0) == (lean == "positive"):
+                outcome = "hit"
+                hits += 1
+            else:
+                outcome = "miss"
+                misses += 1
+            graded.append({"code": code, "date": prior["date"], "lean": lean,
+                           "confidence": prior.get("lean_confidence"),
+                           "movePct": round(move, 2), "outcome": outcome})
+    directional = hits + misses
+    return {
+        "graded": len(graded), "hits": hits, "misses": misses, "flat": flat,
+        "hitRatePct": round(hits / directional * 100, 1) if directional else None,
+        "flatBandPct": LEAN_FLAT_BAND_PCT,
+        "detail": graded[-20:],
+    }
+
+
 def mode_reconcile() -> int:
     """After the close: refresh the cockpit snapshot and print a health summary.
 
@@ -626,7 +717,13 @@ def mode_reconcile() -> int:
         "unnamedAlertCount": sum(1 for alert in alerts if not str(alert.get("name") or "").strip()),
         "warnings": snapshot.get("warnings") or [],
     }
+    scorecard = grade_leans(_load(HISTORY_FILE, {}), _today())
+    summary["leanScorecard"] = {k: v for k, v in scorecard.items() if k != "detail"}
     print("reconciliation:", json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    if scorecard["hitRatePct"] is not None:
+        print(f"lean scorecard: {scorecard['hits']}/{scorecard['hits'] + scorecard['misses']} "
+              f"directional calls correct ({scorecard['hitRatePct']}%), "
+              f"{scorecard['flat']} landed inside the ±{LEAN_FLAT_BAND_PCT}% flat band")
     return exit_code
 
 

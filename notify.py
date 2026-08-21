@@ -550,11 +550,21 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
             "\n".join(line.strip() for line in _fmt_disclosures(disclosures))))
 
     lean = rec.get("lean")
-    if lean:
+    if lean and lean.get("unavailable"):
+        # Three-way honesty again: a model that was not asked, a model that
+        # failed, and a model that leaned neutral are three different things.
+        # Rendering them alike is what made news look hardcoded (see _fmt_news).
+        embed["fields"].append(_field(
+            "Pre-open lean", f"unavailable — {lean['unavailable']}"))
+    elif lean:
+        drivers = lean.get("drivers") or []
+        body = lean.get("take", "")
+        if drivers:
+            body += "\n" + " · ".join(f"`{d}`" for d in drivers)
         embed["fields"].append(_field(
             f"Pre-open lean — {lean.get('lean', 'unknown')} "
             f"({lean.get('confidence', 'unknown')} confidence)",
-            f"{lean.get('take', '')}\n_Model judgement, not a validated forecast._"))
+            f"{body}\n_Model judgement, not a validated forecast. Scored daily._"))
 
     if not rec.get("verified", True):
         embed["fields"].append(_field(

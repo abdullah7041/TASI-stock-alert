@@ -9,6 +9,7 @@ and the two evaluators. Data is synthetic so these are deterministic.
 import io
 import json
 import sys
+import time
 import types
 from datetime import date
 from pathlib import Path
@@ -18,6 +19,7 @@ import pandas as pd
 
 import indicators as ind
 import analyze as az
+import llm
 import backtest as bt
 import config as cfg
 import data
@@ -244,7 +246,17 @@ def test_workflow_exposes_manual_discord_smoke_without_cockpit_ingest():
     workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
 
     assert "discord-smoke" in workflow.split("schedule:", 1)[0]
-    assert "contains('digest,top10-draft,cockpit-refresh', steps.mode.outputs.mode)" in workflow
+
+    # Assert the property this test is named for -- discord-smoke must never
+    # reach the cockpit -- rather than one literal mode list, which pinned the
+    # string so tightly that adding `reconcile` to the ingest gate failed a
+    # test about the smoke mode.
+    ingest_gate = next(line for line in workflow.splitlines()
+                       if "steps.mode.outputs.mode)" in line and "contains(" in line)
+    ingest_modes = ingest_gate.split("contains('", 1)[1].split("'", 1)[0].split(",")
+    assert "discord-smoke" not in ingest_modes
+    assert "heartbeat" not in ingest_modes
+    assert {"digest", "top10-draft", "cockpit-refresh"} <= set(ingest_modes)
     assert "steps.mode.outputs.mode == 'run'" in workflow
 
 
@@ -1815,8 +1827,11 @@ def test_collect_recs_attaches_delta_and_streak(tmp_path, monkeypatch):
            "required": "up", "plain": "x"}], "rules_met": 0, "rules_total": 1,
            "long_term": {"trend": "down", "rsi": 40.0, "momentum_pct": -6.0}}
     snap = m._snapshot_for(rec)
+    # lean/lean_confidence are recorded so mode_reconcile can grade the claim
+    # later; None here because this rec carries no lean.
     assert snap == {"price": 100.0, "rsi": 40.0, "trend": "down",
-                    "rules_met": 0, "blocking": ["trend"]}
+                    "rules_met": 0, "blocking": ["trend"],
+                    "lean": None, "lean_confidence": None}
 
 def test_snapshot_for_holding_has_no_rules_met():
     import main as m
@@ -2691,3 +2706,189 @@ def test_intraday_probe_is_registered_as_a_dispatchable_mode():
     # evidence that has to be committed, and manual-operations is contents:read.
     assert "intraday-probe" in workflow
     assert "research/intraday_probe.json" in workflow
+
+
+# --- Pre-open lean ----------------------------------------------------------
+# The lean is the one place this repo states a judgement it cannot backtest.
+# What makes that defensible is not the disclaimer: it is that the lean gates
+# nothing, and that every claim is recorded and graded. These tests pin both.
+
+def _lean_rec(**overrides):
+    rec = {
+        "kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+        "action": "HOLD", "reason": ["above stop"],
+        "short_term": {"momentum_pct": 2.1, "rsi": 50.6},
+        "long_term": {"trend": "flat", "momentum_pct": -1.2, "rsi": 50.6},
+        "volume": {"ratio": 3.2, "window": 20, "unusual": True,
+                   "turnover_sar": 1.0, "median_sar": 1.0},
+        "delta": {"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                  "flipped": [], "trend_flipped": False},
+        "news": {"ok": True, "headlines": [
+            {"title": "EIC wins SAR 210m contract", "published": "19 Aug 2026"}]},
+        "disclosures": {"ok": True, "items": []},
+    }
+    rec.update(overrides)
+    return rec
+
+
+def test_lean_prompt_carries_the_evidence_the_model_must_ground_in():
+    prompt = llm.build_prompt([_lean_rec()])
+    assert "1303 EIC" in prompt
+    assert "3.2x" in prompt
+    assert "SAR 210m contract" in prompt
+
+
+def test_lean_prompt_distinguishes_a_failed_news_fetch_from_a_quiet_one():
+    """The model must not read a network error as an absence of news."""
+    failed = llm.build_prompt([_lean_rec(news={"ok": False})])
+    quiet = llm.build_prompt([_lean_rec(news={"ok": True, "headlines": []})])
+    assert "fetch FAILED" in failed
+    assert "absence of headlines here is not evidence of quiet" in failed
+    assert "fetch FAILED" not in quiet
+    assert "no headlines found" in quiet
+
+
+def test_lean_parse_accepts_a_fenced_json_block():
+    out = llm.parse_response(
+        '```json\n{"takes":[{"code":"1303","lean":"positive","confidence":"medium",'
+        '"take":"Contract win.","drivers":["contract"]}]}\n```')
+    assert out["1303"]["lean"] == "positive"
+    assert out["1303"]["drivers"] == ["contract"]
+
+
+def test_lean_parse_drops_a_lean_outside_the_allowed_vocabulary():
+    """An invented label must not reach the digest looking deliberate."""
+    out = llm.parse_response(
+        '{"takes":[{"code":"1303","lean":"strong buy","confidence":"high","take":"x"},'
+        '{"code":"2320","lean":"negative","confidence":"low","take":"y"}]}')
+    assert "1303" not in out
+    assert out["2320"]["lean"] == "negative"
+
+
+def test_lean_reports_a_missing_key_rather_than_an_empty_result():
+    out = llm.get_leans([_lean_rec()], api_key="")
+    assert out["_status"]["ok"] is False
+    assert "ANTHROPIC_API_KEY" in out["_status"]["reason"]
+
+
+def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
+    def boom(*_a, **_kw):
+        raise RuntimeError("upstream 503")
+
+    monkeypatch.setattr(llm, "_complete", boom)
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=Path("/nonexistent"))
+    assert out["_status"]["ok"] is False
+    assert "model call failed" in out["_status"]["reason"]
+    assert not [k for k in out if k != "_status"]
+
+
+def test_lean_stops_at_the_monthly_call_cap(tmp_path, monkeypatch):
+    ledger = tmp_path / "llm_budget.json"
+    ledger.write_text(json.dumps({"month": time.strftime("%Y-%m"),
+                                  "calls": llm.MONTHLY_CALL_CAP}))
+    called = []
+    monkeypatch.setattr(llm, "_complete", lambda *a, **k: called.append(1) or "{}")
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=ledger)
+    assert out["_status"]["ok"] is False
+    assert "monthly cap" in out["_status"]["reason"]
+    assert called == [], "the cap must be enforced before the network call"
+
+
+def test_lean_budget_resets_on_a_new_month(tmp_path):
+    ledger = tmp_path / "llm_budget.json"
+    ledger.write_text(json.dumps({"month": "2020-01", "calls": 999}))
+    assert llm.budget_remaining(ledger) == llm.MONTHLY_CALL_CAP
+
+
+def test_digest_marks_every_name_when_the_lean_is_unavailable(monkeypatch):
+    """A model outage degrades to facts-only with a reason, never to silence."""
+    recs = [_lean_rec(), _lean_rec(code="2320", name="Al-Babtain")]
+    monkeypatch.setattr(llm, "get_leans",
+                        lambda *_a, **_kw: {"_status": {"ok": False, "reason": "upstream down"}})
+    main._attach_leans(recs)
+    assert all(r["lean"]["unavailable"] == "upstream down" for r in recs)
+
+
+def test_digest_marks_a_name_the_model_skipped(monkeypatch):
+    """A partial response must be visible, not look like a quiet name."""
+    recs = [_lean_rec(), _lean_rec(code="2320", name="Al-Babtain")]
+    monkeypatch.setattr(llm, "get_leans", lambda *_a, **_kw: {
+        "_status": {"ok": True, "model": "m", "calls_left": 5},
+        "1303": {"lean": "positive", "confidence": "medium", "take": "t", "drivers": []},
+    })
+    main._attach_leans(recs)
+    assert recs[0]["lean"]["lean"] == "positive"
+    assert "no take for this name" in recs[1]["lean"]["unavailable"]
+
+
+def test_embed_renders_an_unavailable_lean_differently_from_a_neutral_one():
+    unavailable = json.dumps(nt.build_name_embed(
+        _lean_rec(lean={"unavailable": "upstream down"})), ensure_ascii=False)
+    neutral = json.dumps(nt.build_name_embed(
+        _lean_rec(lean={"lean": "neutral", "confidence": "low",
+                        "take": "Mixed evidence.", "drivers": []})), ensure_ascii=False)
+    assert "unavailable — upstream down" in unavailable
+    assert "neutral" in neutral and "unavailable" not in neutral
+
+
+def test_the_lean_never_reaches_the_buy_decision():
+    """The conviction score was deleted for gating on an unvalidated number.
+
+    buy_decision takes only the long-term read and the configured criteria, and
+    must keep taking only those -- so a lean cannot become a buy rule by
+    accident later.
+    """
+    import inspect
+    assert set(inspect.signature(az.buy_decision).parameters) == {"long_read", "criteria"}
+    assert "lean" not in inspect.getsource(az.buy_decision)
+
+
+# --- Lean scorecard ---------------------------------------------------------
+
+def _hist(code, rows):
+    return {code: [{"date": d, "price": p, "lean": l} for d, p, l in rows]}
+
+
+def test_grade_leans_scores_a_call_against_the_following_session():
+    history = _hist("1303", [("2026-08-18", 100.0, "positive"),
+                             ("2026-08-19", 104.0, None)])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["hits"] == 1 and out["misses"] == 0
+    assert out["hitRatePct"] == 100.0
+
+
+def test_grade_leans_counts_a_wrong_direction_as_a_miss():
+    history = _hist("1303", [("2026-08-18", 100.0, "positive"),
+                             ("2026-08-19", 96.0, None)])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["misses"] == 1 and out["hitRatePct"] == 0.0
+
+
+def test_grade_leans_does_not_score_a_move_inside_the_flat_band():
+    """Without this, a +0.02% session grades a call correct and the hit rate
+    measures rounding noise."""
+    history = _hist("1303", [("2026-08-18", 100.0, "positive"),
+                             ("2026-08-19", 100.1, None)])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["flat"] == 1 and out["hits"] == 0 and out["hitRatePct"] is None
+
+
+def test_grade_leans_ignores_neutral_calls_which_claim_no_direction():
+    history = _hist("1303", [("2026-08-18", 100.0, "neutral"),
+                             ("2026-08-19", 110.0, None)])
+    assert main.grade_leans(history, "2026-08-20")["graded"] == 0
+
+
+def test_grade_leans_reads_history_written_before_leans_existed():
+    """history.json holds weeks of entries with no lean key at all."""
+    history = {"1303": [{"date": "2026-08-18", "price": 100.0, "rsi": 50.0},
+                        {"date": "2026-08-19", "price": 110.0, "rsi": 52.0}]}
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["graded"] == 0 and out["hitRatePct"] is None
+
+
+def test_grade_leans_leaves_the_latest_session_ungraded_not_wrong():
+    """The newest lean has no following bar yet; it is pending, not a miss."""
+    history = _hist("1303", [("2026-08-19", 100.0, "positive")])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["graded"] == 0 and out["misses"] == 0
