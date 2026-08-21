@@ -292,13 +292,336 @@ def build_movement_alert_message(alerts: list[dict], as_of: str) -> str:
     """Render one delayed-only Discord delivery for newly detected movements."""
     lines = [f"__**TASI unusual movement ({as_of})**__", "_Delayed analysis; verify live pricing in your broker app._"]
     for alert in sorted(alerts, key=lambda item: str(item.get("observedAt", ""))):
+        # The numbers behind the alert. They were computed, stored in the
+        # cockpit JSON, and then left out of the only surface anyone reads --
+        # so the message said a name moved unusually without ever saying by
+        # how much, which is not enough to act on or to dismiss.
+        measures = []
+        if alert.get("excessMovePct") is not None:
+            measures.append(f"{float(alert['excessMovePct']):+.1f}% vs its own baseline")
+        if alert.get("robustZ") is not None:
+            measures.append(f"z {float(alert['robustZ']):.1f}")
+        if alert.get("volumeRatio"):
+            measures.append(f"volume {float(alert['volumeRatio']):.1f}x median")
+        lines.append(f"**{_alert_company(alert)} ({alert['code']}) — {alert['direction']}**")
+        if measures:
+            lines.append(f"- {' · '.join(measures)}")
         lines.extend([
-            f"**{_alert_company(alert)} ({alert['code']}) — {alert['direction']}**",
             f"- {alert['reason']}",
             f"- Observed {alert['observedAt']}; received {alert['receivedAt']}.",
         ])
     lines.append("Broker app owns real-time price alerts; this bot never places an order.")
     return "\n".join(lines)
+
+
+# --- Rich embeds -----------------------------------------------------------
+# Discord's documented hard limits. Exceeding any one of them rejects the whole
+# request with a 400, which would look exactly like "the bot went quiet" -- the
+# failure mode this repo already refuses everywhere else.
+EMBED_TITLE_LIMIT = 256
+EMBED_FIELD_NAME_LIMIT = 256
+EMBED_FIELD_VALUE_LIMIT = 1024
+EMBED_FIELDS_LIMIT = 25
+EMBED_TOTAL_LIMIT = 6000
+EMBEDS_PER_MESSAGE = 10
+
+# Left bar colour. Carries no information the text does not also carry --
+# colour alone is unreadable for a colour-blind reader and invisible in a
+# notification preview.
+COLOR_UP = 0x2ECC71
+COLOR_DOWN = 0xE74C3C
+COLOR_FLAT = 0x95A5A6
+COLOR_ATTENTION = 0xE67E22
+
+
+def _clip(text: str, limit: int) -> str:
+    """Trim to a Discord limit, marking that trimming happened."""
+    text = str(text)
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _embed_size(embed: dict) -> int:
+    """Character count Discord charges this embed against EMBED_TOTAL_LIMIT."""
+    total = len(embed.get("title") or "") + len(embed.get("description") or "")
+    total += len((embed.get("footer") or {}).get("text") or "")
+    total += len((embed.get("author") or {}).get("name") or "")
+    for field in embed.get("fields") or []:
+        total += len(field.get("name") or "") + len(field.get("value") or "")
+    return total
+
+
+def pack_embeds(embeds: list, per_message: int = EMBEDS_PER_MESSAGE,
+                total_limit: int = EMBED_TOTAL_LIMIT) -> list:
+    """Split embeds into Discord-sized message batches.
+
+    Separate from pack_discord_content because the two carry different limits
+    entirely: that one packs a single `content` string at 1900 chars, this one
+    packs a list at 10 embeds AND 6000 aggregate characters per message. Using
+    the content packer for embeds silently overflows the second limit.
+
+    A single embed that is itself over the aggregate limit is still emitted, in
+    a message of its own: dropping it would be a silent data loss, and
+    build_name_embed already clips every field to keep that from happening.
+    """
+    if per_message < 1:
+        raise ValueError("per_message must be positive")
+    batches, current, current_size = [], [], 0
+    for embed in embeds:
+        size = _embed_size(embed)
+        too_many = len(current) >= per_message
+        too_big = current and (current_size + size) > total_limit
+        if too_many or too_big:
+            batches.append(current)
+            current, current_size = [], 0
+        current.append(embed)
+        current_size += size
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _field(name: str, value: str, inline: bool = False) -> dict:
+    return {"name": _clip(name, EMBED_FIELD_NAME_LIMIT),
+            "value": _clip(value, EMBED_FIELD_VALUE_LIMIT),
+            "inline": inline}
+
+
+def _fmt_volume(volume: dict | None) -> str:
+    """Turnover against this name's own normal.
+
+    The "not predictive" note is not boilerplate: docs/scanner-findings-
+    2026-07-30.md measured this ratio against forward return and it failed, so
+    the digest must never let it read as a buy signal. See analyze.volume_read.
+    """
+    if volume is None:
+        return "not enough history to know this name's normal"
+    ratio = volume["ratio"]
+    window = volume["window"]
+    if ratio >= 3.0:
+        shape = f"**{ratio:.1f}x** its {window}-day median — heavy"
+    elif ratio >= 2.0:
+        shape = f"**{ratio:.1f}x** its {window}-day median — elevated"
+    elif ratio <= 0.5:
+        shape = f"{ratio:.1f}x its {window}-day median — thin"
+    else:
+        shape = f"{ratio:.1f}x its {window}-day median — normal"
+    return f"{shape}\n_Observed, not predictive (measured: does not forecast return)._"
+
+
+# Past this much drift from the price the levels were derived at, an ATR-scaled
+# stop/target pair describes a different market than the one you are looking at.
+# All 11 codes sit under 7% today, so this fires on neglect (autolevels not
+# re-run) or a genuine repricing -- both of which you want told, not hidden
+# behind a stop rendered as if it were still actionable.
+LEVELS_STALE_DRIFT_PCT = 15.0
+
+
+def _fmt_levels(levels: dict | None, price: float) -> str:
+    """Stop / trim / target from levels.json, with distance from here.
+
+    These have existed in levels.json for every code since autolevels first ran
+    and have never once appeared in a Discord message.
+    """
+    if not levels:
+        return "no derived levels yet (run `autolevels`)"
+    parts = []
+    for label in ("stop", "trim", "target"):
+        value = levels.get(label)
+        if value is None:
+            continue
+        away = (value - price) / price * 100 if price else 0.0
+        parts.append(f"{label} {value:.2f} ({away:+.1f}%)")
+    if not parts:
+        return "no derived levels yet"
+    line = " · ".join(parts)
+    derived_at = levels.get("price_at_derivation")
+    if derived_at and price:
+        drift = (price - derived_at) / derived_at * 100
+        if abs(drift) > LEVELS_STALE_DRIFT_PCT:
+            line += (f"\n⚠ derived at {derived_at:.2f} — price has moved "
+                     f"{drift:+.1f}% since; re-run `autolevels` before acting on these")
+    return line
+
+
+def _fmt_delta(delta: dict | None) -> str | None:
+    """What actually changed since yesterday.
+
+    history.compute_delta has computed this on every digest run for weeks;
+    main._dashboard_snapshot hardcoded `"changed": []` and threw it away.
+    """
+    if delta is None:
+        return "first recorded session for this name — no prior day to compare"
+    bits = []
+    if delta.get("rsi_delta") is not None:
+        bits.append(f"RSI {delta['rsi_delta']:+.1f}")
+    if delta.get("rules_met_delta"):
+        bits.append(f"rules met {delta['rules_met_delta']:+d}")
+    if delta.get("trend_flipped"):
+        bits.append("**trend flipped**")
+    for rule in delta.get("flipped") or []:
+        bits.append(f"`{rule}` flipped")
+    return " · ".join(bits) if bits else "nothing changed since yesterday"
+
+
+def build_name_embed(rec: dict, *, levels: dict | None = None,
+                     today: date | None = None) -> dict:
+    """One Discord embed for one name.
+
+    Every field here is data the engine already computed on every run and then
+    discarded, because build_dashboard_digest renders only the four summaryV1
+    cards. Nothing new is fetched to fill this in.
+
+    The three-way honesty rule from _fmt_news/_fmt_disclosures is preserved
+    throughout: a failed fetch, an empty result, and real content must never
+    render the same way.
+    """
+    current_day = today or date.today()
+    delta = rec.get("delta")
+    price = float(rec.get("price") or 0.0)
+
+    move = (delta or {}).get("price_pct")
+    if move is None:
+        title_move, color = "", COLOR_FLAT
+    else:
+        title_move = f"  ({move:+.1f}% today)"
+        color = COLOR_UP if move > 0 else COLOR_DOWN if move < 0 else COLOR_FLAT
+    if str(rec.get("action", "")).startswith("SELL") or rec.get("action") == "TRIM":
+        color = COLOR_ATTENTION
+
+    embed = {
+        "title": _clip(f"{rec['code']} {rec['name']} — {price:.2f} SAR{title_move}",
+                       EMBED_TITLE_LIMIT),
+        "color": color,
+        "fields": [],
+    }
+
+    action = rec.get("action", "?")
+    reasons = rec.get("reason") or []
+    embed["fields"].append(_field(
+        "Call", f"**{action}**" + (f" — {reasons[0]}" if reasons else "")))
+
+    if rec.get("kind") == "holding":
+        pnl = rec.get("unrealized_pct")
+        embed["fields"].append(_field(
+            "Position",
+            "cost basis unknown — set avg_cost in config.py" if pnl is None
+            else f"unrealised **{pnl:+.1f}%**",
+            inline=True))
+    else:
+        met, total = rec.get("rules_met"), rec.get("rules_total")
+        if met is not None and total:
+            embed["fields"].append(_field("Rules", f"**{met}/{total}** met", inline=True))
+
+    embed["fields"].append(_field("Volume", _fmt_volume(rec.get("volume")), inline=True))
+    embed["fields"].append(_field("Levels", _fmt_levels(levels, price)))
+
+    short = rec.get("short_term") or {}
+    long = rec.get("long_term") or {}
+    streak = rec.get("trend_streak")
+    tech = (f"RSI {long.get('rsi')} · trend {long.get('trend')} · "
+            f"10d {short.get('momentum_pct')}% · 120d {long.get('momentum_pct')}%")
+    if streak:
+        tech += f"\n{_TREND_PHRASE.get(long.get('trend'), 'trend unknown')}, " \
+                f"{_ordinal(streak['days'])} day (since {streak['started']})"
+    embed["fields"].append(_field("Technicals", tech))
+
+    changed = _fmt_delta(delta)
+    if changed:
+        embed["fields"].append(_field("Since yesterday", changed))
+
+    if rec.get("kind") == "watchlist":
+        trigger = _fmt_trigger(rec.get("triggers") or [])
+        if trigger:
+            embed["fields"].append(_field("Next-bar trigger", trigger.split(": ", 1)[-1]))
+        sizing = rec.get("sizing")
+        if sizing and not sizing.get("skip"):
+            embed["fields"].append(_field(
+                "Size", f"{sizing['shares']} sh x {price:.2f} = **{sizing['spend']} SAR** "
+                        f"({sizing.get('budget_left_after')} SAR left this month)"))
+
+    news_lines = _fmt_news(rec.get("news") or {}, today=current_day)
+    embed["fields"].append(_field(
+        "News", "\n".join(line.strip() for line in news_lines) or "none"))
+
+    disclosures = rec.get("disclosures")
+    if disclosures:
+        embed["fields"].append(_field(
+            "Tadawul filings",
+            "\n".join(line.strip() for line in _fmt_disclosures(disclosures))))
+
+    lean = rec.get("lean")
+    if lean:
+        embed["fields"].append(_field(
+            f"Pre-open lean — {lean.get('lean', 'unknown')} "
+            f"({lean.get('confidence', 'unknown')} confidence)",
+            f"{lean.get('take', '')}\n_Model judgement, not a validated forecast._"))
+
+    if not rec.get("verified", True):
+        embed["fields"].append(_field(
+            "⚠ Symbol unverified",
+            f"code {rec['code']} resolves to '{rec.get('yahoo_name') or 'no data'}' — "
+            f"fix it in config.py"))
+
+    embed["fields"] = embed["fields"][:EMBED_FIELDS_LIMIT]
+    return embed
+
+
+def build_digest_embeds(recs: list, *, regime: str, trade_date: str,
+                        budget: dict | None = None, levels_by_code: dict | None = None,
+                        warnings: list | None = None, today: date | None = None) -> list:
+    """The pre-open digest as embeds: a header, then one embed per name.
+
+    Replaces build_dashboard_digest's four-card message as the digest body.
+    Holdings always appear -- you own them, so "nothing changed" is itself the
+    answer you came for. Watchlist names appear when they are actionable or
+    when something about them moved; the rest are named in one trailing line so
+    a quiet name is visibly quiet rather than silently missing.
+    """
+    levels_by_code = levels_by_code or {}
+    header_lines = [f"**Regime:** {regime}", "**Data:** delayed daily bars (free tier)"]
+    if budget:
+        header_lines.append(
+            f"**Budget:** {budget.get('allocated', 0)} SAR allocated of "
+            f"{budget.get('budget', 0)} SAR remaining "
+            f"(cap {budget.get('monthly_cap')} SAR/month)")
+    for warning in warnings or []:
+        header_lines.append(f"⚠ {warning}")
+
+    header = {
+        "title": _clip(f"TASI pre-open digest — {trade_date}", EMBED_TITLE_LIMIT),
+        "color": COLOR_FLAT,
+        "description": _clip("\n".join(header_lines), 4096),
+    }
+
+    holdings = [r for r in recs if r.get("kind") == "holding"]
+    watch = [r for r in recs if r.get("kind") != "holding"]
+
+    def _noteworthy(rec: dict) -> bool:
+        if rec.get("action") not in ("WATCH", "HOLD"):
+            return True
+        if _is_changed(rec.get("delta")):
+            return True
+        if (rec.get("volume") or {}).get("unusual"):
+            return True
+        if _recent_headlines(rec.get("news") or {}, today or date.today()):
+            return True
+        return bool((rec.get("disclosures") or {}).get("items"))
+
+    shown = [r for r in watch if _noteworthy(r)]
+    quiet = [r for r in watch if r not in shown]
+
+    embeds = [header]
+    embeds += [build_name_embed(r, levels=levels_by_code.get(r["code"]), today=today)
+               for r in holdings + shown]
+
+    footer_bits = []
+    if quiet:
+        footer_bits.append("Quiet on the watchlist: "
+                           + ", ".join(f"{r['code']} {r['name']}" for r in quiet))
+    footer_bits.append("Automates your rules. Not financial advice. You execute every trade.")
+    embeds.append({"color": COLOR_FLAT,
+                   "description": _clip("\n".join(footer_bits), 4096)})
+    return embeds
 
 
 def pack_discord_content(content: str, limit: int = 1900) -> list[str]:
@@ -355,18 +678,41 @@ def pack_discord_content(content: str, limit: int = 1900) -> list[str]:
     return chunks
 
 
-def send_discord(content: str, webhook_url: str | None = None) -> bool:
-    """POST to Discord. Returns True on 2xx. Never raises."""
+def send_discord(content: str | None = None, webhook_url: str | None = None,
+                 embeds: list | None = None) -> bool:
+    """POST to Discord. Returns True on 2xx. Never raises.
+
+    `content` keeps the original plain-text behaviour byte for byte, so every
+    existing caller is unaffected. `embeds` is the rich path: batched by
+    pack_embeds (10 per message / 6000 chars), which is a different limit pair
+    from the 1900-char content chunking and must not share that packer.
+
+    When both are given the content rides on the first message only, so a
+    header line is not repeated once per batch.
+    """
     url = webhook_url or os.environ.get("DISCORD_WEBHOOK_URL")
     if not url:
         return False
     import requests
-    # Discord caps content at 2000 chars; preserve semantic cards below it.
-    chunks = pack_discord_content(content)
+
+    payloads: list[dict] = []
+    if embeds:
+        batches = pack_embeds(embeds)
+        for i, batch in enumerate(batches):
+            payload = {"embeds": batch}
+            if content and i == 0:
+                payload["content"] = pack_discord_content(content)[0]
+            payloads.append(payload)
+    elif content is not None:
+        # Discord caps content at 2000 chars; preserve semantic cards below it.
+        payloads = [{"content": chunk} for chunk in pack_discord_content(content)]
+    else:
+        return False
+
     ok = True
-    for chunk in chunks:
+    for payload in payloads:
         try:
-            r = requests.post(url, json={"content": chunk}, timeout=15)
+            r = requests.post(url, json=payload, timeout=15)
             ok = ok and (200 <= r.status_code < 300)
         except Exception:
             ok = False

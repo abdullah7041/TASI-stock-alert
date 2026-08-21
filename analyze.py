@@ -25,6 +25,49 @@ _DEFAULT_LEVELS = {
 }
 
 
+# --- Volume ----------------------------------------------------------------
+# Deliberately the SAME formula as scanner_features.code_feature_series's
+# `vol_surge` column (turnover over its own trailing 20-bar median), so the
+# digest and the offline lift analysis can never disagree about what "unusual
+# volume" means for a given bar.
+VOLUME_MEDIAN_WINDOW = 20
+VOLUME_MIN_BARS = VOLUME_MEDIAN_WINDOW + 1
+
+
+def volume_read(df: pd.DataFrame) -> dict | None:
+    """Today's turnover against this name's own recent normal.
+
+    Returns None when there is not enough history to have a normal -- the
+    caller renders "not enough history", never a bare 1.0x that would read
+    as "perfectly average" when it actually means "unmeasured".
+
+    IMPORTANT, and stated here rather than only in the digest: this ratio is
+    NOT a predictive signal. docs/scanner-findings-2026-07-30.md measured
+    vol_surge against forward return over 2021-2026 and it did not survive,
+    which is why scanner.py does not rank on it. It is reported because it is
+    a true and useful description of what the tape did today, on the same
+    footing as price -- not because it forecasts tomorrow. Nothing in
+    buy_decision() may ever read this.
+    """
+    if df is None or df.empty or "Volume" not in df.columns:
+        return None
+    turnover = (df["Close"] * df["Volume"]).dropna()
+    if len(turnover) < VOLUME_MIN_BARS:
+        return None
+    median = float(turnover.iloc[-VOLUME_MIN_BARS:-1].median())
+    latest = float(turnover.iloc[-1])
+    if not median or median <= 0 or np.isnan(median) or np.isnan(latest):
+        return None
+    ratio = latest / median
+    return {
+        "ratio": round(ratio, 2),
+        "turnover_sar": round(latest, 0),
+        "median_sar": round(median, 0),
+        "window": VOLUME_MEDIAN_WINDOW,
+        "unusual": bool(ratio >= 2.0),
+    }
+
+
 # --- Market regime ---------------------------------------------------------
 def market_regime(index_df: pd.DataFrame, index_ma: int) -> str:
     """'ok' / 'breakdown' / 'unknown'. Breakdown = index below its MA and the MA
@@ -183,6 +226,7 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
         "price": round(price, 2), "action": action, "reason": reason,
         "unrealized_pct": pnl_pct,
         "short_term": short, "long_term": long,
+        "volume": volume_read(df),
         "news": news_summary(news),
         "disclosures": disclosures_summary(disclosures),
     }
@@ -380,6 +424,7 @@ def evaluate_watchlist(item: dict, price: float, df: pd.DataFrame, levels: dict,
         "buy_zone": [low, high],
         "distance_to_zone_pct": round(dist, 2) if not np.isnan(dist) else None,
         "sizing": sizing, "short_term": short, "long_term": long,
+        "volume": volume_read(df),
     }
     out["news"] = news_summary(news)
     out["disclosures"] = disclosures_summary(disclosures)

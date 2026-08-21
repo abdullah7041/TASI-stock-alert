@@ -203,6 +203,48 @@ def _forecast(generated_at: str) -> dict:
     return unavailable_forecast(generated_at[:10], metrics, bool(metrics.get("survivorship_limited", True)))
 
 
+def _changed_entries(recs: list) -> list:
+    """Names whose day-over-day state actually moved.
+
+    `changed` was a hardcoded `[]` here from the day the v2 snapshot landed,
+    which is why the cockpit and the digest both reported "nothing changed"
+    every single day. The data was never missing: _collect_recs already
+    attaches history.compute_delta output to every rec as `delta` (and
+    compute_streak as `trend_streak`) whenever record_history is on. This just
+    reads what was already computed.
+
+    A rec with `delta is None` is a name's first recorded session, not an
+    unchanged one, and is deliberately excluded rather than reported as flat.
+    """
+    entries = []
+    for rec in recs:
+        delta = rec.get("delta")
+        if not nt._is_changed(delta):
+            continue
+        moves = []
+        if delta.get("price_pct") is not None:
+            moves.append(f"price {delta['price_pct']:+.1f}%")
+        if delta.get("rsi_delta") is not None:
+            moves.append(f"RSI {delta['rsi_delta']:+.1f}")
+        if delta.get("rules_met_delta"):
+            moves.append(f"rules met {delta['rules_met_delta']:+d}")
+        if delta.get("trend_flipped"):
+            moves.append("trend flipped")
+        for rule in delta.get("flipped") or []:
+            moves.append(f"{rule} flipped")
+        # Keys are fixed by the cockpit's own validator, not chosen here:
+        # app/lib/dashboard-core.mjs:82 reads exactly code/name/status/reason
+        # through text(), which throws on anything missing. `changed` has been
+        # a hardcoded [] since schemaVersion 2 shipped, so this list has never
+        # once been exercised against that validator -- the first non-empty
+        # payload is the first real test of the contract.
+        entries.append({
+            "code": rec["code"], "name": rec["name"],
+            "status": rec["action"], "reason": "; ".join(moves),
+        })
+    return entries
+
+
 def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None, scheduled_for: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -233,6 +275,8 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     ]
     warning = (scanner_result or {}).get("warning")
     warnings = [warning] if warning else []
+    if _INDEX_WARNING:
+        warnings.append(_INDEX_WARNING)
     if unknown_cost:
         warnings.append(
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
@@ -247,7 +291,7 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     ]
     snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
                 "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
-                "urgent": urgent, "changed": [], "qualified": qualified,
+                "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
                 "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
                 "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
                 "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
@@ -332,6 +376,10 @@ def mode_autolevels() -> int:
     return 0
 
 
+# Set by _collect_recs; read by _dashboard_snapshot. None means no index problem.
+_INDEX_WARNING: str | None = None
+
+
 def _collect_recs(include_news: bool, record_history: bool = False):
     """Returns (regime, recs, budget_summary).
 
@@ -347,6 +395,19 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     if idx is None or idx.empty:
         idx = dat.get_index_history(index_code)  # SAHMK fallback path.
     regime = az.market_regime(idx, cfg.REGIME["index_ma"])
+    # market_regime returns 'unknown' only when the index frame is empty or
+    # too short. Left unsaid, that reads identically to a genuinely
+    # indeterminate market -- and it hid a real outage: every snapshot from
+    # 2026-08-18 onward carried regime 'unknown' with nothing anywhere saying
+    # the ^TASI.SR fetch had stopped returning data.
+    global _INDEX_WARNING
+    _INDEX_WARNING = None
+    if regime == "unknown":
+        bars = 0 if idx is None or idx.empty else len(idx)
+        _INDEX_WARNING = (
+            f"Market regime unavailable: the index ({index_code}) returned "
+            f"{bars} usable bars this run, so no regime could be computed.")
+        print(_INDEX_WARNING)
 
     stored_levels = _load(LEVELS_FILE, {})
     verify = _verify_symbols(cfg.HOLDINGS + cfg.WATCHLIST)
@@ -483,12 +544,23 @@ def mode_digest() -> int:
         scheduled_for=os.environ.get("SCHEDULED_FOR"),
     )
     _save(DASHBOARD_FILE, snapshot)
-    msg = nt.build_dashboard_digest(snapshot)
-    ok = nt.send_discord(msg)
+
+    embeds = nt.build_digest_embeds(
+        recs, regime=regime, trade_date=snapshot["tradeDate"], budget=budget,
+        levels_by_code=_load(LEVELS_FILE, {}), warnings=snapshot.get("warnings"),
+    )
+    ok = nt.send_discord(embeds=embeds)
     if not ok:
-        print(msg)  # no webhook configured (e.g. local run) — show the digest here.
-    print("digest sent:", ok, "| recs:", len(recs))
-    return 0 if ok else 1
+        # No webhook configured (a local run), or Discord is down. Either way
+        # the digest itself succeeded and its state is already on disk.
+        print(nt.build_dashboard_digest(snapshot))
+    print("digest sent:", ok, "| recs:", len(recs), "| embeds:", len(embeds))
+    # Deliberately 0 even when delivery failed. Returning 1 fails the workflow
+    # step, which skips "Commit state", which discards the history.json,
+    # symbols.json and news_archive.jsonl writes _collect_recs already made --
+    # so a Discord outage used to cost a full day of day-over-day deltas.
+    # Delivery failure is reported above and by the workflow's own check.
+    return 0
 
 
 def mode_research_evidence() -> int:

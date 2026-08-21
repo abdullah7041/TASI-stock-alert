@@ -7,6 +7,7 @@ and the two evaluators. Data is synthetic so these are deterministic.
 """
 
 import io
+import json
 from datetime import date
 from pathlib import Path
 
@@ -141,18 +142,68 @@ def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(mo
     assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "a1"
 
 
-def test_digest_sends_the_canonical_snapshot_summary(monkeypatch):
+def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
+    """The digest must carry the per-name reads, not only the summary cards.
+
+    Replaces test_digest_sends_the_canonical_snapshot_summary, which pinned the
+    four summaryV1 cards as the whole message. That contract was the defect: it
+    made the digest structurally incapable of reporting a price, a level, a
+    volume reading or a day-over-day change, so it said "no action required"
+    every day while the engine computed all of it and threw it away.
+
+    The legacy `build_message` guard is kept -- reviving that formatter is still
+    the wrong direction; build_digest_embeds is the supported path.
+    """
     saved = {}
     sent = []
-    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [], {"monthly_cap": 500}))
+    rec = {
+        "kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+        "action": "HOLD", "reason": ["above stop"], "unrealized_pct": 21.6,
+        "short_term": {"momentum_pct": 2.1, "rsi": 50.6},
+        "long_term": {"trend": "flat", "momentum_pct": -1.2, "rsi": 50.6},
+        "volume": {"ratio": 3.2, "window": 20, "unusual": True,
+                   "turnover_sar": 1000.0, "median_sar": 312.0},
+        "delta": {"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                  "flipped": [], "trend_flipped": True},
+        "trend_streak": {"days": 12, "started": "2026-08-05"},
+        "news": {"ok": True, "headlines": [], "label": "neutral", "score": 0.0},
+        "disclosures": {"ok": True, "items": []},
+    }
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [rec], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
-    monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
+    monkeypatch.setattr(main.nt, "send_discord",
+                        lambda *_a, **kw: sent.append(kw.get("embeds")) or True)
     monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
 
     assert main.mode_digest() == 0
-    assert "Top 10: evidence pending; no current primary-source review." in sent[0]
-    assert "Forecast unavailable: validation gates not passed." in sent[0]
+
+    embeds = sent[0]
+    assert embeds, "the digest must send embeds"
+    blob = json.dumps(embeds)
+    # The four things the old four-card message could never say.
+    assert "1303 EIC" in blob and "15.09" in blob
+    assert "3.2x" in blob                      # volume vs its own median
+    assert "trend flipped" in blob             # compute_delta, previously discarded
+    assert "unrealised" in blob                # P/L on a holding
+
+
+def test_digest_survives_a_discord_outage_without_losing_state(monkeypatch):
+    """A delivery failure must not fail the workflow step.
+
+    mode_digest used to `return 1` when send_discord failed. That fails the
+    Actions step, which skips "Commit state", which discards the history.json
+    and symbols.json writes _collect_recs had already made -- so one Discord
+    outage cost a day of day-over-day deltas for every name.
+    """
+    saved = {}
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda *_a, **_kw: False)
+
+    assert main.mode_digest() == 0
+    assert main.DASHBOARD_FILE in saved
 
 
 def test_session_mode_sends_only_new_delayed_movement_cards(monkeypatch):
@@ -1629,7 +1680,7 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
             })
         ),
     )
-    monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
+    monkeypatch.setattr(m.nt, "send_discord", lambda *_a, **_kw: True)
     monkeypatch.setattr(m, "_scanner_result", lambda: {"candidates": [], "names": {}, "indexUnavailable": False, "warning": "scanner unavailable: test"})
     monkeypatch.setattr(m, "_save", lambda *_: None)
 
@@ -1652,7 +1703,7 @@ def test_mode_digest_saves_the_same_real_scanner_result_used_for_its_message(mon
     }))
     monkeypatch.setattr(m, "_scanner_result", lambda: scanner_result)
     monkeypatch.setattr(m.nt, "format_scanner_block", lambda candidates, names, **_: f"scanner {names[candidates[0]['code']]}")
-    monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
+    monkeypatch.setattr(m.nt, "send_discord", lambda *_a, **_kw: True)
     monkeypatch.setattr(m, "_save", lambda path, value: saved.setdefault(path.name, value))
 
     assert m.mode_digest() == 0
@@ -2359,3 +2410,203 @@ if __name__ == "__main__":
         print(f"ok  {f.__name__}")
     print(f"\n{passed} passed")
     sys.exit(0)
+
+
+# --- Rich digest embeds -----------------------------------------------------
+# The digest's job is to carry the reads the engine already computes. Before
+# these, main.mode_digest rendered only the four summaryV1 cards, so a price,
+# a level, a volume reading and a day-over-day change were all structurally
+# unreportable. Each test below pins one of those back in.
+
+def _embed_rec(**overrides):
+    rec = {
+        "kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+        "action": "HOLD", "reason": ["above stop"], "unrealized_pct": 21.6,
+        "short_term": {"momentum_pct": 2.1, "rsi": 50.6},
+        "long_term": {"trend": "flat", "momentum_pct": -1.2, "rsi": 50.6},
+        "volume": {"ratio": 3.2, "window": 20, "unusual": True,
+                   "turnover_sar": 1.0, "median_sar": 1.0},
+        "delta": {"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                  "flipped": [], "trend_flipped": False},
+        "trend_streak": {"days": 12, "started": "2026-08-05"},
+        "news": {"ok": True, "headlines": [], "label": "neutral", "score": 0.0},
+        "disclosures": {"ok": True, "items": []},
+    }
+    rec.update(overrides)
+    return rec
+
+
+def test_volume_read_reports_turnover_against_its_own_median():
+    """The ratio is turnover vs this name's own trailing median, not a peer."""
+    bars = pd.DataFrame({
+        "Close": [10.0] * 25,
+        "Volume": [1000.0] * 24 + [3000.0],
+    })
+    out = az.volume_read(bars)
+    assert out["ratio"] == 3.0
+    assert out["unusual"] is True
+
+
+def test_volume_read_is_none_without_enough_history_not_a_flat_one():
+    """Too little history must not render as 1.0x, which reads as 'average'."""
+    bars = pd.DataFrame({"Close": [10.0] * 5, "Volume": [1000.0] * 5})
+    assert az.volume_read(bars) is None
+
+
+def test_volume_read_excludes_today_from_its_own_baseline():
+    """A spike must not inflate the median it is being measured against.
+
+    The baseline is deliberately mixed rather than flat: against a flat one,
+    including today shifts the median by nothing and the test would pass
+    against the bug it exists to catch. Here, excluding today gives 66.67x and
+    including it gives 50.00x, so the assertion discriminates.
+    """
+    bars = pd.DataFrame({
+        "Close": [10.0] * 21,
+        "Volume": [100.0] * 10 + [200.0] * 10 + [10_000.0],
+    })
+    assert az.volume_read(bars)["ratio"] == 66.67
+
+
+def test_name_embed_carries_price_volume_levels_and_change():
+    embed = nt.build_name_embed(
+        _embed_rec(delta={"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                          "flipped": [], "trend_flipped": True}),
+        levels={"stop": 13.95, "trim": 15.89, "target": 16.59,
+                "price_at_derivation": 14.83},
+    )
+    blob = json.dumps(embed)
+    assert "1303 EIC" in embed["title"] and "15.09" in embed["title"]
+    assert "+1.2% today" in embed["title"]
+    assert "3.2x" in blob
+    assert "13.95" in blob and "16.59" in blob
+    assert "trend flipped" in blob
+
+
+def test_name_embed_says_volume_is_not_predictive():
+    """docs/scanner-findings-2026-07-30.md measured vol_surge as non-predictive.
+
+    Surfacing it is reporting an observation, not reversing that finding, so
+    the caveat travels with the number rather than living only in a doc.
+    """
+    blob = json.dumps(nt.build_name_embed(_embed_rec()))
+    assert "not predictive" in blob
+
+
+def test_name_embed_distinguishes_no_volume_history_from_average_volume():
+    blob = json.dumps(nt.build_name_embed(_embed_rec(volume=None)))
+    assert "not enough history" in blob
+    assert "1.0x" not in blob
+
+
+def test_name_embed_flags_levels_derived_at_a_far_away_price():
+    embed = nt.build_name_embed(
+        _embed_rec(price=142.0),
+        levels={"stop": 57.95, "target": 63.51, "price_at_derivation": 59.8},
+    )
+    assert "re-run `autolevels`" in json.dumps(embed)
+
+
+def test_name_embed_keeps_the_three_way_news_honesty():
+    """A failed fetch and an empty result must not render identically."""
+    failed = json.dumps(nt.build_name_embed(_embed_rec(news={"ok": False})))
+    empty = json.dumps(nt.build_name_embed(
+        _embed_rec(news={"ok": True, "headlines": [], "label": "neutral", "score": 0.0})))
+    assert "fetch failed" in failed
+    assert "fetch failed" not in empty
+    assert failed != empty
+
+
+def test_name_embed_marks_an_unverified_symbol():
+    blob = json.dumps(nt.build_name_embed(
+        _embed_rec(verified=False, yahoo_name="Americana Restaurants")))
+    assert "unverified" in blob.lower() and "Americana" in blob
+
+
+def test_name_embed_first_session_is_not_reported_as_unchanged():
+    blob = json.dumps(nt.build_name_embed(_embed_rec(delta=None)))
+    assert "first recorded session" in blob
+
+
+def test_digest_embeds_always_include_every_holding():
+    """You own these, so a quiet day is itself the answer you came for."""
+    quiet = _embed_rec(delta={"price_pct": 0.0, "rsi_delta": 0.0, "rules_met_delta": 0,
+                              "flipped": [], "trend_flipped": False},
+                       volume={"ratio": 1.0, "window": 20, "unusual": False,
+                               "turnover_sar": 1.0, "median_sar": 1.0})
+    embeds = nt.build_digest_embeds([quiet], regime="ok", trade_date="2026-08-21")
+    assert any("1303 EIC" in (e.get("title") or "") for e in embeds)
+
+
+def test_digest_embeds_name_quiet_watchlist_names_rather_than_dropping_them():
+    quiet = _embed_rec(kind="watchlist", code="4016", name="Avalon Pharma",
+                       action="WATCH", rules_met=2, rules_total=3,
+                       delta={"price_pct": 0.1, "rsi_delta": 0.0, "rules_met_delta": 0,
+                              "flipped": [], "trend_flipped": False},
+                       volume={"ratio": 1.0, "window": 20, "unusual": False,
+                               "turnover_sar": 1.0, "median_sar": 1.0})
+    embeds = nt.build_digest_embeds([quiet], regime="ok", trade_date="2026-08-21")
+    assert not any("4016" in (e.get("title") or "") for e in embeds)
+    assert "Quiet on the watchlist: 4016 Avalon Pharma" in json.dumps(embeds)
+
+
+def test_digest_embeds_surface_a_watchlist_name_on_unusual_volume_alone():
+    loud = _embed_rec(kind="watchlist", code="4016", name="Avalon Pharma",
+                      action="WATCH", rules_met=2, rules_total=3,
+                      delta={"price_pct": 0.1, "rsi_delta": 0.0, "rules_met_delta": 0,
+                             "flipped": [], "trend_flipped": False},
+                      volume={"ratio": 4.1, "window": 20, "unusual": True,
+                              "turnover_sar": 1.0, "median_sar": 1.0})
+    embeds = nt.build_digest_embeds([loud], regime="ok", trade_date="2026-08-21")
+    assert any("4016" in (e.get("title") or "") for e in embeds)
+
+
+def test_digest_embeds_put_warnings_in_the_header():
+    embeds = nt.build_digest_embeds(
+        [], regime="unknown", trade_date="2026-08-21",
+        warnings=["Market regime unavailable: the index returned 0 usable bars."])
+    assert "0 usable bars" in embeds[0]["description"]
+
+
+def test_pack_embeds_respects_both_count_and_character_limits():
+    small = [{"title": "t", "fields": []} for _ in range(23)]
+    assert all(len(b) <= nt.EMBEDS_PER_MESSAGE for b in nt.pack_embeds(small))
+
+    big = [{"title": "t", "description": "x" * 4000, "fields": []} for _ in range(4)]
+    batches = nt.pack_embeds(big)
+    assert all(sum(nt._embed_size(e) for e in b) <= nt.EMBED_TOTAL_LIMIT
+               for b in batches)
+    assert sum(len(b) for b in batches) == 4  # nothing dropped
+
+
+def test_pack_embeds_never_drops_an_oversized_embed():
+    huge = [{"title": "t", "description": "x" * (nt.EMBED_TOTAL_LIMIT + 500), "fields": []}]
+    batches = nt.pack_embeds(huge)
+    assert sum(len(b) for b in batches) == 1
+
+
+def test_embed_fields_are_clipped_to_discord_limits():
+    embed = nt.build_name_embed(_embed_rec(reason=["y" * 5000]))
+    assert len(embed["title"]) <= nt.EMBED_TITLE_LIMIT
+    assert all(len(f["value"]) <= nt.EMBED_FIELD_VALUE_LIMIT for f in embed["fields"])
+    assert len(embed["fields"]) <= nt.EMBED_FIELDS_LIMIT
+
+
+def test_changed_entries_read_the_deltas_that_were_being_discarded():
+    """main._dashboard_snapshot hardcoded `changed: []` while this data existed."""
+    recs = [
+        _embed_rec(delta={"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                          "flipped": [], "trend_flipped": True}),
+        _embed_rec(code="2320", name="Al-Babtain",
+                   delta={"price_pct": 0.0, "rsi_delta": 0.0, "rules_met_delta": 0,
+                          "flipped": [], "trend_flipped": False}),
+    ]
+    changed = main._changed_entries(recs)
+    assert [c["code"] for c in changed] == ["1303"]
+    assert "trend flipped" in changed[0]["reason"]
+    # Keys are the cockpit validator's, not ours (dashboard-core.mjs:82).
+    assert set(changed[0]) == {"code", "name", "status", "reason"}
+
+
+def test_changed_entries_exclude_a_first_session_rather_than_calling_it_flat():
+    assert main._changed_entries([_embed_rec(delta=None)]) == []
