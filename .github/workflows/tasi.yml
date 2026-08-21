@@ -6,9 +6,25 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "heartbeat | discord-smoke | suggest | autolevels | digest | run | top10-draft | cockpit-refresh | research-evidence | intraday-probe"
+        description: "Which mode to run"
         required: true
         default: "run"
+        # A choice, not free text. As a plain string input GitHub renders a box
+        # pre-filled with "run", so dispatching any other mode meant typing it
+        # exactly and a typo silently ran the default instead.
+        type: choice
+        options:
+          - run
+          - digest
+          - intraday-probe
+          - heartbeat
+          - discord-smoke
+          - suggest
+          - autolevels
+          - reconcile
+          - top10-draft
+          - cockpit-refresh
+          - research-evidence
   schedule:
     # Pre-open digest at 06:45 UTC (09:45 Riyadh), Sun-Thu.
     - cron: "45 6 * * 0,1,2,3,4"
