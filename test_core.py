@@ -2697,7 +2697,27 @@ def test_intraday_probe_records_a_failure_without_raising(monkeypatch):
 def test_intraday_probe_threshold_is_recorded_with_the_verdict(monkeypatch):
     """The bar must travel with the answer, so it cannot be moved to fit it."""
     out = _run_probe(monkeypatch, lambda _s: {"15m": _intraday_frame(40)})
-    assert "at least 8 of 11" in out["verdict"]["threshold"]
+    verdict = out["verdict"]
+    assert verdict["threshold"].startswith("at least 8 of 11 stock codes")
+    assert verdict["stockCodesProbed"] == 11
+
+
+def test_intraday_probe_judges_the_index_separately_from_the_stocks(monkeypatch):
+    """^TASI.SR is a computed index with no volume of its own.
+
+    Counting it in the denominator would lower the verdict for a reason that
+    has nothing to do with whether the holdings have intraday data.
+    """
+    def frames(symbol):
+        if symbol.startswith("^"):
+            return {}  # index returns nothing, as it often does
+        return {"5m": _intraday_frame(60), "15m": _intraday_frame(40)}
+
+    verdict = _run_probe(monkeypatch, frames)["verdict"]
+    assert verdict["stockCodesProbed"] == 11
+    assert verdict["indexIntradayBars"] == 0
+    assert verdict["intradayViable"] is True
+    assert not any(c.startswith("^") for c in verdict["codesWithUsableIntraday"])
 
 
 def test_intraday_probe_is_registered_as_a_dispatchable_mode():

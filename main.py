@@ -982,17 +982,31 @@ def mode_intraday_probe() -> int:
     # The rule was written before the answer was known, so the answer cannot
     # move the bar: intraday ships only if most names return usable bars WITH
     # real volume at 15m or finer.
+    #
+    # The index is judged separately and excluded from the count. ^TASI.SR is
+    # a computed index, not a traded instrument, so it has no volume of its own
+    # and could never satisfy a volume rule -- including it would drag the
+    # denominator down for a reason that has nothing to do with whether your
+    # holdings have intraday data.
+    stock_codes = [c for c in codes if not c.startswith("^")]
+    required = max(1, round(len(stock_codes) * 0.7))
     usable = {
         r["code"] for r in results
-        if r.get("ok") and r["interval"] in ("5m", "15m")
+        if r.get("ok") and r["interval"] in ("5m", "15m") and not r["code"].startswith("^")
         and r.get("bars", 0) >= 20 and r.get("volume_non_zero", 0) >= 20
     }
+    index_bars = max((r.get("bars", 0) for r in results
+                      if r["code"].startswith("^") and r["interval"] in ("5m", "15m")),
+                     default=0)
     verdict = {
         "decidedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "codesProbed": len(codes),
+        "stockCodesProbed": len(stock_codes),
         "codesWithUsableIntraday": sorted(usable),
-        "threshold": "at least 8 of 11 codes with >=20 bars and >=20 non-zero volumes at 15m or finer",
-        "intradayViable": len(usable) >= 8,
+        "indexIntradayBars": index_bars,
+        "threshold": f"at least {required} of {len(stock_codes)} stock codes with "
+                     f">=20 bars and >=20 non-zero volumes at 15m or finer "
+                     f"(the index is reported separately and does not count)",
+        "intradayViable": len(usable) >= required,
     }
     _save(PROBE_FILE, {"verdict": verdict, "attempts": results})
     print(json.dumps(verdict, indent=2))
