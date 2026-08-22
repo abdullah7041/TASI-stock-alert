@@ -11,7 +11,7 @@ import json
 import sys
 import time
 import types
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -193,21 +193,15 @@ def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
     assert "unrealised" in blob                # P/L on a holding
 
 
-def test_digest_survives_a_discord_outage_without_losing_state(monkeypatch):
-    """A delivery failure must not fail the workflow step.
-
-    mode_digest used to `return 1` when send_discord failed. That fails the
-    Actions step, which skips "Commit state", which discards the history.json
-    and symbols.json writes _collect_recs had already made -- so one Discord
-    outage cost a day of day-over-day deltas for every name.
-    """
+def test_digest_reports_a_discord_outage_after_writing_state(monkeypatch):
+    """A send failure must be visible while workflow-level state commit remains safe."""
     saved = {}
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
     monkeypatch.setattr(main.nt, "send_discord", lambda *_a, **_kw: False)
 
-    assert main.mode_digest() == 0
+    assert main.mode_digest() == 1
     assert main.DASHBOARD_FILE in saved
 
 
@@ -241,6 +235,8 @@ def test_scheduler_records_lateness_and_does_not_hide_state_commit_failures():
     assert "for path in" in workflow and '[ -e "$path" ]' in workflow
     assert "git add state.json" not in workflow
     assert "git push 2>/dev/null" not in workflow
+    assert "continue-on-error: true" in workflow
+    assert "Fail if runtime failed" in workflow
 
 
 def test_workflow_exposes_manual_discord_smoke_without_cockpit_ingest():
@@ -2842,6 +2838,33 @@ def test_digest_marks_a_name_the_model_skipped(monkeypatch):
     assert "no take for this name" in recs[1]["lean"]["unavailable"]
 
 
+def test_digest_persists_the_lean_attached_after_daily_snapshot(monkeypatch):
+    """The evaluator must receive the actual claim, not a null pre-call snapshot."""
+    today = "2026-08-21"
+    history = {"1303": [{"date": today, "price": 15.09,
+                         "lean": None, "lean_confidence": None}]}
+    saved = {}
+    rec = _lean_rec()
+
+    monkeypatch.setattr(main, "_today", lambda: today)
+    monkeypatch.setattr(main, "_collect_recs",
+                        lambda **_: ("ok", [rec], {"monthly_cap": 500.0}))
+    monkeypatch.setattr(main, "_scanner_result",
+                        lambda: {"candidates": [], "names": {}, "warning": None})
+    monkeypatch.setattr(main, "_load",
+                        lambda path, default: history if path == main.HISTORY_FILE else default)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
+        "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}}))
+    monkeypatch.setattr(main, "_render_charts", lambda _recs: ({}, {}))
+    monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
+
+    assert main.mode_digest() == 0
+    persisted = saved[main.HISTORY_FILE]["1303"][0]
+    assert persisted["lean"] == "positive"
+    assert persisted["lean_confidence"] == "high"
+
+
 def test_embed_renders_an_unavailable_lean_differently_from_a_neutral_one():
     unavailable = json.dumps(nt.build_name_embed(
         _lean_rec(lean={"unavailable": "upstream down"})), ensure_ascii=False)
@@ -3019,12 +3042,28 @@ def test_a_closed_market_skips_the_mode_without_failing_the_workflow(monkeypatch
     A non-zero fails the Actions step, which skips "Commit state" -- the exact
     mechanism by which a Discord outage used to discard a day of history.
     """
-    monkeypatch.setattr(main, "gate_or_none", lambda _m: "market closed (recorded holiday)")
+    monkeypatch.setattr(main, "gate_or_none",
+                        lambda _m, **_kwargs: "market closed (recorded holiday)")
     monkeypatch.setattr(sys, "argv", ["main.py", "digest"])
     monkeypatch.setattr(main, "mode_digest",
                         lambda: (_ for _ in ()).throw(AssertionError("must not run")))
     monkeypatch.setitem(main.MODES, "digest", main.mode_digest)
     assert main.main() == 0
+
+
+def test_scheduled_digest_uses_its_intended_window_not_runner_start_time():
+    scheduled = datetime(2026, 8, 20, 6, 45, tzinfo=timezone.utc)
+    delayed_start = datetime(2026, 8, 20, 7, 26, tzinfo=timezone.utc)
+    assert main.gate_or_none("digest", now=delayed_start,
+                             scheduled_for=scheduled) is None
+
+
+def test_late_scheduled_digest_fails_loudly_after_the_delivery_window():
+    scheduled = datetime(2026, 8, 20, 6, 45, tzinfo=timezone.utc)
+    very_late_start = datetime(2026, 8, 20, 8, 1, tzinfo=timezone.utc)
+    reason = main.schedule_lateness_reason("digest", now=very_late_start,
+                                           scheduled_for=scheduled)
+    assert reason is not None and "late" in reason
 
 
 def test_the_gate_reads_the_recorded_holiday_list():

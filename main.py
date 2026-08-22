@@ -26,7 +26,7 @@ import os
 import statistics
 import sys
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import config as cfg
@@ -620,6 +620,34 @@ def _attach_leans(recs: list) -> None:
         rec["lean"] = take or {"unavailable": "the model returned no take for this name"}
 
 
+def _persist_attached_leans(recs: list) -> None:
+    """Record the optional model claims after the daily snapshot is already safe.
+
+    History and the dashboard are intentionally written before the model call so
+    a provider outage cannot erase the deterministic digest. Once a response is
+    attached, update only today's existing history row; this makes every
+    directional claim available to ``mode_reconcile`` without letting the model
+    create a new market snapshot.
+    """
+    history = _load(HISTORY_FILE, {})
+    today = _today()
+    changed = False
+    for rec in recs:
+        lean = rec.get("lean") or {}
+        for entry in reversed(history.get(rec.get("code"), [])):
+            if entry.get("date") != today:
+                continue
+            next_lean = lean.get("lean")
+            next_confidence = lean.get("confidence")
+            if (entry.get("lean"), entry.get("lean_confidence")) != (next_lean, next_confidence):
+                entry["lean"] = next_lean
+                entry["lean_confidence"] = next_confidence
+                changed = True
+            break
+    if changed:
+        _save(HISTORY_FILE, history)
+
+
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True, record_history=True)
     scanner_result = _scanner_result()
@@ -630,6 +658,7 @@ def mode_digest() -> int:
     )
     _save(DASHBOARD_FILE, snapshot)
     _attach_leans(recs)
+    _persist_attached_leans(recs)
 
     charts_by_code, chart_files = _render_charts(recs)
     embeds = nt.build_digest_embeds(
@@ -643,12 +672,10 @@ def mode_digest() -> int:
         # the digest itself succeeded and its state is already on disk.
         print(nt.build_dashboard_digest(snapshot))
     print("digest sent:", ok, "| recs:", len(recs), "| embeds:", len(embeds))
-    # Deliberately 0 even when delivery failed. Returning 1 fails the workflow
-    # step, which skips "Commit state", which discards the history.json,
-    # symbols.json and news_archive.jsonl writes _collect_recs already made --
-    # so a Discord outage used to cost a full day of day-over-day deltas.
-    # Delivery failure is reported above and by the workflow's own check.
-    return 0
+    # The workflow commits state even when this returns non-zero, then surfaces
+    # the delivery failure. A green run without a Discord digest is worse than
+    # a visible failure, but a failed webhook must not discard the day's state.
+    return 0 if ok else 1
 
 
 def mode_research_evidence() -> int:
@@ -1036,9 +1063,27 @@ MODES = {
 # session_gate's windows. Research and manual modes are deliberately absent:
 # you must be able to run a backtest or a smoke test on a Friday.
 GATED_MODES = {"digest": "digest", "run": "session", "reconcile": "reconcile"}
+MAX_SCHEDULE_LAG = {"digest": timedelta(minutes=60), "reconcile": timedelta(minutes=60)}
 
 
-def gate_or_none(mode: str) -> str | None:
+def _scheduled_time(value: str | datetime | None) -> datetime | None:
+    """Parse the workflow's intended UTC timestamp, never treating manual as a time."""
+    if value is None or value == "manual":
+        return None
+    if isinstance(value, datetime):
+        moment = value
+    else:
+        try:
+            moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
+def gate_or_none(mode: str, *, now: datetime | None = None,
+                 scheduled_for: str | datetime | None = None) -> str | None:
     """Why `mode` must not run right now, or None to proceed.
 
     session_gate.py has been complete, tested and dependency-free since it was
@@ -1056,7 +1101,29 @@ def gate_or_none(mode: str) -> str | None:
     window = GATED_MODES.get(mode)
     if window is None:
         return None
-    return session_gate.gate_reason(window)
+    # A manual dispatch is an explicit operator recovery action. Scheduled jobs
+    # are judged by their intended market window, not a delayed Actions runner.
+    if scheduled_for == "manual":
+        return None
+    intended = _scheduled_time(scheduled_for)
+    return session_gate.gate_reason(window, now=intended or now)
+
+
+def schedule_lateness_reason(mode: str, *, now: datetime | None = None,
+                             scheduled_for: str | datetime | None = None) -> str | None:
+    """Explain an intolerably delayed scheduled digest/reconciliation run."""
+    intended = _scheduled_time(scheduled_for)
+    maximum = MAX_SCHEDULE_LAG.get(mode)
+    if intended is None or maximum is None:
+        return None
+    actual = now or datetime.now(timezone.utc)
+    if actual.tzinfo is None:
+        actual = actual.replace(tzinfo=timezone.utc)
+    delay = actual.astimezone(timezone.utc) - intended
+    if delay > maximum:
+        return (f"scheduled {mode} is {int(delay.total_seconds() // 60)} minutes late "
+                f"(maximum {int(maximum.total_seconds() // 60)} minutes)")
+    return None
 
 
 def main() -> int:
@@ -1072,13 +1139,19 @@ def main() -> int:
         print(f"unknown mode '{mode}'. choose: {', '.join(MODES)}")
         return 2
 
-    blocked = gate_or_none(mode)
+    now = datetime.now(timezone.utc)
+    scheduled_for = os.environ.get("SCHEDULED_FOR")
+    blocked = gate_or_none(mode, now=now, scheduled_for=scheduled_for)
     if blocked:
         # Exit 0, not a failure: a scheduled run landing on a closed market did
         # its job by declining. A non-zero here would fail the workflow step and
         # skip "Commit state" for the same reason a Discord outage used to.
         print(f"skipping '{mode}': {blocked}")
         return 0
+    late = schedule_lateness_reason(mode, now=now, scheduled_for=scheduled_for)
+    if late:
+        print(f"failing '{mode}': {late}")
+        return 1
     return fn()
 
 

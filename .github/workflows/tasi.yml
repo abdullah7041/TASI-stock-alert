@@ -87,6 +87,10 @@ jobs:
           echo "actual_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Run
+        id: run
+        # State must survive a delivery failure. The final step restores the
+        # failure after Commit state has persisted it.
+        continue-on-error: true
         env:
           MODE: ${{ steps.mode.outputs.mode }}
           SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
@@ -99,6 +103,7 @@ jobs:
         run: python main.py
 
       - name: Record job telemetry
+        if: always()
         env:
           MODE: ${{ steps.mode.outputs.mode }}
           SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
@@ -122,8 +127,18 @@ jobs:
               print(f"movement_alert_count={len(alerts.get('alerts') or [])}")
           PY
 
+      - name: Detect dashboard update
+        id: dashboard
+        if: always()
+        run: |
+          if git diff --quiet -- dashboard.json; then
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Update private cockpit
-        if: contains('digest,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        if: steps.dashboard.outputs.updated == 'true' && contains('digest,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
@@ -140,7 +155,7 @@ jobs:
           printf 'mode=%s\ncommit=%s\ndashboard_ingest=%s\n' "${{ steps.mode.outputs.mode }}" "$GITHUB_SHA" "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Update delayed movement alerts
-        if: steps.mode.outputs.mode == 'run'
+        if: steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
@@ -152,6 +167,7 @@ jobs:
           printf 'mode=run\ncommit=%s\nalert_ingest=%s\n' "$GITHUB_SHA" "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit state
+        if: always()
         run: |
           git config user.name "tasi-bot"
           git config user.email "tasi-bot@users.noreply.github.com"
@@ -160,3 +176,7 @@ jobs:
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi
           git push
+
+      - name: Fail if runtime failed
+        if: always() && steps.run.outcome == 'failure'
+        run: exit 1
