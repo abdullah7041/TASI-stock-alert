@@ -7,7 +7,11 @@ and the two evaluators. Data is synthetic so these are deterministic.
 """
 
 import io
-from datetime import date
+import json
+import sys
+import time
+import types
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +19,8 @@ import pandas as pd
 
 import indicators as ind
 import analyze as az
+import llm
+import session_gate
 import backtest as bt
 import config as cfg
 import data
@@ -141,18 +147,62 @@ def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(mo
     assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "a1"
 
 
-def test_digest_sends_the_canonical_snapshot_summary(monkeypatch):
+def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
+    """The digest must carry the per-name reads, not only the summary cards.
+
+    Replaces test_digest_sends_the_canonical_snapshot_summary, which pinned the
+    four summaryV1 cards as the whole message. That contract was the defect: it
+    made the digest structurally incapable of reporting a price, a level, a
+    volume reading or a day-over-day change, so it said "no action required"
+    every day while the engine computed all of it and threw it away.
+
+    The legacy `build_message` guard is kept -- reviving that formatter is still
+    the wrong direction; build_digest_embeds is the supported path.
+    """
     saved = {}
     sent = []
-    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [], {"monthly_cap": 500}))
+    rec = {
+        "kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+        "action": "HOLD", "reason": ["above stop"], "unrealized_pct": 21.6,
+        "short_term": {"momentum_pct": 2.1, "rsi": 50.6},
+        "long_term": {"trend": "flat", "momentum_pct": -1.2, "rsi": 50.6},
+        "volume": {"ratio": 3.2, "window": 20, "unusual": True,
+                   "turnover_sar": 1000.0, "median_sar": 312.0},
+        "delta": {"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                  "flipped": [], "trend_flipped": True},
+        "trend_streak": {"days": 12, "started": "2026-08-05"},
+        "news": {"ok": True, "headlines": [], "label": "neutral", "score": 0.0},
+        "disclosures": {"ok": True, "items": []},
+    }
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [rec], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
-    monkeypatch.setattr(main.nt, "send_discord", lambda content: sent.append(content) or True)
+    monkeypatch.setattr(main.nt, "send_discord",
+                        lambda *_a, **kw: sent.append(kw.get("embeds")) or True)
     monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
 
     assert main.mode_digest() == 0
-    assert "Top 10: evidence pending; no current primary-source review." in sent[0]
-    assert "Forecast unavailable: validation gates not passed." in sent[0]
+
+    embeds = sent[0]
+    assert embeds, "the digest must send embeds"
+    blob = json.dumps(embeds)
+    # The four things the old four-card message could never say.
+    assert "1303 EIC" in blob and "15.09" in blob
+    assert "3.2x" in blob                      # volume vs its own median
+    assert "trend flipped" in blob             # compute_delta, previously discarded
+    assert "unrealised" in blob                # P/L on a holding
+
+
+def test_digest_reports_a_discord_outage_after_writing_state(monkeypatch):
+    """A send failure must be visible while workflow-level state commit remains safe."""
+    saved = {}
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [], {"monthly_cap": 500}))
+    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main.nt, "send_discord", lambda *_a, **_kw: False)
+
+    assert main.mode_digest() == 1
+    assert main.DASHBOARD_FILE in saved
 
 
 def test_session_mode_sends_only_new_delayed_movement_cards(monkeypatch):
@@ -185,13 +235,25 @@ def test_scheduler_records_lateness_and_does_not_hide_state_commit_failures():
     assert "for path in" in workflow and '[ -e "$path" ]' in workflow
     assert "git add state.json" not in workflow
     assert "git push 2>/dev/null" not in workflow
+    assert "continue-on-error: true" in workflow
+    assert "Fail if runtime failed" in workflow
 
 
 def test_workflow_exposes_manual_discord_smoke_without_cockpit_ingest():
     workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
 
     assert "discord-smoke" in workflow.split("schedule:", 1)[0]
-    assert "contains('digest,top10-draft,cockpit-refresh', steps.mode.outputs.mode)" in workflow
+
+    # Assert the property this test is named for -- discord-smoke must never
+    # reach the cockpit -- rather than one literal mode list, which pinned the
+    # string so tightly that adding `reconcile` to the ingest gate failed a
+    # test about the smoke mode.
+    ingest_gate = next(line for line in workflow.splitlines()
+                       if "steps.mode.outputs.mode)" in line and "contains(" in line)
+    ingest_modes = ingest_gate.split("contains('", 1)[1].split("'", 1)[0].split(",")
+    assert "discord-smoke" not in ingest_modes
+    assert "heartbeat" not in ingest_modes
+    assert {"digest", "top10-draft", "cockpit-refresh"} <= set(ingest_modes)
     assert "steps.mode.outputs.mode == 'run'" in workflow
 
 
@@ -1629,7 +1691,7 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
             })
         ),
     )
-    monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
+    monkeypatch.setattr(m.nt, "send_discord", lambda *_a, **_kw: True)
     monkeypatch.setattr(m, "_scanner_result", lambda: {"candidates": [], "names": {}, "indexUnavailable": False, "warning": "scanner unavailable: test"})
     monkeypatch.setattr(m, "_save", lambda *_: None)
 
@@ -1652,7 +1714,7 @@ def test_mode_digest_saves_the_same_real_scanner_result_used_for_its_message(mon
     }))
     monkeypatch.setattr(m, "_scanner_result", lambda: scanner_result)
     monkeypatch.setattr(m.nt, "format_scanner_block", lambda candidates, names, **_: f"scanner {names[candidates[0]['code']]}")
-    monkeypatch.setattr(m.nt, "send_discord", lambda *_: True)
+    monkeypatch.setattr(m.nt, "send_discord", lambda *_a, **_kw: True)
     monkeypatch.setattr(m, "_save", lambda path, value: saved.setdefault(path.name, value))
 
     assert m.mode_digest() == 0
@@ -1762,8 +1824,11 @@ def test_collect_recs_attaches_delta_and_streak(tmp_path, monkeypatch):
            "required": "up", "plain": "x"}], "rules_met": 0, "rules_total": 1,
            "long_term": {"trend": "down", "rsi": 40.0, "momentum_pct": -6.0}}
     snap = m._snapshot_for(rec)
+    # lean/lean_confidence are recorded so mode_reconcile can grade the claim
+    # later; None here because this rec carries no lean.
     assert snap == {"price": 100.0, "rsi": 40.0, "trend": "down",
-                    "rules_met": 0, "blocking": ["trend"]}
+                    "rules_met": 0, "blocking": ["trend"],
+                    "lean": None, "lean_confidence": None}
 
 def test_snapshot_for_holding_has_no_rules_met():
     import main as m
@@ -2359,3 +2424,652 @@ if __name__ == "__main__":
         print(f"ok  {f.__name__}")
     print(f"\n{passed} passed")
     sys.exit(0)
+
+
+# --- Rich digest embeds -----------------------------------------------------
+# The digest's job is to carry the reads the engine already computes. Before
+# these, main.mode_digest rendered only the four summaryV1 cards, so a price,
+# a level, a volume reading and a day-over-day change were all structurally
+# unreportable. Each test below pins one of those back in.
+
+def _embed_rec(**overrides):
+    rec = {
+        "kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+        "action": "HOLD", "reason": ["above stop"], "unrealized_pct": 21.6,
+        "short_term": {"momentum_pct": 2.1, "rsi": 50.6},
+        "long_term": {"trend": "flat", "momentum_pct": -1.2, "rsi": 50.6},
+        "volume": {"ratio": 3.2, "window": 20, "unusual": True,
+                   "turnover_sar": 1.0, "median_sar": 1.0},
+        "delta": {"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                  "flipped": [], "trend_flipped": False},
+        "trend_streak": {"days": 12, "started": "2026-08-05"},
+        "news": {"ok": True, "headlines": [], "label": "neutral", "score": 0.0},
+        "disclosures": {"ok": True, "items": []},
+    }
+    rec.update(overrides)
+    return rec
+
+
+def test_volume_read_reports_turnover_against_its_own_median():
+    """The ratio is turnover vs this name's own trailing median, not a peer."""
+    bars = pd.DataFrame({
+        "Close": [10.0] * 25,
+        "Volume": [1000.0] * 24 + [3000.0],
+    })
+    out = az.volume_read(bars)
+    assert out["ratio"] == 3.0
+    assert out["unusual"] is True
+
+
+def test_volume_read_is_none_without_enough_history_not_a_flat_one():
+    """Too little history must not render as 1.0x, which reads as 'average'."""
+    bars = pd.DataFrame({"Close": [10.0] * 5, "Volume": [1000.0] * 5})
+    assert az.volume_read(bars) is None
+
+
+def test_volume_read_excludes_today_from_its_own_baseline():
+    """A spike must not inflate the median it is being measured against.
+
+    The baseline is deliberately mixed rather than flat: against a flat one,
+    including today shifts the median by nothing and the test would pass
+    against the bug it exists to catch. Here, excluding today gives 66.67x and
+    including it gives 50.00x, so the assertion discriminates.
+    """
+    bars = pd.DataFrame({
+        "Close": [10.0] * 21,
+        "Volume": [100.0] * 10 + [200.0] * 10 + [10_000.0],
+    })
+    assert az.volume_read(bars)["ratio"] == 66.67
+
+
+def test_name_embed_carries_price_volume_levels_and_change():
+    embed = nt.build_name_embed(
+        _embed_rec(delta={"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                          "flipped": [], "trend_flipped": True}),
+        levels={"stop": 13.95, "trim": 15.89, "target": 16.59,
+                "price_at_derivation": 14.83},
+    )
+    blob = json.dumps(embed)
+    assert "1303 EIC" in embed["title"] and "15.09" in embed["title"]
+    assert "+1.2% today" in embed["title"]
+    assert "3.2x" in blob
+    assert "13.95" in blob and "16.59" in blob
+    assert "trend flipped" in blob
+
+
+def test_name_embed_says_volume_is_not_predictive():
+    """docs/scanner-findings-2026-07-30.md measured vol_surge as non-predictive.
+
+    Surfacing it is reporting an observation, not reversing that finding, so
+    the caveat travels with the number rather than living only in a doc.
+    """
+    blob = json.dumps(nt.build_name_embed(_embed_rec()))
+    assert "not predictive" in blob
+
+
+def test_name_embed_distinguishes_no_volume_history_from_average_volume():
+    blob = json.dumps(nt.build_name_embed(_embed_rec(volume=None)))
+    assert "not enough history" in blob
+    assert "1.0x" not in blob
+
+
+def test_name_embed_flags_levels_derived_at_a_far_away_price():
+    embed = nt.build_name_embed(
+        _embed_rec(price=142.0),
+        levels={"stop": 57.95, "target": 63.51, "price_at_derivation": 59.8},
+    )
+    assert "re-run `autolevels`" in json.dumps(embed)
+
+
+def test_name_embed_keeps_the_three_way_news_honesty():
+    """A failed fetch and an empty result must not render identically."""
+    failed = json.dumps(nt.build_name_embed(_embed_rec(news={"ok": False})))
+    empty = json.dumps(nt.build_name_embed(
+        _embed_rec(news={"ok": True, "headlines": [], "label": "neutral", "score": 0.0})))
+    assert "fetch failed" in failed
+    assert "fetch failed" not in empty
+    assert failed != empty
+
+
+def test_name_embed_marks_an_unverified_symbol():
+    blob = json.dumps(nt.build_name_embed(
+        _embed_rec(verified=False, yahoo_name="Americana Restaurants")))
+    assert "unverified" in blob.lower() and "Americana" in blob
+
+
+def test_name_embed_first_session_is_not_reported_as_unchanged():
+    blob = json.dumps(nt.build_name_embed(_embed_rec(delta=None)))
+    assert "first recorded session" in blob
+
+
+def test_digest_embeds_always_include_every_holding():
+    """You own these, so a quiet day is itself the answer you came for."""
+    quiet = _embed_rec(delta={"price_pct": 0.0, "rsi_delta": 0.0, "rules_met_delta": 0,
+                              "flipped": [], "trend_flipped": False},
+                       volume={"ratio": 1.0, "window": 20, "unusual": False,
+                               "turnover_sar": 1.0, "median_sar": 1.0})
+    embeds = nt.build_digest_embeds([quiet], regime="ok", trade_date="2026-08-21")
+    assert any("1303 EIC" in (e.get("title") or "") for e in embeds)
+
+
+def test_digest_embeds_name_quiet_watchlist_names_rather_than_dropping_them():
+    quiet = _embed_rec(kind="watchlist", code="4016", name="Avalon Pharma",
+                       action="WATCH", rules_met=2, rules_total=3,
+                       delta={"price_pct": 0.1, "rsi_delta": 0.0, "rules_met_delta": 0,
+                              "flipped": [], "trend_flipped": False},
+                       volume={"ratio": 1.0, "window": 20, "unusual": False,
+                               "turnover_sar": 1.0, "median_sar": 1.0})
+    embeds = nt.build_digest_embeds([quiet], regime="ok", trade_date="2026-08-21")
+    assert not any("4016" in (e.get("title") or "") for e in embeds)
+    assert "Quiet on the watchlist: 4016 Avalon Pharma" in json.dumps(embeds)
+
+
+def test_digest_embeds_surface_a_watchlist_name_on_unusual_volume_alone():
+    loud = _embed_rec(kind="watchlist", code="4016", name="Avalon Pharma",
+                      action="WATCH", rules_met=2, rules_total=3,
+                      delta={"price_pct": 0.1, "rsi_delta": 0.0, "rules_met_delta": 0,
+                             "flipped": [], "trend_flipped": False},
+                      volume={"ratio": 4.1, "window": 20, "unusual": True,
+                              "turnover_sar": 1.0, "median_sar": 1.0})
+    embeds = nt.build_digest_embeds([loud], regime="ok", trade_date="2026-08-21")
+    assert any("4016" in (e.get("title") or "") for e in embeds)
+
+
+def test_digest_embeds_put_warnings_in_the_header():
+    embeds = nt.build_digest_embeds(
+        [], regime="unknown", trade_date="2026-08-21",
+        warnings=["Market regime unavailable: the index returned 0 usable bars."])
+    assert "0 usable bars" in embeds[0]["description"]
+
+
+def test_pack_embeds_respects_both_count_and_character_limits():
+    small = [{"title": "t", "fields": []} for _ in range(23)]
+    assert all(len(b) <= nt.EMBEDS_PER_MESSAGE for b in nt.pack_embeds(small))
+
+    big = [{"title": "t", "description": "x" * 4000, "fields": []} for _ in range(4)]
+    batches = nt.pack_embeds(big)
+    assert all(sum(nt._embed_size(e) for e in b) <= nt.EMBED_TOTAL_LIMIT
+               for b in batches)
+    assert sum(len(b) for b in batches) == 4  # nothing dropped
+
+
+def test_pack_embeds_never_drops_an_oversized_embed():
+    huge = [{"title": "t", "description": "x" * (nt.EMBED_TOTAL_LIMIT + 500), "fields": []}]
+    batches = nt.pack_embeds(huge)
+    assert sum(len(b) for b in batches) == 1
+
+
+def test_embed_fields_are_clipped_to_discord_limits():
+    embed = nt.build_name_embed(_embed_rec(reason=["y" * 5000]))
+    assert len(embed["title"]) <= nt.EMBED_TITLE_LIMIT
+    assert all(len(f["value"]) <= nt.EMBED_FIELD_VALUE_LIMIT for f in embed["fields"])
+    assert len(embed["fields"]) <= nt.EMBED_FIELDS_LIMIT
+
+
+def test_changed_entries_read_the_deltas_that_were_being_discarded():
+    """main._dashboard_snapshot hardcoded `changed: []` while this data existed."""
+    recs = [
+        _embed_rec(delta={"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                          "flipped": [], "trend_flipped": True}),
+        _embed_rec(code="2320", name="Al-Babtain",
+                   delta={"price_pct": 0.0, "rsi_delta": 0.0, "rules_met_delta": 0,
+                          "flipped": [], "trend_flipped": False}),
+    ]
+    changed = main._changed_entries(recs)
+    assert [c["code"] for c in changed] == ["1303"]
+    assert "trend flipped" in changed[0]["reason"]
+    # Keys are the cockpit validator's, not ours (dashboard-core.mjs:82).
+    assert set(changed[0]) == {"code", "name", "status", "reason"}
+
+
+def test_changed_entries_exclude_a_first_session_rather_than_calling_it_flat():
+    assert main._changed_entries([_embed_rec(delta=None)]) == []
+
+
+# --- Intraday probe ---------------------------------------------------------
+# The probe exists because "delayed-intraday" is currently a label, not a fact:
+# data.get_quote returns the last daily close and movement.py runs its robust-z
+# over daily returns, while the workflow calls both every 15 minutes. These
+# tests pin the decision rule, not the answer -- the answer comes from Actions,
+# where Yahoo is reachable.
+
+class _FakeTicker:
+    def __init__(self, frames):
+        self._frames = frames
+
+    def history(self, period, interval):
+        return self._frames.get(interval, pd.DataFrame())
+
+
+def _intraday_frame(bars, *, volume=1000.0, days=5):
+    idx = pd.date_range("2026-08-17 10:00", periods=bars, freq="15min")
+    return pd.DataFrame({"Close": [10.0] * bars, "Volume": [volume] * bars}, index=idx)
+
+
+def _run_probe(monkeypatch, frames_for_code):
+    saved = {}
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.Ticker = lambda symbol: _FakeTicker(frames_for_code(symbol))
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    assert main.mode_intraday_probe() == 0
+    return saved[main.PROBE_FILE]
+
+
+def test_intraday_probe_declares_viable_when_bars_and_volume_are_real(monkeypatch):
+    out = _run_probe(monkeypatch, lambda _s: {"5m": _intraday_frame(60),
+                                              "15m": _intraday_frame(40)})
+    assert out["verdict"]["intradayViable"] is True
+
+
+def test_intraday_probe_rejects_bars_that_carry_no_volume(monkeypatch):
+    """Yahoo can serve intraday bars with an all-zero volume column.
+
+    That is the failure this probe exists to catch: the frame looks healthy,
+    len(df) is large, and the volume ratio only comes out wrong much later.
+    """
+    out = _run_probe(monkeypatch, lambda _s: {"5m": _intraday_frame(60, volume=0.0),
+                                              "15m": _intraday_frame(40, volume=0.0)})
+    assert out["verdict"]["intradayViable"] is False
+    assert out["verdict"]["codesWithUsableIntraday"] == []
+
+
+def test_intraday_probe_records_a_failure_without_raising(monkeypatch):
+    def boom(_symbol):
+        raise RuntimeError("Yahoo said no")
+
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.Ticker = boom
+    saved = {}
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+
+    assert main.mode_intraday_probe() == 0
+    attempts = saved[main.PROBE_FILE]["attempts"]
+    assert attempts and all(a["ok"] is False for a in attempts)
+    assert "Yahoo said no" in attempts[0]["error"]
+
+
+def test_intraday_probe_threshold_is_recorded_with_the_verdict(monkeypatch):
+    """The bar must travel with the answer, so it cannot be moved to fit it."""
+    out = _run_probe(monkeypatch, lambda _s: {"15m": _intraday_frame(40)})
+    verdict = out["verdict"]
+    assert verdict["threshold"].startswith("at least 8 of 11 stock codes")
+    assert verdict["stockCodesProbed"] == 11
+
+
+def test_intraday_probe_judges_the_index_separately_from_the_stocks(monkeypatch):
+    """^TASI.SR is a computed index with no volume of its own.
+
+    Counting it in the denominator would lower the verdict for a reason that
+    has nothing to do with whether the holdings have intraday data.
+    """
+    def frames(symbol):
+        if symbol.startswith("^"):
+            return {}  # index returns nothing, as it often does
+        return {"5m": _intraday_frame(60), "15m": _intraday_frame(40)}
+
+    verdict = _run_probe(monkeypatch, frames)["verdict"]
+    assert verdict["stockCodesProbed"] == 11
+    assert verdict["indexIntradayBars"] == 0
+    assert verdict["intradayViable"] is True
+    assert not any(c.startswith("^") for c in verdict["codesWithUsableIntraday"])
+
+
+def test_intraday_probe_is_registered_as_a_dispatchable_mode():
+    assert main.MODES["intraday-probe"] is main.mode_intraday_probe
+    workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
+    # It must ride tasi.yml, not manual-operations.yml: the probe's output is
+    # evidence that has to be committed, and manual-operations is contents:read.
+    assert "intraday-probe" in workflow
+    assert "research/intraday_probe.json" in workflow
+
+
+# --- Pre-open lean ----------------------------------------------------------
+# The lean is the one place this repo states a judgement it cannot backtest.
+# What makes that defensible is not the disclaimer: it is that the lean gates
+# nothing, and that every claim is recorded and graded. These tests pin both.
+
+def _lean_rec(**overrides):
+    rec = {
+        "kind": "holding", "code": "1303", "name": "EIC", "price": 15.09,
+        "action": "HOLD", "reason": ["above stop"],
+        "short_term": {"momentum_pct": 2.1, "rsi": 50.6},
+        "long_term": {"trend": "flat", "momentum_pct": -1.2, "rsi": 50.6},
+        "volume": {"ratio": 3.2, "window": 20, "unusual": True,
+                   "turnover_sar": 1.0, "median_sar": 1.0},
+        "delta": {"price_pct": 1.2, "rsi_delta": 3.2, "rules_met_delta": None,
+                  "flipped": [], "trend_flipped": False},
+        "news": {"ok": True, "headlines": [
+            {"title": "EIC wins SAR 210m contract", "published": "19 Aug 2026"}]},
+        "disclosures": {"ok": True, "items": []},
+    }
+    rec.update(overrides)
+    return rec
+
+
+def test_lean_prompt_carries_the_evidence_the_model_must_ground_in():
+    prompt = llm.build_prompt([_lean_rec()])
+    assert "1303 EIC" in prompt
+    assert "3.2x" in prompt
+    assert "SAR 210m contract" in prompt
+
+
+def test_lean_prompt_distinguishes_a_failed_news_fetch_from_a_quiet_one():
+    """The model must not read a network error as an absence of news."""
+    failed = llm.build_prompt([_lean_rec(news={"ok": False})])
+    quiet = llm.build_prompt([_lean_rec(news={"ok": True, "headlines": []})])
+    assert "fetch FAILED" in failed
+    assert "absence of headlines here is not evidence of quiet" in failed
+    assert "fetch FAILED" not in quiet
+    assert "no headlines found" in quiet
+
+
+def test_lean_parse_accepts_a_fenced_json_block():
+    out = llm.parse_response(
+        '```json\n{"takes":[{"code":"1303","lean":"positive","confidence":"medium",'
+        '"take":"Contract win.","drivers":["contract"]}]}\n```')
+    assert out["1303"]["lean"] == "positive"
+    assert out["1303"]["drivers"] == ["contract"]
+
+
+def test_lean_parse_drops_a_lean_outside_the_allowed_vocabulary():
+    """An invented label must not reach the digest looking deliberate."""
+    out = llm.parse_response(
+        '{"takes":[{"code":"1303","lean":"strong buy","confidence":"high","take":"x"},'
+        '{"code":"2320","lean":"negative","confidence":"low","take":"y"}]}')
+    assert "1303" not in out
+    assert out["2320"]["lean"] == "negative"
+
+
+def test_lean_reports_a_missing_key_rather_than_an_empty_result():
+    out = llm.get_leans([_lean_rec()], api_key="")
+    assert out["_status"]["ok"] is False
+    assert "ANTHROPIC_API_KEY" in out["_status"]["reason"]
+
+
+def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
+    def boom(*_a, **_kw):
+        raise RuntimeError("upstream 503")
+
+    monkeypatch.setattr(llm, "_complete", boom)
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=Path("/nonexistent"))
+    assert out["_status"]["ok"] is False
+    assert "model call failed" in out["_status"]["reason"]
+    assert not [k for k in out if k != "_status"]
+
+
+def test_lean_stops_at_the_monthly_call_cap(tmp_path, monkeypatch):
+    ledger = tmp_path / "llm_budget.json"
+    ledger.write_text(json.dumps({"month": time.strftime("%Y-%m"),
+                                  "calls": llm.MONTHLY_CALL_CAP}))
+    called = []
+    monkeypatch.setattr(llm, "_complete", lambda *a, **k: called.append(1) or "{}")
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=ledger)
+    assert out["_status"]["ok"] is False
+    assert "monthly cap" in out["_status"]["reason"]
+    assert called == [], "the cap must be enforced before the network call"
+
+
+def test_lean_budget_resets_on_a_new_month(tmp_path):
+    ledger = tmp_path / "llm_budget.json"
+    ledger.write_text(json.dumps({"month": "2020-01", "calls": 999}))
+    assert llm.budget_remaining(ledger) == llm.MONTHLY_CALL_CAP
+
+
+def test_digest_marks_every_name_when_the_lean_is_unavailable(monkeypatch):
+    """A model outage degrades to facts-only with a reason, never to silence."""
+    recs = [_lean_rec(), _lean_rec(code="2320", name="Al-Babtain")]
+    monkeypatch.setattr(llm, "get_leans",
+                        lambda *_a, **_kw: {"_status": {"ok": False, "reason": "upstream down"}})
+    main._attach_leans(recs)
+    assert all(r["lean"]["unavailable"] == "upstream down" for r in recs)
+
+
+def test_digest_marks_a_name_the_model_skipped(monkeypatch):
+    """A partial response must be visible, not look like a quiet name."""
+    recs = [_lean_rec(), _lean_rec(code="2320", name="Al-Babtain")]
+    monkeypatch.setattr(llm, "get_leans", lambda *_a, **_kw: {
+        "_status": {"ok": True, "model": "m", "calls_left": 5},
+        "1303": {"lean": "positive", "confidence": "medium", "take": "t", "drivers": []},
+    })
+    main._attach_leans(recs)
+    assert recs[0]["lean"]["lean"] == "positive"
+    assert "no take for this name" in recs[1]["lean"]["unavailable"]
+
+
+def test_digest_persists_the_lean_attached_after_daily_snapshot(monkeypatch):
+    """The evaluator must receive the actual claim, not a null pre-call snapshot."""
+    today = "2026-08-21"
+    history = {"1303": [{"date": today, "price": 15.09,
+                         "lean": None, "lean_confidence": None}]}
+    saved = {}
+    rec = _lean_rec()
+
+    monkeypatch.setattr(main, "_today", lambda: today)
+    monkeypatch.setattr(main, "_collect_recs",
+                        lambda **_: ("ok", [rec], {"monthly_cap": 500.0}))
+    monkeypatch.setattr(main, "_scanner_result",
+                        lambda: {"candidates": [], "names": {}, "warning": None})
+    monkeypatch.setattr(main, "_load",
+                        lambda path, default: history if path == main.HISTORY_FILE else default)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
+        "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}}))
+    monkeypatch.setattr(main, "_render_charts", lambda _recs: ({}, {}))
+    monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
+
+    assert main.mode_digest() == 0
+    persisted = saved[main.HISTORY_FILE]["1303"][0]
+    assert persisted["lean"] == "positive"
+    assert persisted["lean_confidence"] == "high"
+
+
+def test_embed_renders_an_unavailable_lean_differently_from_a_neutral_one():
+    unavailable = json.dumps(nt.build_name_embed(
+        _lean_rec(lean={"unavailable": "upstream down"})), ensure_ascii=False)
+    neutral = json.dumps(nt.build_name_embed(
+        _lean_rec(lean={"lean": "neutral", "confidence": "low",
+                        "take": "Mixed evidence.", "drivers": []})), ensure_ascii=False)
+    assert "unavailable — upstream down" in unavailable
+    assert "neutral" in neutral and "unavailable" not in neutral
+
+
+def test_the_lean_never_reaches_the_buy_decision():
+    """The conviction score was deleted for gating on an unvalidated number.
+
+    buy_decision takes only the long-term read and the configured criteria, and
+    must keep taking only those -- so a lean cannot become a buy rule by
+    accident later.
+    """
+    import inspect
+    assert set(inspect.signature(az.buy_decision).parameters) == {"long_read", "criteria"}
+    assert "lean" not in inspect.getsource(az.buy_decision)
+
+
+# --- Lean scorecard ---------------------------------------------------------
+
+def _hist(code, rows):
+    return {code: [{"date": d, "price": p, "lean": l} for d, p, l in rows]}
+
+
+def test_grade_leans_scores_a_call_against_the_following_session():
+    history = _hist("1303", [("2026-08-18", 100.0, "positive"),
+                             ("2026-08-19", 104.0, None)])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["hits"] == 1 and out["misses"] == 0
+    assert out["hitRatePct"] == 100.0
+
+
+def test_grade_leans_counts_a_wrong_direction_as_a_miss():
+    history = _hist("1303", [("2026-08-18", 100.0, "positive"),
+                             ("2026-08-19", 96.0, None)])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["misses"] == 1 and out["hitRatePct"] == 0.0
+
+
+def test_grade_leans_does_not_score_a_move_inside_the_flat_band():
+    """Without this, a +0.02% session grades a call correct and the hit rate
+    measures rounding noise."""
+    history = _hist("1303", [("2026-08-18", 100.0, "positive"),
+                             ("2026-08-19", 100.1, None)])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["flat"] == 1 and out["hits"] == 0 and out["hitRatePct"] is None
+
+
+def test_grade_leans_ignores_neutral_calls_which_claim_no_direction():
+    history = _hist("1303", [("2026-08-18", 100.0, "neutral"),
+                             ("2026-08-19", 110.0, None)])
+    assert main.grade_leans(history, "2026-08-20")["graded"] == 0
+
+
+def test_grade_leans_reads_history_written_before_leans_existed():
+    """history.json holds weeks of entries with no lean key at all."""
+    history = {"1303": [{"date": "2026-08-18", "price": 100.0, "rsi": 50.0},
+                        {"date": "2026-08-19", "price": 110.0, "rsi": 52.0}]}
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["graded"] == 0 and out["hitRatePct"] is None
+
+
+def test_grade_leans_leaves_the_latest_session_ungraded_not_wrong():
+    """The newest lean has no following bar yet; it is pending, not a miss."""
+    history = _hist("1303", [("2026-08-19", 100.0, "positive")])
+    out = main.grade_leans(history, "2026-08-20")
+    assert out["graded"] == 0 and out["misses"] == 0
+
+
+# --- Charts -----------------------------------------------------------------
+# Charts are an enhancement to a digest that already reads as text, so every
+# test here is really about one property: a chart problem must cost the picture
+# and never the message.
+
+def _ohlcv(n=60):
+    idx = pd.bdate_range("2026-05-01", periods=n)
+    close = pd.Series(np.linspace(10.0, 12.0, n), index=idx)
+    return pd.DataFrame({
+        "Open": close - 0.05, "High": close + 0.10,
+        "Low": close - 0.10, "Close": close,
+        "Volume": pd.Series([1000.0] * n, index=idx),
+    }, index=idx)
+
+
+def test_chart_renders_a_png_with_levels(tmp_path):
+    import charts as chartmod
+    path = chartmod.render("1303", "EIC", _ohlcv(),
+                           {"stop": 9.5, "trim": 11.5, "target": 12.5}, tmp_path)
+    assert path is not None and path.exists()
+    assert path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_chart_returns_none_on_thin_history_instead_of_raising(tmp_path):
+    import charts as chartmod
+    assert chartmod.render("1303", "EIC", _ohlcv(3), None, tmp_path) is None
+    assert chartmod.render("1303", "EIC", pd.DataFrame(), None, tmp_path) is None
+    assert chartmod.render("1303", "EIC", None, None, tmp_path) is None
+
+
+def test_chart_renders_without_any_levels(tmp_path):
+    """levels.json is empty until autolevels has run at least once."""
+    import charts as chartmod
+    assert chartmod.render("9999", "New Name", _ohlcv(), None, tmp_path) is not None
+
+
+def test_digest_degrades_to_text_when_charts_fail(monkeypatch):
+    """A matplotlib failure must not cost the digest."""
+    monkeypatch.setattr(main.dat, "get_histories",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(RuntimeError("no net")))
+    by_code, files = main._render_charts([_embed_rec()])
+    assert by_code == {} and files == {}
+
+
+def test_embed_references_its_chart_as_a_discord_attachment():
+    embed = nt.build_name_embed(_embed_rec(), chart="1303.png")
+    assert embed["image"]["url"] == "attachment://1303.png"
+
+
+def test_embed_has_no_image_when_no_chart_was_rendered():
+    assert "image" not in nt.build_name_embed(_embed_rec())
+
+
+def test_uploads_ride_the_same_message_as_the_embed_that_references_them():
+    """Discord resolves attachment:// only within one request.
+
+    A chart uploaded in a different message than its embed renders as a broken
+    image, which is why this pairing is asserted rather than assumed.
+    """
+    payloads = [
+        {"embeds": [{"title": "a", "image": {"url": "attachment://1303.png"}}]},
+        {"embeds": [{"title": "b", "image": {"url": "attachment://2320.png"}}]},
+    ]
+    files = {"1303.png": Path("/tmp/1303.png"), "2320.png": Path("/tmp/2320.png")}
+    grouped = nt._files_for_payloads(payloads, files)
+    assert grouped == [[files["1303.png"]], [files["2320.png"]]]
+
+
+def test_an_upload_no_embed_references_is_dropped():
+    grouped = nt._files_for_payloads([{"embeds": [{"title": "a"}]}],
+                                     {"1303.png": Path("/tmp/1303.png")})
+    assert grouped == [[]]
+
+
+def test_matplotlib_is_declared_as_a_runtime_dependency():
+    """charts.py is imported by mode_digest, which runs from requirements.txt."""
+    assert "matplotlib" in Path("requirements.txt").read_text(encoding="utf-8")
+
+
+# --- Session and holiday gate -----------------------------------------------
+# session_gate.py was complete and tested from the day it was written, and
+# imported only by runtime/job.py -- a Cloud Run job that was never
+# provisioned. The path that actually runs had no session or holiday gate at
+# all. These pin the wiring, not session_gate's own logic, which has its own
+# tests.
+
+def test_live_modes_are_bound_to_the_tadawul_calendar():
+    assert main.GATED_MODES == {"digest": "digest", "run": "session",
+                                "reconcile": "reconcile"}
+
+
+def test_research_and_manual_modes_are_never_calendar_gated():
+    """You must be able to smoke-test or backtest on a Friday."""
+    for mode in ("heartbeat", "discord-smoke", "backtest", "universe",
+                 "features", "autolevels", "suggest", "intraday-probe"):
+        assert main.gate_or_none(mode) is None, mode
+
+
+def test_a_closed_market_skips_the_mode_without_failing_the_workflow(monkeypatch):
+    """Exit 0 on a closed day.
+
+    A non-zero fails the Actions step, which skips "Commit state" -- the exact
+    mechanism by which a Discord outage used to discard a day of history.
+    """
+    monkeypatch.setattr(main, "gate_or_none",
+                        lambda _m, **_kwargs: "market closed (recorded holiday)")
+    monkeypatch.setattr(sys, "argv", ["main.py", "digest"])
+    monkeypatch.setattr(main, "mode_digest",
+                        lambda: (_ for _ in ()).throw(AssertionError("must not run")))
+    monkeypatch.setitem(main.MODES, "digest", main.mode_digest)
+    assert main.main() == 0
+
+
+def test_scheduled_digest_uses_its_intended_window_not_runner_start_time():
+    scheduled = datetime(2026, 8, 20, 6, 45, tzinfo=timezone.utc)
+    delayed_start = datetime(2026, 8, 20, 7, 26, tzinfo=timezone.utc)
+    assert main.gate_or_none("digest", now=delayed_start,
+                             scheduled_for=scheduled) is None
+
+
+def test_late_scheduled_digest_fails_loudly_after_the_delivery_window():
+    scheduled = datetime(2026, 8, 20, 6, 45, tzinfo=timezone.utc)
+    very_late_start = datetime(2026, 8, 20, 8, 1, tzinfo=timezone.utc)
+    reason = main.schedule_lateness_reason("digest", now=very_late_start,
+                                           scheduled_for=scheduled)
+    assert reason is not None and "late" in reason
+
+
+def test_the_gate_reads_the_recorded_holiday_list():
+    """market_holidays.json is the file an operator edits before Eid."""
+    holidays = json.loads(Path("market_holidays.json").read_text(encoding="utf-8"))
+    assert "closed" in holidays and isinstance(holidays["closed"], list)
+    # Empty today, so the gate changes nothing until dates are added -- but the
+    # wiring must exist first, or adding them would change nothing either.
+    assert session_gate.gate_reason("digest", holidays={"2026-08-21"}) is not None

@@ -9,3 +9,6 @@ node_modules/
 dist/
 .wrangler/
 .next/
+
+# Chart PNGs are rebuilt on every digest run; never committed.
+.charts/

@@ -26,7 +26,7 @@ import os
 import statistics
 import sys
 import time
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import config as cfg
@@ -36,6 +36,7 @@ import notify as nt
 import indicators as ind
 import history as histmod
 import disclosures as discl
+import session_gate
 from movement import detect_unusual_movement
 from research.company_evidence import load_evidence_records
 from research.entry_forecast import unavailable_forecast
@@ -56,6 +57,7 @@ ALERTS_FILE = HERE / "movement_alerts.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
 EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
+PROBE_FILE = HERE / "research" / "intraday_probe.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -140,8 +142,15 @@ def _snapshot_for(rec: dict) -> dict:
     if rec["kind"] == "watchlist":
         rules_met = rec.get("rules_met")
         blocking = sorted(r["rule"] for r in rec.get("rules", []) if not r["passed"])
+    # The lean is stored with the day's price so mode_reconcile can grade it
+    # later against what actually happened. A lean that is never scored is the
+    # conviction score all over again (docs/backtest-findings-2026-07-23.md):
+    # a number nobody can falsify. Storing the claim is what makes it
+    # falsifiable, and history.record_snapshot already caps at 90 days per code.
+    lean = rec.get("lean") or {}
     return {"price": rec["price"], "rsi": lt.get("rsi"), "trend": lt.get("trend"),
-            "rules_met": rules_met, "blocking": blocking}
+            "rules_met": rules_met, "blocking": blocking,
+            "lean": lean.get("lean"), "lean_confidence": lean.get("confidence")}
 
 
 def _budget_record(buys: list) -> None:
@@ -203,6 +212,48 @@ def _forecast(generated_at: str) -> dict:
     return unavailable_forecast(generated_at[:10], metrics, bool(metrics.get("survivorship_limited", True)))
 
 
+def _changed_entries(recs: list) -> list:
+    """Names whose day-over-day state actually moved.
+
+    `changed` was a hardcoded `[]` here from the day the v2 snapshot landed,
+    which is why the cockpit and the digest both reported "nothing changed"
+    every single day. The data was never missing: _collect_recs already
+    attaches history.compute_delta output to every rec as `delta` (and
+    compute_streak as `trend_streak`) whenever record_history is on. This just
+    reads what was already computed.
+
+    A rec with `delta is None` is a name's first recorded session, not an
+    unchanged one, and is deliberately excluded rather than reported as flat.
+    """
+    entries = []
+    for rec in recs:
+        delta = rec.get("delta")
+        if not nt._is_changed(delta):
+            continue
+        moves = []
+        if delta.get("price_pct") is not None:
+            moves.append(f"price {delta['price_pct']:+.1f}%")
+        if delta.get("rsi_delta") is not None:
+            moves.append(f"RSI {delta['rsi_delta']:+.1f}")
+        if delta.get("rules_met_delta"):
+            moves.append(f"rules met {delta['rules_met_delta']:+d}")
+        if delta.get("trend_flipped"):
+            moves.append("trend flipped")
+        for rule in delta.get("flipped") or []:
+            moves.append(f"{rule} flipped")
+        # Keys are fixed by the cockpit's own validator, not chosen here:
+        # app/lib/dashboard-core.mjs:82 reads exactly code/name/status/reason
+        # through text(), which throws on anything missing. `changed` has been
+        # a hardcoded [] since schemaVersion 2 shipped, so this list has never
+        # once been exercised against that validator -- the first non-empty
+        # payload is the first real test of the contract.
+        entries.append({
+            "code": rec["code"], "name": rec["name"],
+            "status": rec["action"], "reason": "; ".join(moves),
+        })
+    return entries
+
+
 def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None, scheduled_for: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -233,6 +284,8 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     ]
     warning = (scanner_result or {}).get("warning")
     warnings = [warning] if warning else []
+    if _INDEX_WARNING:
+        warnings.append(_INDEX_WARNING)
     if unknown_cost:
         warnings.append(
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
@@ -247,7 +300,7 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     ]
     snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
                 "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
-                "urgent": urgent, "changed": [], "qualified": qualified,
+                "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
                 "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
                 "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
                 "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
@@ -332,6 +385,10 @@ def mode_autolevels() -> int:
     return 0
 
 
+# Set by _collect_recs; read by _dashboard_snapshot. None means no index problem.
+_INDEX_WARNING: str | None = None
+
+
 def _collect_recs(include_news: bool, record_history: bool = False):
     """Returns (regime, recs, budget_summary).
 
@@ -347,6 +404,19 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     if idx is None or idx.empty:
         idx = dat.get_index_history(index_code)  # SAHMK fallback path.
     regime = az.market_regime(idx, cfg.REGIME["index_ma"])
+    # market_regime returns 'unknown' only when the index frame is empty or
+    # too short. Left unsaid, that reads identically to a genuinely
+    # indeterminate market -- and it hid a real outage: every snapshot from
+    # 2026-08-18 onward carried regime 'unknown' with nothing anywhere saying
+    # the ^TASI.SR fetch had stopped returning data.
+    global _INDEX_WARNING
+    _INDEX_WARNING = None
+    if regime == "unknown":
+        bars = 0 if idx is None or idx.empty else len(idx)
+        _INDEX_WARNING = (
+            f"Market regime unavailable: the index ({index_code}) returned "
+            f"{bars} usable bars this run, so no regime could be computed.")
+        print(_INDEX_WARNING)
 
     stored_levels = _load(LEVELS_FILE, {})
     verify = _verify_symbols(cfg.HOLDINGS + cfg.WATCHLIST)
@@ -474,6 +544,110 @@ def _scanner_block(result: dict | None = None) -> str:
                                    index_unavailable=result["indexUnavailable"])
 
 
+CHART_DIR = HERE / ".charts"
+
+
+def _render_charts(recs: list) -> tuple[dict, dict]:
+    """Render one candlestick+volume chart per name for the pre-open digest.
+
+    Returns ({code: filename}, {filename: Path}) -- the first for the embeds,
+    the second for the upload. Pre-open only: the session mode runs ~20 times a
+    day and eleven PNGs on each would be slow and rate-limited for no gain.
+
+    Fail-soft throughout, like _scanner_result. A chart is an enhancement to a
+    digest that already reads well as text, so a matplotlib problem or a thin
+    history must cost you the picture, never the message.
+    """
+    try:
+        import charts as chartmod
+    except Exception as exc:
+        print(f"charts unavailable ({type(exc).__name__}: {exc}) — sending text only")
+        return {}, {}
+
+    codes = [r["code"] for r in recs]
+    try:
+        frames = dat.get_histories(codes, cfg.TECH["history_period"])
+    except Exception as exc:
+        print(f"charts: history fetch failed ({type(exc).__name__}) — sending text only")
+        return {}, {}
+
+    stored_levels = _load(LEVELS_FILE, {})
+    by_code, by_name = {}, {}
+    for rec in recs:
+        try:
+            path = chartmod.render(rec["code"], rec["name"], frames.get(rec["code"]),
+                                   stored_levels.get(rec["code"]), CHART_DIR)
+        except Exception as exc:
+            print(f"charts: {rec['code']} failed ({type(exc).__name__}: {exc})")
+            continue
+        if path is not None:
+            by_code[rec["code"]] = path.name
+            by_name[path.name] = path
+    print(f"charts rendered: {len(by_code)}/{len(recs)}")
+    return by_code, by_name
+
+
+def _attach_leans(recs: list) -> None:
+    """Ask the model for a pre-open lean and attach it to each rec, in place.
+
+    Deliberately runs AFTER the dashboard snapshot is saved. The lean is the one
+    part of the digest that depends on a third-party API, and a model outage
+    must not be able to cost the run its state -- the same failure mode that
+    made a Discord outage discard a day of history until this change set.
+
+    Every rec gets a `lean`: either a take, or an `unavailable` reason. A name
+    the model skipped is marked as skipped rather than left bare, so a partial
+    response is visible instead of looking like a quiet name.
+    """
+    try:
+        import llm
+        leans = llm.get_leans(recs)
+    except Exception as exc:  # a bad import must not take the digest down
+        leans = {"_status": {"ok": False, "reason": f"lean unavailable ({type(exc).__name__})"}}
+
+    status = leans.get("_status") or {}
+    if not status.get("ok"):
+        reason = status.get("reason", "unknown")
+        print(f"pre-open lean unavailable: {reason}")
+        for rec in recs:
+            rec["lean"] = {"unavailable": reason}
+        return
+
+    print(f"pre-open lean: {len(leans) - 1} takes from {status.get('model')}, "
+          f"{status.get('calls_left')} calls left this month")
+    for rec in recs:
+        take = leans.get(rec["code"])
+        rec["lean"] = take or {"unavailable": "the model returned no take for this name"}
+
+
+def _persist_attached_leans(recs: list) -> None:
+    """Record the optional model claims after the daily snapshot is already safe.
+
+    History and the dashboard are intentionally written before the model call so
+    a provider outage cannot erase the deterministic digest. Once a response is
+    attached, update only today's existing history row; this makes every
+    directional claim available to ``mode_reconcile`` without letting the model
+    create a new market snapshot.
+    """
+    history = _load(HISTORY_FILE, {})
+    today = _today()
+    changed = False
+    for rec in recs:
+        lean = rec.get("lean") or {}
+        for entry in reversed(history.get(rec.get("code"), [])):
+            if entry.get("date") != today:
+                continue
+            next_lean = lean.get("lean")
+            next_confidence = lean.get("confidence")
+            if (entry.get("lean"), entry.get("lean_confidence")) != (next_lean, next_confidence):
+                entry["lean"] = next_lean
+                entry["lean_confidence"] = next_confidence
+                changed = True
+            break
+    if changed:
+        _save(HISTORY_FILE, history)
+
+
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True, record_history=True)
     scanner_result = _scanner_result()
@@ -483,11 +657,24 @@ def mode_digest() -> int:
         scheduled_for=os.environ.get("SCHEDULED_FOR"),
     )
     _save(DASHBOARD_FILE, snapshot)
-    msg = nt.build_dashboard_digest(snapshot)
-    ok = nt.send_discord(msg)
+    _attach_leans(recs)
+    _persist_attached_leans(recs)
+
+    charts_by_code, chart_files = _render_charts(recs)
+    embeds = nt.build_digest_embeds(
+        recs, regime=regime, trade_date=snapshot["tradeDate"], budget=budget,
+        levels_by_code=_load(LEVELS_FILE, {}), warnings=snapshot.get("warnings"),
+        charts_by_code=charts_by_code,
+    )
+    ok = nt.send_discord(embeds=embeds, files=chart_files)
     if not ok:
-        print(msg)  # no webhook configured (e.g. local run) — show the digest here.
-    print("digest sent:", ok, "| recs:", len(recs))
+        # No webhook configured (a local run), or Discord is down. Either way
+        # the digest itself succeeded and its state is already on disk.
+        print(nt.build_dashboard_digest(snapshot))
+    print("digest sent:", ok, "| recs:", len(recs), "| embeds:", len(embeds))
+    # The workflow commits state even when this returns non-zero, then surfaces
+    # the delivery failure. A green run without a Discord digest is worse than
+    # a visible failure, but a failed webhook must not discard the day's state.
     return 0 if ok else 1
 
 
@@ -535,6 +722,56 @@ def _verified_name(code: str | None, catalog: dict | None = None) -> str:
     return str(entry.get("config_name") or "").strip() if entry.get("verified") else ""
 
 
+# A move smaller than this is called flat rather than scored as a direction.
+# Without it, a +0.02% session would grade a "positive" lean as correct, and the
+# hit rate would measure rounding noise instead of skill.
+LEAN_FLAT_BAND_PCT = 0.5
+
+
+def grade_leans(history: dict, today: str) -> dict:
+    """Score each recorded lean against the move that followed it.
+
+    Reads only history.json, which already holds one dated snapshot per code
+    with the lean attached by _snapshot_for. Pure: takes history, returns a
+    report, writes nothing.
+
+    A lean is graded against the NEXT session's close, so the entry being
+    scored is the one the reader could actually have acted on. Sessions with no
+    following bar yet are ungraded, not counted as misses.
+    """
+    graded, hits, misses, flat = [], 0, 0, 0
+    for code, entries in history.items():
+        ordered = sorted((e for e in entries if e.get("date") <= today),
+                         key=lambda e: e["date"])
+        for prior, following in zip(ordered, ordered[1:]):
+            lean = prior.get("lean")
+            if lean not in ("positive", "negative"):
+                continue  # neutral and absent leans make no directional claim
+            before, after = prior.get("price"), following.get("price")
+            if not before or after is None:
+                continue
+            move = (after - before) / before * 100
+            if abs(move) < LEAN_FLAT_BAND_PCT:
+                outcome = "flat"
+                flat += 1
+            elif (move > 0) == (lean == "positive"):
+                outcome = "hit"
+                hits += 1
+            else:
+                outcome = "miss"
+                misses += 1
+            graded.append({"code": code, "date": prior["date"], "lean": lean,
+                           "confidence": prior.get("lean_confidence"),
+                           "movePct": round(move, 2), "outcome": outcome})
+    directional = hits + misses
+    return {
+        "graded": len(graded), "hits": hits, "misses": misses, "flat": flat,
+        "hitRatePct": round(hits / directional * 100, 1) if directional else None,
+        "flatBandPct": LEAN_FLAT_BAND_PCT,
+        "detail": graded[-20:],
+    }
+
+
 def mode_reconcile() -> int:
     """After the close: refresh the cockpit snapshot and print a health summary.
 
@@ -553,7 +790,13 @@ def mode_reconcile() -> int:
         "unnamedAlertCount": sum(1 for alert in alerts if not str(alert.get("name") or "").strip()),
         "warnings": snapshot.get("warnings") or [],
     }
+    scorecard = grade_leans(_load(HISTORY_FILE, {}), _today())
+    summary["leanScorecard"] = {k: v for k, v in scorecard.items() if k != "detail"}
     print("reconciliation:", json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    if scorecard["hitRatePct"] is not None:
+        print(f"lean scorecard: {scorecard['hits']}/{scorecard['hits'] + scorecard['misses']} "
+              f"directional calls correct ({scorecard['hitRatePct']}%), "
+              f"{scorecard['flat']} landed inside the ±{LEAN_FLAT_BAND_PCT}% flat band")
     return exit_code
 
 
@@ -712,6 +955,92 @@ def mode_backtest() -> int:
     return 0
 
 
+def mode_intraday_probe() -> int:
+    """Answer one question with evidence: does Yahoo serve intraday bars for .SR?
+
+    Everything intraday in this repo rests on an assumption nobody has ever
+    tested. data.get_quote returns the last DAILY close, and movement.py runs
+    its robust-z over DAILY returns -- yet the workflow invokes them every 15
+    minutes and labels the result "delayed-intraday". If Yahoo does serve real
+    intraday bars for Tadawul codes, that whole path can become what it claims
+    to be. If it does not, the honest move is to stop pretending and run
+    movement once after the close.
+
+    Free-tier Yahoo is also known to serve intraday bars with a null volume
+    column for some venues, which would look like working data right up until
+    the volume ratio came out as None -- so bars alone are not the test.
+    Volume coverage is measured per interval and reported separately.
+
+    Writes research/intraday_probe.json. The workflow commits it, so the answer
+    survives as evidence rather than a log line that scrolls away.
+    """
+    import yfinance as yf
+
+    codes = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST] + [cfg.REGIME["index_code"]]
+    attempts = [("5m", "5d"), ("15m", "5d"), ("15m", "1mo"), ("60m", "1mo")]
+    results = []
+    for code in codes:
+        symbol = dat.yahoo_symbol(code)
+        for interval, period in attempts:
+            row = {"code": code, "symbol": symbol, "interval": interval, "period": period}
+            try:
+                df = yf.Ticker(symbol).history(period=period, interval=interval)
+            except Exception as exc:
+                row.update({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
+                results.append(row)
+                continue
+            if df is None or df.empty:
+                row.update({"ok": True, "bars": 0, "note": "empty frame"})
+                results.append(row)
+                continue
+            volume = df["Volume"] if "Volume" in df.columns else None
+            row.update({
+                "ok": True,
+                "bars": int(len(df)),
+                "first": str(df.index[0]),
+                "last": str(df.index[-1]),
+                "distinct_days": int(len({str(ts)[:10] for ts in df.index})),
+                "volume_column": volume is not None,
+                "volume_non_null": int(volume.notna().sum()) if volume is not None else 0,
+                "volume_non_zero": int((volume.fillna(0) > 0).sum()) if volume is not None else 0,
+            })
+            results.append(row)
+
+    # The rule was written before the answer was known, so the answer cannot
+    # move the bar: intraday ships only if most names return usable bars WITH
+    # real volume at 15m or finer.
+    #
+    # The index is judged separately and excluded from the count. ^TASI.SR is
+    # a computed index, not a traded instrument, so it has no volume of its own
+    # and could never satisfy a volume rule -- including it would drag the
+    # denominator down for a reason that has nothing to do with whether your
+    # holdings have intraday data.
+    stock_codes = [c for c in codes if not c.startswith("^")]
+    required = max(1, round(len(stock_codes) * 0.7))
+    usable = {
+        r["code"] for r in results
+        if r.get("ok") and r["interval"] in ("5m", "15m") and not r["code"].startswith("^")
+        and r.get("bars", 0) >= 20 and r.get("volume_non_zero", 0) >= 20
+    }
+    index_bars = max((r.get("bars", 0) for r in results
+                      if r["code"].startswith("^") and r["interval"] in ("5m", "15m")),
+                     default=0)
+    verdict = {
+        "decidedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "stockCodesProbed": len(stock_codes),
+        "codesWithUsableIntraday": sorted(usable),
+        "indexIntradayBars": index_bars,
+        "threshold": f"at least {required} of {len(stock_codes)} stock codes with "
+                     f">=20 bars and >=20 non-zero volumes at 15m or finer "
+                     f"(the index is reported separately and does not count)",
+        "intradayViable": len(usable) >= required,
+    }
+    _save(PROBE_FILE, {"verdict": verdict, "attempts": results})
+    print(json.dumps(verdict, indent=2))
+    print(f"wrote {PROBE_FILE}")
+    return 0
+
+
 MODES = {
     "heartbeat": mode_heartbeat,
     "discord-smoke": mode_discord_smoke,
@@ -726,7 +1055,75 @@ MODES = {
     "universe": mode_universe,
     "features": mode_features,
     "backtest": mode_backtest,
+    "intraday-probe": mode_intraday_probe,
 }
+
+
+# Which live modes are bound to the Tadawul calendar, and under which of
+# session_gate's windows. Research and manual modes are deliberately absent:
+# you must be able to run a backtest or a smoke test on a Friday.
+GATED_MODES = {"digest": "digest", "run": "session", "reconcile": "reconcile"}
+MAX_SCHEDULE_LAG = {"digest": timedelta(minutes=60), "reconcile": timedelta(minutes=60)}
+
+
+def _scheduled_time(value: str | datetime | None) -> datetime | None:
+    """Parse the workflow's intended UTC timestamp, never treating manual as a time."""
+    if value is None or value == "manual":
+        return None
+    if isinstance(value, datetime):
+        moment = value
+    else:
+        try:
+            moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
+def gate_or_none(mode: str, *, now: datetime | None = None,
+                 scheduled_for: str | datetime | None = None) -> str | None:
+    """Why `mode` must not run right now, or None to proceed.
+
+    session_gate.py has been complete, tested and dependency-free since it was
+    written -- and imported only by runtime/job.py, the Cloud Run job that was
+    never provisioned. The GitHub path, which is the one that actually runs,
+    had no session gate and no holiday gate at all: it relied entirely on cron
+    day-of-week. That is fine for weekends and wrong for Eid, where the
+    schedule fires into a closed market and the digest reports stale bars as
+    though they were this morning's.
+
+    market_holidays.json currently records no closures, so this changes nothing
+    until dates are added to it -- but the wiring has to exist first, otherwise
+    adding them does nothing either.
+    """
+    window = GATED_MODES.get(mode)
+    if window is None:
+        return None
+    # A manual dispatch is an explicit operator recovery action. Scheduled jobs
+    # are judged by their intended market window, not a delayed Actions runner.
+    if scheduled_for == "manual":
+        return None
+    intended = _scheduled_time(scheduled_for)
+    return session_gate.gate_reason(window, now=intended or now)
+
+
+def schedule_lateness_reason(mode: str, *, now: datetime | None = None,
+                             scheduled_for: str | datetime | None = None) -> str | None:
+    """Explain an intolerably delayed scheduled digest/reconciliation run."""
+    intended = _scheduled_time(scheduled_for)
+    maximum = MAX_SCHEDULE_LAG.get(mode)
+    if intended is None or maximum is None:
+        return None
+    actual = now or datetime.now(timezone.utc)
+    if actual.tzinfo is None:
+        actual = actual.replace(tzinfo=timezone.utc)
+    delay = actual.astimezone(timezone.utc) - intended
+    if delay > maximum:
+        return (f"scheduled {mode} is {int(delay.total_seconds() // 60)} minutes late "
+                f"(maximum {int(maximum.total_seconds() // 60)} minutes)")
+    return None
 
 
 def main() -> int:
@@ -741,6 +1138,20 @@ def main() -> int:
     if not fn:
         print(f"unknown mode '{mode}'. choose: {', '.join(MODES)}")
         return 2
+
+    now = datetime.now(timezone.utc)
+    scheduled_for = os.environ.get("SCHEDULED_FOR")
+    blocked = gate_or_none(mode, now=now, scheduled_for=scheduled_for)
+    if blocked:
+        # Exit 0, not a failure: a scheduled run landing on a closed market did
+        # its job by declining. A non-zero here would fail the workflow step and
+        # skip "Commit state" for the same reason a Discord outage used to.
+        print(f"skipping '{mode}': {blocked}")
+        return 0
+    late = schedule_lateness_reason(mode, now=now, scheduled_for=scheduled_for)
+    if late:
+        print(f"failing '{mode}': {late}")
+        return 1
     return fn()
 
 

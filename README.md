@@ -7,15 +7,60 @@ It automates your rules. It does not place orders and it is not financial advice
 ## What each run does
 
 1. Pulls daily history and a delayed quote for every holding and watchlist name (Yahoo Finance, free).
-2. Checks the TASI index and reports the market regime in the digest header. The regime is context, not a gate — it no longer changes any per-name decision.
+2. Checks the TASI index and reports the market regime in the digest header. The regime is context, not a gate — it no longer changes any per-name decision. If the index fetch fails, the digest says so instead of quietly reporting `unknown`.
 3. Holdings: alerts on STOP, TRIM, or TARGET hits. Watchlist: reports how many of the three BUY rules each name meets, and equal-weight position sizing from your monthly budget.
 4. Every alert carries two reads: a long-term swing read and a short-term momentum read. Neither carries a confidence label; the short-term read is inherently noisier because it runs on delayed daily data.
-5. Scans Tadawul's full universe (~265 names) daily for breakout candidates and appends them to the digest.
+5. Scans Tadawul's full universe (~265 names) daily for breakout candidates.
 6. De-dupes so you get one alert per level per day.
+
+## What the pre-open digest actually contains
+
+One Discord embed per name, plus a chart. Every field below is computed from
+data the run already pulls:
+
+| Field | What it is |
+|---|---|
+| Call | HOLD / TRIM / SELL / BUY / WATCH, with the reason |
+| Position | unrealised P/L on a holding, or rules met N/3 on a watchlist name |
+| Volume | today's turnover against **this name's own** 20-day median |
+| Levels | stop / trim / target from `levels.json`, and how far each is from here |
+| Technicals | RSI, trend, 10-day and 120-day momentum, trend-streak length |
+| Since yesterday | what actually changed — RSI, rules met, a trend flip |
+| Next-bar trigger | the close that would flip a failing rule (watchlist only) |
+| News / filings | recent headlines and Tadawul disclosures |
+| Pre-open lean | a model's directional read, labelled as judgement — see below |
+
+Attached to each embed: a 90-session candlestick with a volume subplot, the
+stop/trim/target drawn on it, and unusually busy sessions highlighted.
+
+**On volume.** The ratio is reported as an observation, not a signal.
+`docs/scanner-findings-2026-07-30.md` measured it against forward return over
+2021-2026 and it did not survive, which is why `scanner.py` does not rank on it
+and `buy_decision` never sees it. "3.2x its own median" is still a true and
+useful description of today's tape.
+
+**On the pre-open lean.** A model reads the overnight picture — price action,
+technicals, volume, headlines, filings — and states a direction with a
+confidence. It is judgement, and it is labelled as judgement. Two things keep
+that honest rather than merely disclaimed:
+
+- It gates nothing. `buy_decision` takes only `(long_read, criteria)`, and a
+  test asserts that signature and the absence of `lean` in its source.
+- Every lean is recorded in `history.json` and graded by the post-close
+  `reconcile` run against the next session's close, with moves inside ±0.5%
+  counted flat rather than scored. So its hit rate is a measured number you can
+  watch, not a claim. For calibration: a naive always-positive call scores about
+  54% on the history recorded so far. That is the bar it has to beat.
+
+Set `ANTHROPIC_API_KEY` to enable it. Without the secret every name reads
+`Pre-open lean: unavailable — no ANTHROPIC_API_KEY configured`, and every other
+field still ships. Calls are capped monthly in `llm_budget.json`.
 
 ## What it does not do
 
 Short-term signals are noisier by nature, not because of any label attached to them. Delayed daily data is fine for 6-12 month swing decisions. It is not a day-trading engine. If you want reliable intraday signals, that needs licensed realtime data (SAHMK Starter, 149 SAR/mo) and is a later upgrade.
+
+**It is not yet intraday, whatever the labels say.** `data.get_quote` returns the last *daily* close, and `movement.py` runs its robust-z over *daily* returns — while the workflow calls both every fifteen minutes and tags the result `delayed-intraday`. Whether free Yahoo actually serves intraday bars for `.SR` symbols has never been tested. Dispatch the `intraday-probe` mode to settle it: it records bar counts and volume coverage per interval into `research/intraday_probe.json`, against a threshold written down before the answer was known. Until that comes back positive, treat the session cadence as repeated daily-bar checks.
 
 News is an auditable keyword/phrase tally over free Google News headlines — word-boundary matching for English (so "rise" doesn't fire inside "Enterprise"), plain substring for Arabic (where prefixes/conjunctions attach directly to root words). It is shown in the digest as real headlines, not a bare confidence-labeled number. It is an input, not a trigger. Do not act on it alone.
 
@@ -26,7 +71,10 @@ News is an auditable keyword/phrase tally over free Google News headlines — wo
 - `indicators.py` — RSI, support/resistance, trend, short/long reads.
 - `analyze.py` — the recommendation engine and position sizing.
 - `news.py` — free news + sentiment.
-- `notify.py` — Discord delivery.
+- `llm.py` — the pre-open lean: one model call, budget-capped, gates nothing.
+- `charts.py` — candlestick + volume PNGs for the digest.
+- `notify.py` — Discord delivery (embeds, chart uploads, plain text).
+- `session_gate.py` — Riyadh trading calendar; blocks live modes on closed days.
 - `main.py` — modes and orchestration.
 - `universe.py` — Tadawul ticker discovery for the backtest.
 - `scanner.py` — breakout candidate ranking (Stage F).
@@ -47,12 +95,14 @@ News is an auditable keyword/phrase tally over free Google News headlines — wo
 2. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
    - `DISCORD_WEBHOOK_URL` = your Discord channel webhook URL.
    - `SAHMK_API_KEY` = your SAHMK Free key (optional; only used as a fallback and for the index).
+   - `ANTHROPIC_API_KEY` = optional. Enables the pre-open lean. Without it the digest ships every fact it has and each name says the lean is unavailable and why.
 3. In `config.py`, set `BUDGET["monthly_budget_sar"]` to what you are willing to commit to new buys per calendar month. It ships at 500.
 4. Commit and push. The schedule runs automatically.
 
 ## First-run checklist (do these in order)
 
 1. **Heartbeat.** Actions -> TASI recommender -> Run workflow -> mode `heartbeat`. A Discord message means secrets and webhook work.
+1b. **Intraday probe.** Run workflow -> mode `intraday-probe`. It writes `research/intraday_probe.json` and commits it. Read `verdict.intradayViable`: that answers whether the every-15-minutes cadence can ever be genuinely intraday, or whether the session checks are repeated daily-bar reads. Nothing else depends on running it first, but every intraday decision depends on its answer.
 2. **Suggest.** Run workflow -> mode `suggest`. Read the run log. It prints price, RSI, support, resistance, and bar count for every name. Any name showing `NO DATA` needs its code fixed in `config.py` (Yahoo may not carry some recent IPOs). The watchlist codes marked `verified: False` in `config.py` are the ones to confirm here.
 3. **Autolevels.** Run workflow -> mode `autolevels`. It writes proposed buy zones, stops, and targets to `levels.json` and prints them. Open `levels.json`, adjust any number you disagree with, commit it.
 4. **Digest.** Run workflow -> mode `digest`. You get one summary message with every name, its two reads, and any news. Confirms the full pipeline end to end.

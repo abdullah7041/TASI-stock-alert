@@ -71,14 +71,43 @@ def test_movement_alert_discord_format_is_frozen():
         "reason": "Delayed bot confirmation of statistically unusual price movement. Volume confirms participation.",
     }
 
+    # The measurement line is deliberately part of the frozen format now. The
+    # alert previously named a company and a direction but no magnitude, so it
+    # could not be acted on OR dismissed: "Nahdi moved unusually" reads the
+    # same whether the move was 1.6% or 9%. excessMovePct / robustZ /
+    # volumeRatio were already computed and already shipped to the cockpit
+    # JSON -- they were simply absent from the only surface anyone reads.
     assert nt.build_movement_alert_message([alert], "2026-08-19T10:35:00Z") == "\n".join([
         "__**TASI unusual movement (2026-08-19T10:35:00Z)**__",
         "_Delayed analysis; verify live pricing in your broker app._",
         "**Nahdi Medical (4164) — upside**",
+        "- +2.4% vs its own baseline · z 4.6 · volume 2.5x median",
         "- Delayed bot confirmation of statistically unusual price movement. Volume confirms participation.",
         "- Observed 2026-08-19T10:20:00Z; received 2026-08-19T10:35:00Z.",
         "Broker app owns real-time price alerts; this bot never places an order.",
     ])
+
+
+def test_movement_alert_omits_measures_it_does_not_have():
+    """A stored alert from before the measures existed must still render.
+
+    movement_alerts.json is committed state, so older entries survive a deploy.
+    Rendering "None%" for them would be worse than the silence this change set
+    out to fix.
+    """
+    alert = {
+        "code": "6017",
+        "name": "Jahez",
+        "direction": "downside",
+        "observedAt": "2026-08-19T11:00:00Z",
+        "receivedAt": "2026-08-19T11:15:00Z",
+        "reason": "Delayed bot confirmation.",
+    }
+
+    message = nt.build_movement_alert_message([alert], "2026-08-19T11:15:00Z")
+    assert "**Jahez (6017) — downside**" in message
+    assert "None" not in message
+    assert "vs its own baseline" not in message
 
 
 def test_second_company_renders_name_then_code_too():
