@@ -157,7 +157,7 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
 
       {/* The alert board leads: it is the only surface that changes during a
           session, so it must not sit below four mostly-empty panels. */}
-      <AlertBoard alerts={alerts} />
+      <AlertBoard alerts={alerts} tradeDate={snapshot.tradeDate} />
 
       {v2 && (
         <section className={styles.section} aria-labelledby="summary-heading">

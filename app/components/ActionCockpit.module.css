@@ -272,6 +272,9 @@
 .alertHistory { margin-top: 16px; padding-top: 12px; border-top: 1px solid #263653; }
 .alertHistory h4 { margin: 0; color: #9eb0cd; font-size: 0.84rem; font-weight: 700; }
 .alertHistoryItem { margin-top: 12px; }
+.alertBucket { display: grid; gap: 10px; }
+.alertBucket + .alertBucket { margin-top: 18px; padding-top: 18px; border-top: 1px solid #263653; }
+.alertBucket h3 { margin: 0; color: #9eb0cd; font-size: 0.9rem; font-weight: 720; }
 
 /* --- Compact status rail ------------------------------------------------- */
 .statusRail { display: grid; gap: 8px; }
