@@ -153,6 +153,27 @@ test("two companies stay separate and the newest company leads", async () => {
   expect(await screen.findByRole("button", { name: /Jahez/ })).toBeTruthy();
 });
 
+test("keeps earlier delayed alerts out of the current daily alert result", async () => {
+  const current = alert(0, { observedAt: "2026-08-19T10:10:00Z", receivedAt: "2026-08-19T10:10:30Z" });
+  const earlier = alert(1, { alertId: "jahez-earlier", code: "6017", name: "Jahez", observedAt: "2026-08-18T10:10:00Z", receivedAt: "2026-08-18T10:10:30Z" });
+  renderCockpit(payload({ alerts: [current, earlier] }));
+
+  const currentAlerts = await screen.findByLabelText("Current delayed alerts");
+  expect(within(currentAlerts).getByRole("button", { name: /Nahdi Medical/ })).toBeTruthy();
+  expect(within(currentAlerts).queryByRole("button", { name: /Jahez/ })).toBeNull();
+
+  const earlierAlerts = screen.getByLabelText("Earlier delayed alerts");
+  expect(earlierAlerts.textContent).toContain("Not from this daily snapshot");
+  expect(within(earlierAlerts).getByRole("button", { name: /Jahez/ })).toBeTruthy();
+});
+
+test("explains when the current daily snapshot produced no movement alert", async () => {
+  renderCockpit(payload({ alerts: [alert(0, { observedAt: "2026-08-18T10:10:00Z", receivedAt: "2026-08-18T10:10:30Z" })] }));
+
+  const currentAlerts = await screen.findByLabelText("Current delayed alerts");
+  expect(currentAlerts.textContent).toContain("No delayed movement alert was produced for this daily snapshot.");
+});
+
 test("an empty Top 10 offers no approval controls", async () => {
   renderCockpit(payload());
 

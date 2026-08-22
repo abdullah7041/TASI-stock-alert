@@ -21,6 +21,17 @@ export function formatCockpitTimestamp(timestamp: string) {
     : `${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Riyadh" }).format(value)} Riyadh`;
 }
 
+function riyadhTradeDate(timestamp: string) {
+  const value = new Date(timestamp);
+  if (Number.isNaN(value.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value;
+  const year = part("year");
+  const month = part("month");
+  const day = part("day");
+  return year && month && day ? `${year}-${month}-${day}` : null;
+}
+
 /**
  * One card per company rather than one per event: the same name moving four
  * times in an hour is one thing to look at, not four.
@@ -104,18 +115,29 @@ function AlertCard({ group }: { group: AlertGroup }) {
   );
 }
 
-export function AlertBoard({ alerts }: { alerts: MovementAlert[] }) {
+export function AlertBoard({ alerts, tradeDate }: { alerts: MovementAlert[]; tradeDate: string }) {
   const groups = groupAlertsByCompany(alerts);
+  const currentGroups = groups.filter((group) => riyadhTradeDate(group.latest.observedAt) === tradeDate);
+  const earlierGroups = groups.filter((group) => riyadhTradeDate(group.latest.observedAt) !== tradeDate);
 
   return (
     <section className={styles.section} aria-labelledby="alerts-heading">
       <div className={styles.sectionHeading}>
         <div><p className={styles.kicker}>DELAYED ALERTS</p><h2 id="alerts-heading">Unusual movement</h2></div>
-        <span className={styles.count}>{groups.length} {groups.length === 1 ? "company" : "companies"}</span>
+        <span className={styles.count}>{currentGroups.length} today · {earlierGroups.length} earlier</span>
       </div>
-      {groups.length === 0
-        ? <p className={styles.quiet}>No delayed price movement met the unusualness gate.</p>
-        : <div className={styles.actionList}>{groups.map((group) => <AlertCard group={group} key={group.code} />)}</div>}
+      <div aria-label="Current delayed alerts" className={styles.alertBucket}>
+        {currentGroups.length === 0
+          ? <p className={styles.quiet}>No delayed movement alert was produced for this daily snapshot.</p>
+          : <div className={styles.actionList}>{currentGroups.map((group) => <AlertCard group={group} key={group.code} />)}</div>}
+      </div>
+      {earlierGroups.length > 0 && (
+        <section aria-label="Earlier delayed alerts" className={styles.alertBucket}>
+          <h3>Earlier delayed alerts</h3>
+          <p className={styles.quiet}>Not from this daily snapshot. These remain as delayed historical observations, not current signals.</p>
+          <div className={styles.actionList}>{earlierGroups.map((group) => <AlertCard group={group} key={group.code} />)}</div>
+        </section>
+      )}
     </section>
   );
 }
