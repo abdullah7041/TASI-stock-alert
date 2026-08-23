@@ -1,17 +1,3 @@
 {
-  "alerts": [
-    {
-      "alertId": "d76947f359a3ba1e1b8e",
-      "code": "6017",
-      "name": "Jahez",
-      "direction": "upside",
-      "observedAt": "2026-08-23T08:14:36Z",
-      "receivedAt": "2026-08-23T08:14:36Z",
-      "latency": "delayed-intraday",
-      "excessMovePct": 5.392354333311861,
-      "robustZ": 4.174736619476532,
-      "volumeRatio": 1.9220230722045235,
-      "reason": "Delayed bot confirmation of statistically unusual price movement."
-    }
-  ]
+  "alerts": []
 }
