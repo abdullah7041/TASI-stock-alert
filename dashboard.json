@@ -1,7 +1,7 @@
 {
   "alerts": [],
   "artifactKind": "digest",
-  "asOf": "2026-08-23T13:04:01Z",
+  "asOf": "2026-08-23T13:10:59Z",
   "changed": [],
   "charts": [],
   "dataStatus": "delayed-daily",
@@ -812,19 +812,19 @@
             "title": "Fakeeh Care Group’s $763.4m IPO oversubscribed 119 times - Gulf Business"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTFAzUmpYTmNOeUQ4SXJwbVRtV18zZV9KQTJSTDJGMWc5cllWb0pSNHhmaTJiRWhVLTVndkxRU1phN3BHZHdSM3gya0c4Y3JjQjJOYnptQkpnVzV5VlBaYWdTNG5PUXdMNUQ4bHc?oc=5",
-            "published": "Thu, 01 Jan 2026 08:00:00 GMT",
-            "title": "Fakeeh Care delineates acquisition cost of stake in Diagnostics Elite - ارقام"
+            "link": "https://news.google.com/rss/articles/CBMidEFVX3lxTFBQeldWalBwZlR5SnBVNS1DLWFPVWtTM05oRE1aQTFhNmtBTUw1bDFjRnFjX1ZYZ3owSXdHNG1KVEMzc2FpU3dEN251b3hTa0k3cl9Qc2lFUjNLS2NrT0tMLXNnZEFJb3VoMGI1cllhZWpZcXZ2?oc=5",
+            "published": "Wed, 05 Jun 2024 07:56:56 GMT",
+            "title": "FAKEEH CARE company-actions | 4017 | TADAWUL | TASI - ارقام"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPUkVZalA3c0Z0d2hYTGFjcjVEOHNXXzREeFRNYmxIYVZJLV9FNG5Ecl9td3doelZMc3hiaHBCangzWDAyQnZpN1d2YS00NzYwVG81YmNEN2FXMzdCcWlLNGVOOG9iLVRHeHhVSkZLZ1VPNWR0TVBoeTRNVFlTanlRQzU4cG16RFFncEYwZVVhWmQ?oc=5",
-            "published": "Thu, 30 Jan 2025 08:00:00 GMT",
-            "title": "Fakeeh Health acquires Dubai-based MediCentres - EnterpriseAM"
+            "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxNbzYtWGFwUlVjTEZTLW5MWDRiVE9tcG05UzRNOXNrWDhXQTM4UldBd3dSbEYyanFwdVhNNW1OOVFuRTZTQm9jQ2xleThFUnhvUmtYQzFvcGgwQnUzV0RCUzlXS0VZT0RJUm1rR29BZ204eTNMbS1xaG5GanpHRUdSMVA5c0RkQk4wU1NSVE9wMlE2a2ZzLTJodkEyb0hCdHBDQk1HaGVpRDV1Tk95SUE?oc=5",
+            "published": "Mon, 06 Jan 2025 08:00:00 GMT",
+            "title": "New appointments at Ericsson Saudi + Dr Soliman Fakeeh Hospital Jeddah - EnterpriseAM"
           }
         ],
         "label": "negative",
         "ok": true,
-        "score": -0.33
+        "score": -1.0
       },
       "price": 35.1,
       "reason": [
@@ -926,7 +926,7 @@
           {
             "link": "https://news.google.com/rss/articles/CBMiP0FVX3lxTE4wTnhhRDZ3MkFsVVlneHJpX3FWVFNoREhiM1ROZy1UVW8wLW1JZm9vbm9mYS11MkJINHllbWZjWQ?oc=5",
             "published": "Mon, 27 Apr 2026 01:20:02 GMT",
-            "title": "Jahez acquires The Chefz app for SAR 650 million - جولة"
+            "title": "Jahez acquires The Chefz app for SAR 650 million - jawlah.co"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxQampDUDhuay1qYVNvMnhWSC1faUFHUmxmczZyWkI5SlNVMzUyVkNmNkU0aWo3QjNWNmlkRzRGZV9ZSFFKU2R2amlzUFowekRVTll3X1pwdXN0SjdWWXBGQTV1YU9ubm5fUWUzSk03ekxFRG90dWpQd2ZXWjMzeks3aVBzSG9jUTl6ZXhJTUVDVDBjNDlLajR0dklWX3c5a2w0SGhjakVMYkRVMkN4ZWc?oc=5",
@@ -1280,12 +1280,12 @@
   "leanStatus": {
     "ok": false,
     "provider": "gemini",
-    "reason": "Gemini is only generated for the pre-open digest."
+    "reason": "Gemini is not run for a Top 10 review."
   },
   "monthlyBudgetSar": 500.0,
   "portfolio": {
     "cashSar": 0.0,
-    "confirmedAt": "2026-08-23T13:04:01Z",
+    "confirmedAt": "2026-08-23T13:10:59Z",
     "contributionMonth": null,
     "holdings": [
       {
@@ -1310,12 +1310,55 @@
     "proposal": null
   },
   "producer": {
-    "generatedAt": "2026-08-23T13:04:01Z"
+    "generatedAt": "2026-08-23T13:10:59Z"
   },
-  "qualified": [],
-  "regime": "unknown",
-  "researchCount": 10,
-  "scheduledFor": "2026-08-23T12:15:00Z",
+  "qualified": [
+    {
+      "code": "4005",
+      "conditionsMet": 2,
+      "name": "National Medical Care Company",
+      "relativeStrengthPct": 35.7,
+      "squeeze": true
+    },
+    {
+      "code": "2180",
+      "conditionsMet": 2,
+      "name": "Filling and Packing Materials Manufacturing Company",
+      "relativeStrengthPct": 31.2,
+      "squeeze": true
+    },
+    {
+      "code": "8120",
+      "conditionsMet": 2,
+      "name": "Gulf Union Alahlia Cooperative Insurance Company",
+      "relativeStrengthPct": 23.1,
+      "squeeze": true
+    },
+    {
+      "code": "2110",
+      "conditionsMet": 2,
+      "name": "Saudi Cable Company",
+      "relativeStrengthPct": 22.7,
+      "squeeze": true
+    },
+    {
+      "code": "2130",
+      "conditionsMet": 2,
+      "name": "Saudi Industrial Development Co.",
+      "relativeStrengthPct": 21.1,
+      "squeeze": true
+    },
+    {
+      "code": "1833",
+      "conditionsMet": 2,
+      "name": "Almawarid Manpower Company",
+      "relativeStrengthPct": 17.5,
+      "squeeze": true
+    }
+  ],
+  "regime": "ok",
+  "researchCount": 4,
+  "scheduledFor": "2026-08-23T12:30:00Z",
   "schemaVersion": 3,
   "summary": [
     "No confirmed trade requires action.",
@@ -1346,28 +1389,27 @@
         "text": "Forecast unavailable: validation gates not passed."
       }
     ],
-    "generatedAt": "2026-08-23T13:04:01Z",
-    "latenessMinutes": 49,
-    "scheduledFor": "2026-08-23T12:15:00Z",
+    "generatedAt": "2026-08-23T13:10:59Z",
+    "latenessMinutes": 40,
+    "scheduledFor": "2026-08-23T12:30:00Z",
     "version": 1
   },
   "top10": {
     "entries": [],
     "proposalId": "top10-2026-08-23-evidence-pending",
-    "researchedAt": "2026-08-23T10:13:08Z",
+    "researchedAt": "2026-08-23T13:10:59Z",
     "status": "draft"
   },
   "top10Review": {
     "entries": [],
     "proposalId": "top10-2026-08-23-evidence-pending",
-    "researchedAt": "2026-08-23T10:13:08Z",
+    "researchedAt": "2026-08-23T13:10:59Z",
     "status": "draft"
   },
   "tradeDate": "2026-08-23",
   "urgent": [],
   "warnings": [
-    "Market regime unavailable: the index (^TASI.SR) returned 1 usable bars this run, so no regime could be computed.",
     "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."
   ],
-  "artifactId": "sha256:7fca2fa71a8f6db2b46e49edabd61e7fe8000519b4eb04a6a88ec9eaaa3c11cc"
+  "artifactId": "sha256:86353f93153d39237a2cd5c900d1e530ffa938602503eb611cb9d628472adfef"
 }
