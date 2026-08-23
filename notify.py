@@ -13,6 +13,9 @@ from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 
 
+COCKPIT_URL = "https://tasi-action-cockpit.busaud7041.chatgpt.site"
+
+
 def _fmt_reads(rec: dict) -> str:
     s = rec.get("short_term", {})
     l = rec.get("long_term", {})
@@ -609,7 +612,11 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
     if recs is None or regime is None or trade_date is None:
         raise ValueError("Digest embeds require records, regime, and trade date.")
     levels_by_code = levels_by_code or {}
-    header_lines = [f"**Regime:** {regime}", "**Data:** delayed daily bars (free tier)"]
+    header_lines = [
+        f"**Regime:** {regime}",
+        f"[Open TASI Action Cockpit]({COCKPIT_URL})",
+        "**Data:** delayed daily bars (free tier)",
+    ]
     if budget:
         header_lines.append(
             f"**Budget:** {budget.get('allocated', 0)} SAR allocated of "
