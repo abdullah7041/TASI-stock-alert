@@ -19,6 +19,7 @@ import pandas as pd
 
 import indicators as ind
 import analyze as az
+import artifacts
 import llm
 import session_gate
 import backtest as bt
@@ -83,6 +84,27 @@ def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypat
     assert saved[main.DASHBOARD_FILE]["top10"] == draft
 
 
+def test_top10_review_is_due_on_the_first_trading_day_after_three_calendar_months():
+    active = {"status": "approved", "approvedAt": "2026-08-20T12:30:00Z",
+              "nextReviewAt": "2026-11-20T12:30:00Z", "entries": [{"code": "1303"}]}
+    assert main._top10_review_due(active, date(2026, 11, 19)) is False
+    assert main._top10_review_due(active, date(2026, 11, 20)) is False  # Riyadh Friday
+    assert main._top10_review_due(active, date(2026, 11, 22)) is True   # Sunday
+
+
+def test_rejected_top10_review_keeps_the_local_active_list_unchanged(monkeypatch):
+    active = {"proposalId": "approved", "status": "approved", "entries": [{"code": "1303"}]}
+    monkeypatch.setattr(main, "_load", lambda path, default: active if path == main.TOP10_ACTIVE_FILE else default)
+    assert main._active_top10() == active
+
+
+def test_pending_initial_top10_draft_is_not_replaced_before_approval(monkeypatch):
+    pending = {"status": "draft", "entries": [{"code": "1303"}]}
+    monkeypatch.setattr(main, "_load", lambda path, default: pending if path == main.TOP10_FILE else default)
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: (_ for _ in ()).throw(AssertionError("pending draft must not be replaced")))
+    assert main.mode_top10_draft() == 0
+
+
 def test_cockpit_refresh_never_calls_discord(monkeypatch):
     saved = {}
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
@@ -91,6 +113,7 @@ def test_cockpit_refresh_never_calls_discord(monkeypatch):
     monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("refresh must not send Discord")))
     assert main.mode_cockpit_refresh() == 0
     assert main.DASHBOARD_FILE in saved
+    assert saved[main.DASHBOARD_FILE]["schemaVersion"] == 3
 
 
 def test_discord_smoke_sends_one_labelled_delivery_only_message(monkeypatch):
@@ -123,7 +146,8 @@ def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch)
     monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("no movement must not post")))
 
     assert main.mode_run() == 0
-    assert saved[main.ALERTS_FILE] == {"alerts": []}
+    assert saved[main.ALERTS_FILE]["artifactKind"] == "movement"
+    assert saved[main.ALERTS_FILE]["alerts"] == []
 
 
 def test_session_mode_fails_when_movement_delivery_fails(monkeypatch):
@@ -2785,7 +2809,49 @@ def test_lean_parse_drops_a_lean_outside_the_allowed_vocabulary():
 def test_lean_reports_a_missing_key_rather_than_an_empty_result():
     out = llm.get_leans([_lean_rec()], api_key="")
     assert out["_status"]["ok"] is False
-    assert "ANTHROPIC_API_KEY" in out["_status"]["reason"]
+    assert "GEMINI_API_KEY" in out["_status"]["reason"]
+
+
+def test_lean_reports_gemini_provider_metadata_for_structured_takes(monkeypatch, tmp_path):
+    """A successful lean must identify the provider that produced it."""
+    monkeypatch.setattr(
+        llm,
+        "_complete",
+        lambda *_args, **_kwargs: (
+            '{"takes":[{"code":"1303","lean":"positive",'
+            '"confidence":"medium","take":"Contract win.",'
+            '"drivers":["contract"]}]}'
+        ),
+    )
+
+    out = llm.get_leans([_lean_rec()], api_key="gemini-test-key", budget_path=tmp_path / "budget.json")
+
+    assert out["1303"]["lean"] == "positive"
+    assert out["_status"] == {
+        "ok": True,
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "calls_left": llm.MONTHLY_CALL_CAP - 1,
+    }
+
+
+def test_gemini_completion_requests_a_structured_json_schema(monkeypatch):
+    captured = {}
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            captured.update(kwargs)
+            return types.SimpleNamespace(text='{"takes": []}')
+
+    fake_genai = types.SimpleNamespace(Client=lambda **kwargs: captured.update(client=kwargs) or types.SimpleNamespace(models=FakeModels()))
+    monkeypatch.setitem(sys.modules, "google", types.SimpleNamespace(genai=fake_genai))
+
+    assert llm._complete("facts", api_key="key", timeout=23) == '{"takes": []}'
+    assert captured["client"] == {"api_key": "key"}
+    assert captured["model"] == "gemini-2.5-flash"
+    assert captured["config"]["response_mime_type"] == "application/json"
+    assert captured["config"]["response_json_schema"] == llm.RESPONSE_SCHEMA
+    assert captured["config"]["http_options"] == {"timeout": 23_000}
 
 
 def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
@@ -2855,14 +2921,39 @@ def test_digest_persists_the_lean_attached_after_daily_snapshot(monkeypatch):
                         lambda path, default: history if path == main.HISTORY_FILE else default)
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
     monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
-        "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}}))
-    monkeypatch.setattr(main, "_render_charts", lambda _recs: ({}, {}))
+        "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
+                        or {"ok": True, "provider": "gemini", "model": "test"})
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs: ({}, {}, []))
     monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
 
     assert main.mode_digest() == 0
     persisted = saved[main.HISTORY_FILE]["1303"][0]
     assert persisted["lean"] == "positive"
     assert persisted["lean_confidence"] == "high"
+
+
+def test_digest_sends_embeds_from_the_saved_v3_artifact(monkeypatch):
+    """A Discord formatter must receive precisely the cockpit payload facts."""
+    saved, rendered = {}, []
+    rec = _lean_rec()
+    monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [rec], {"monthly_cap": 500.0}))
+    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}, "warning": None})
+    monkeypatch.setattr(main, "_load", lambda path, default: {} if path == main.HISTORY_FILE else default)
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.__setitem__(path, value))
+    monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
+        "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
+                        or {"ok": True, "provider": "gemini", "model": "test"})
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs: ({}, {}, [{
+        "code": "1303", "name": "EIC", "status": "unavailable", "reason": "history failed"}]))
+    monkeypatch.setattr(main.nt, "build_digest_embeds", lambda **kwargs: rendered.append(kwargs["artifact"]) or [])
+    monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
+
+    assert main.mode_digest() == 0
+    artifact = saved[main.DASHBOARD_FILE]
+    assert artifact["schemaVersion"] == 3
+    assert artifact["artifactKind"] == "digest"
+    assert artifact["digestRecords"][0]["lean"]["lean"] == "positive"
+    assert rendered == [artifact]
 
 
 def test_embed_renders_an_unavailable_lean_differently_from_a_neutral_one():
@@ -2951,6 +3042,60 @@ def _ohlcv(n=60):
         "Low": close - 0.10, "Close": close,
         "Volume": pd.Series([1000.0] * n, index=idx),
     }, index=idx)
+
+
+def test_digest_artifact_v3_has_a_stable_identity_without_delivery_receipts():
+    """Discord and the cockpit can prove they rendered the same digest."""
+    snapshot = main._dashboard_snapshot(
+        "ok", [], {"monthly_cap": 500.0}, {"candidates": [], "names": {}},
+        as_of="2026-08-23T06:45:00Z",
+    )
+    first = artifacts.build_digest_artifact(
+        snapshot, recs=[_lean_rec()],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[], scheduled_for="2026-08-23T06:45:00Z",
+    )
+    second = artifacts.build_digest_artifact(
+        snapshot, recs=[_lean_rec()],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[], scheduled_for="2026-08-23T06:45:00Z",
+    )
+
+    assert first["schemaVersion"] == 3
+    assert first["artifactKind"] == "digest"
+    assert first["artifactId"].startswith("sha256:")
+    assert first["artifactId"] == second["artifactId"]
+    assert artifacts.artifact_id({**first, "deliveries": {"discord": {"ok": True}}}) == first["artifactId"]
+
+
+def test_movement_artifact_v1_names_alerts_and_has_its_own_identity():
+    alert = {"alertId": "move-1303", "code": "1303", "name": "EIC", "direction": "upside",
+             "observedAt": "2026-08-23T07:00:00Z", "receivedAt": "2026-08-23T07:01:00Z",
+             "latency": "delayed-intraday", "excessMovePct": 2.0, "robustZ": 4.0,
+             "reason": "Unusual delayed movement."}
+    artifact = artifacts.build_movement_artifact([alert], as_of="2026-08-23T07:01:00Z")
+    assert artifact["schemaVersion"] == 1
+    assert artifact["artifactKind"] == "movement"
+    assert artifact["alerts"] == [alert]
+    assert artifact["artifactId"].startswith("sha256:")
+
+
+def test_chart_artifact_keeps_at_most_ninety_valid_daily_ohlcv_sessions():
+    charts = artifacts.chart_artifacts(
+        [_lean_rec()], {"1303": _ohlcv(105)},
+        {"1303": {"stop": 9.5, "trim": 11.5, "target": 12.5}},
+    )
+
+    assert charts[0]["status"] == "available"
+    assert len(charts[0]["bars"]) == 90
+    assert charts[0]["bars"][0]["date"] < charts[0]["bars"][-1]["date"]
+    assert charts[0]["levels"] == {"stop": 9.5, "trim": 11.5, "target": 12.5}
+
+
+def test_chart_artifact_makes_missing_history_an_explicit_unavailable_state():
+    charts = artifacts.chart_artifacts([_lean_rec()], {"1303": pd.DataFrame()}, {})
+    assert charts == [{"code": "1303", "name": "EIC", "status": "unavailable",
+                       "reason": "No usable daily OHLCV history."}]
 
 
 def test_chart_renders_a_png_with_levels(tmp_path):

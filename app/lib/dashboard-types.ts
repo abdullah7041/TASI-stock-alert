@@ -30,6 +30,32 @@ export type DashboardSnapshotV2 = Omit<DashboardSnapshot, "schemaVersion"> & {
   forecast: ForecastView;
 };
 
+export type LeanStatus = {
+  ok: boolean;
+  provider: "gemini";
+  model?: string;
+  reason?: string;
+  calls_left?: number;
+};
+
+export type ChartBar = { date: string; Open: number; High: number; Low: number; Close: number; Volume: number };
+export type MarketChart =
+  | { code: string; name: string; status: "unavailable"; reason: string }
+  | { code: string; name: string; status: "available"; bars: ChartBar[]; levels: Partial<Record<"stop" | "trim" | "target", number>> };
+
+/** DigestArtifactV3: one canonical payload for Discord and the cockpit. */
+export type DashboardSnapshotV3 = Omit<DashboardSnapshotV2, "schemaVersion"> & {
+  schemaVersion: 3;
+  artifactKind: "digest";
+  artifactId: `sha256:${string}`;
+  scheduledFor: string | null;
+  producer: { generatedAt: string };
+  digestRecords: Array<{ code: string; name: string; lean?: Record<string, unknown>; [key: string]: unknown }>;
+  leanStatus: LeanStatus;
+  charts: MarketChart[];
+  top10Review?: Top10Proposal | null;
+};
+
 export type SummaryCard = { kind: string; state: string; text: string };
 
 export type SummaryV1 = {
@@ -41,8 +67,16 @@ export type SummaryV1 = {
 };
 
 export type DashboardPayload = {
-  snapshot: DashboardSnapshot | DashboardSnapshotV2;
+  snapshot: DashboardSnapshot | DashboardSnapshotV2 | DashboardSnapshotV3;
   freshness: "current" | "stale";
   alerts: MovementAlert[];
+  delivery?: DeliveryStatus;
+};
+
+export type DeliveryReceipt = { status: "confirmed" | "failed" | "unknown"; attemptedAt?: string; errorDetail?: string };
+export type DeliveryStatus = {
+  producer: DeliveryReceipt;
+  discord: DeliveryReceipt;
+  cockpit: DeliveryReceipt;
 };
 import type { ForecastView, MovementAlert, PortfolioView, Top10Proposal } from "@/app/lib/evidence-types";

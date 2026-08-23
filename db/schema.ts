@@ -40,4 +40,13 @@ export const researchSchemaStatements = [
     alert_id TEXT PRIMARY KEY, symbol TEXT NOT NULL, direction TEXT NOT NULL, observed_at TEXT NOT NULL,
     alert_json TEXT NOT NULL, delivery_state TEXT NOT NULL DEFAULT 'pending'
   )`,
+  `CREATE TABLE IF NOT EXISTS artifact_deliveries (
+    artifact_id TEXT NOT NULL,
+    destination TEXT NOT NULL CHECK(destination IN ('discord','cockpit')),
+    status TEXT NOT NULL CHECK(status IN ('success','failure')),
+    attempted_at TEXT NOT NULL,
+    error_detail TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(artifact_id, destination)
+  )`,
 ];

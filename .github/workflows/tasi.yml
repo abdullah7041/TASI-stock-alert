@@ -33,8 +33,8 @@ on:
     # Post-close reconciliation at 12:15 UTC (15:15 Riyadh), Sun-Thu. Grades the
     # previous session's pre-open leans against what the price actually did.
     - cron: "15 12 * * 0,1,2,3,4"
-    # Thursday 15:30 Riyadh draft review. This remains best-effort delayed analysis.
-    - cron: "30 12 * * 4"
+    # A review draft is created only when its 3-calendar-month date is due.
+    - cron: "30 12 * * 0,1,2,3,4"
     # Wednesday 08:15 Riyadh official-source evidence collection. Review is still required.
     - cron: "15 5 * * 3"
 
@@ -74,7 +74,7 @@ jobs:
           elif [ "${{ github.event.schedule }}" = "15 12 * * 0,1,2,3,4" ]; then
             echo "mode=reconcile" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T12:15:00Z" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "30 12 * * 4" ]; then
+          elif [ "${{ github.event.schedule }}" = "30 12 * * 0,1,2,3,4" ]; then
             echo "mode=top10-draft" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T12:30:00Z" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "15 5 * * 3" ]; then
@@ -86,6 +86,29 @@ jobs:
           fi
           echo "actual_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
+      - name: Load approved Top 10 for producer
+        if: contains('digest,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
+          test -n "$COCKPIT_INGEST_TOKEN"
+          if ! curl --fail --silent --show-error -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" https://tasi-action-cockpit.busaud7041.chatgpt.site/api/top10/current > .top10-current.json; then
+            printf '%s\n' '{"approved":null}' > .top10-current.json
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path(".top10-current.json").read_text(encoding="utf-8"))
+          active = payload.get("approved")
+          target = Path("top10_active.json")
+          if isinstance(active, dict) and active.get("entries"):
+              target.write_text(json.dumps(active, ensure_ascii=False, indent=2), encoding="utf-8")
+          elif target.exists():
+              target.unlink()
+          PY
+
       - name: Run
         id: run
         # State must survive a delivery failure. The final step restores the
@@ -96,10 +119,9 @@ jobs:
           SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
           SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          # Optional. Absent, the digest still ships every fact it has and each
-          # name reads "Pre-open lean: unavailable — no ANTHROPIC_API_KEY
-          # configured", which is the truth rather than a missing section.
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Optional. Absent, Gemini is explicitly unavailable while delayed
+          # deterministic facts and Discord delivery continue normally.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python main.py
 
       - name: Record job telemetry
@@ -166,12 +188,28 @@ jobs:
           echo "$RESPONSE"
           printf 'mode=run\ncommit=%s\nalert_ingest=%s\n' "$GITHUB_SHA" "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Record confirmed Discord delivery
+        if: steps.run.outcome == 'success' && steps.mode.outputs.mode == 'digest'
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
+          test -n "$COCKPIT_INGEST_TOKEN"
+          python - <<'PY' > .discord-receipt.json
+          import json, time
+          from pathlib import Path
+          payload = json.loads(Path("dashboard.json").read_text(encoding="utf-8"))
+          print(json.dumps({"artifactId": payload["artifactId"], "destination": "discord", "status": "success", "attemptedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}))
+          PY
+          curl --fail --silent --show-error -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/deliveries/ingest -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" -H "Content-Type: application/json" --data-binary @.discord-receipt.json >/dev/null
+
       - name: Commit state
         if: always()
         run: |
           git config user.name "tasi-bot"
           git config user.email "tasi-bot@users.noreply.github.com"
-          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json top10_active.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi

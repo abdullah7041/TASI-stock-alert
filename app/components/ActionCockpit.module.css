@@ -63,6 +63,9 @@
 
 .preview { color: #f3c879; font-weight: 700; }
 .asOf { color: #91a2c1; }
+.refreshButton { justify-self: start; padding: 6px 10px; border: 1px solid #4a6289; border-radius: 7px; background: #1d2c45; color: #d8e8ff; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.refreshButton:disabled { cursor: wait; opacity: .65; }
+.refreshButton:focus-visible, .chartToggle:focus-visible { outline: 2px solid #83c6ff; outline-offset: 3px; }
 
 .safetyNote {
   display: flex;
@@ -286,3 +289,19 @@
 .statusState { color: #f3c879; font-size: 0.74rem; font-weight: 750; letter-spacing: 0.12em; text-transform: uppercase; }
 .statusSummary { color: #9eb0cd; font-size: 0.86rem; }
 .statusDetails { padding: 0 14px 14px; }
+
+/* --- Canonical three-month charts --------------------------------------- */
+.chartGrid { display: grid; gap: 12px; }
+.chartCard, .chartUnavailable { padding: 15px; border: 1px solid #29465a; border-radius: 14px; background: #101b2b; }
+.chartHeader { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+.chartToggle { padding: 8px 10px; border: 1px solid #4a6289; border-radius: 8px; background: #172943; color: #cce4ff; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.chartMeta, .chartCaption, .chartUnavailable span { margin: 8px 0 0; color: #9eb0cd; font-size: .82rem; line-height: 1.45; }
+.chartPanel { margin-top: 12px; padding-top: 12px; border-top: 1px solid #263653; }
+.chartSvg { display: block; width: 100%; max-width: 590px; border-radius: 8px; background: #0d1524; }
+.chartGrid { stroke: #2a3a56; stroke-width: 1; }
+.chartLine { stroke: #83c6ff; stroke-width: 2.5; }
+.chartLevel { stroke: #f3c879; stroke-dasharray: 4 3; stroke-width: 1; }
+.chartLevelStop { stroke: #ff9faa; } .chartLevelTrim { stroke: #f3c879; } .chartLevelTarget { stroke: #79d5be; }
+.chartLabel, .chartAxis { fill: #aab9d2; font-size: 9px; }
+.chartVolumeUp { fill: #3ba88a; } .chartVolumeDown { fill: #b95b6e; }
+.chartUnavailable { display: grid; gap: 5px; color: #f4f7ff; }

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
-import type { Candidate, DashboardPayload, DashboardSnapshotV2 } from "@/app/lib/dashboard-types";
+import type { Candidate, DashboardPayload, DashboardSnapshotV2, DashboardSnapshotV3 } from "@/app/lib/dashboard-types";
 import { AlertBoard, formatCockpitTimestamp } from "./AlertBoard";
 import styles from "./ActionCockpit.module.css";
 import { ResearchWorkspace } from "./ResearchWorkspace";
+import { PriceVolumeChart } from "./PriceVolumeChart";
 
 type DashboardState =
   | { kind: "loading" }
@@ -26,8 +27,12 @@ function UnavailableCockpit({ message }: { message: string }) {
   return <main className={styles.cockpit}><p className={styles.brand}>TASI ACTION COCKPIT</p><h1>No verified daily snapshot is available.</h1><p className={styles.subtitle}>{message} The cockpit will show data after the next successful pre-open digest.</p></main>;
 }
 
-function isV2(snapshot: DashboardPayload["snapshot"]): snapshot is DashboardSnapshotV2 {
-  return snapshot.schemaVersion === 2;
+function isV2(snapshot: DashboardPayload["snapshot"]): snapshot is DashboardSnapshotV2 | DashboardSnapshotV3 {
+  return snapshot.schemaVersion === 2 || snapshot.schemaVersion === 3;
+}
+
+function isV3(snapshot: DashboardPayload["snapshot"]): snapshot is DashboardSnapshotV3 {
+  return snapshot.schemaVersion === 3;
 }
 
 /**
@@ -65,21 +70,41 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [refreshBusy, setRefreshBusy] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    setRefreshBusy(true);
+    try {
+      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      const payload = await response.json() as DashboardPayload & { error?: string };
+      if (!response.ok || !payload.snapshot) throw new Error(payload.error ?? "No verified daily snapshot is available.");
+      setState({ kind: "ready", payload });
+      setRefreshError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The daily dashboard could not be loaded.";
+      setState((current) => current.kind === "ready" ? current : { kind: "unavailable", message });
+      setRefreshError(`Refresh failed: ${message}. Showing the last good view.`);
+    } finally {
+      setRefreshBusy(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void (async () => {
-      try {
-        const response = await fetch("/api/dashboard", { cache: "no-store", signal: controller.signal });
-        const payload = await response.json() as DashboardPayload & { error?: string };
-        if (!response.ok || !payload.snapshot) throw new Error(payload.error ?? "No verified daily snapshot is available.");
-        setState({ kind: "ready", payload });
-      } catch (error) {
-        if (!controller.signal.aborted) setState({ kind: "unavailable", message: error instanceof Error ? error.message : "The daily dashboard could not be loaded." });
-      }
-    })();
-    return () => controller.abort();
-  }, []);
+    // Schedule after paint: the existing server/last-good payload stays visible
+    // while the client confirms it, instead of causing a synchronous effect update.
+    const initialRefresh = window.setTimeout(() => { void loadDashboard(); }, 0);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadDashboard();
+    };
+    const interval = window.setInterval(refreshWhenVisible, 60_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearTimeout(initialRefresh);
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [loadDashboard]);
 
   if (selectedCandidate) return <ResearchWorkspace candidate={selectedCandidate} onClose={() => setSelectedCandidate(null)} />;
   if (state.kind === "loading") return <LoadingCockpit />;
@@ -90,14 +115,17 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
   const qualified = snapshot.qualified.slice(0, 3);
   const researchEnabled = freshness === "current" && import.meta.env.VITE_AGENT_ENABLED !== "false";
   const v2 = isV2(snapshot) ? snapshot : null;
+  const v3 = isV3(snapshot) ? snapshot : null;
+  const top10Review = v3?.top10Review ?? (v2?.top10.status === "draft" ? v2.top10 : null);
+  const delivery = state.payload.delivery ?? { producer: { status: "confirmed" as const, attemptedAt: snapshot.asOf }, discord: { status: "unknown" as const }, cockpit: { status: "unknown" as const } };
   const decidedCount = snapshot.urgent.length + snapshot.changed.length;
 
   async function decideTop10(decision: "approved" | "rejected") {
-    if (!v2 || v2.top10.status !== "draft" || v2.top10.entries.length === 0 || actionBusy) return;
+    if (!top10Review || top10Review.status !== "draft" || top10Review.entries.length === 0 || actionBusy) return;
     setActionBusy(true);
     setActionStatus(null);
     try {
-      const response = await fetch("/api/top10/approve", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ proposalId: v2.top10.proposalId, decision, decidedAt: new Date().toISOString() }) });
+      const response = await fetch("/api/top10/approve", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ proposalId: top10Review.proposalId, decision, decidedAt: new Date().toISOString() }) });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "Top 10 decision could not be saved.");
       setActionStatus(`Top 10 ${decision}.`);
@@ -145,9 +173,11 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
         <div className={styles.statusPanel}>
           <span className={styles.preview}>Delayed/daily data</span>
           <span className={styles.asOf}>Market observed <time dateTime={snapshot.asOf}>{formatTimestamp(snapshot.asOf)}</time></span>
+          <button aria-label="Refresh cockpit" className={styles.refreshButton} disabled={refreshBusy} onClick={() => void loadDashboard()} type="button">{refreshBusy ? "Refreshing…" : "Refresh"}</button>
         </div>
       </header>
 
+      {refreshError && <section className={styles.staleNote} aria-live="polite" role="status"><p>{refreshError}</p></section>}
       {freshness === "stale" && <section className={styles.staleNote} aria-label="Stale data warning"><p>This is the last successful daily snapshot. The expected pre-open refresh did not arrive, so research is disabled.</p></section>}
       {snapshot.warnings.map((warning) => <section className={styles.staleNote} aria-label="Data quality warning" key={warning}><p>{warning}</p></section>)}
       <section className={styles.safetyNote} aria-label="Trading safety notice">
@@ -166,9 +196,20 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
         </section>
       )}
 
+      {v3 && <section className={styles.section} aria-labelledby="charts-heading">
+        <div className={styles.sectionHeading}><div><p className={styles.kicker}>CANONICAL ARTIFACT</p><h2 id="charts-heading">Three-month charts</h2></div></div>
+        <div className={styles.chartGrid}>{v3.charts.map((chart) => <PriceVolumeChart chart={chart} key={chart.code} />)}</div>
+      </section>}
+
       <section className={styles.section} aria-labelledby="status-rail-heading">
         <div className={styles.sectionHeading}><div><p className={styles.kicker}>SUPPORTING STATE</p><h2 id="status-rail-heading">Everything else, in one line each</h2></div></div>
         <div className={styles.statusRail}>
+          <StatusRow label="Delivery" state={delivery.discord.status === "confirmed" && delivery.cockpit.status === "confirmed" ? "confirmed" : "pending"} summary={`Producer ${delivery.producer.status} · Discord ${delivery.discord.status} · Cockpit ${delivery.cockpit.status}`}>
+            <p className={styles.quiet}>Artifact {v3?.artifactId ?? "legacy snapshot"}. Discord is confirmed only by an authenticated receipt, not by a green workflow.</p>
+          </StatusRow>
+          {v3 && <StatusRow label="Gemini lean" state={v3.leanStatus.ok ? "available" : "unavailable"} summary={v3.leanStatus.ok ? `${v3.leanStatus.model ?? "Gemini"} · optional model judgement` : v3.leanStatus.reason ?? "No Gemini lean was produced."}>
+            <p className={styles.quiet}>{v3.leanStatus.ok ? `Provider: ${v3.leanStatus.provider}. Model judgement is scored daily and never gates a buy.` : `Gemini unavailable: ${v3.leanStatus.reason}`}</p>
+          </StatusRow>}
           <StatusRow
             label="Portfolio"
             state={decidedCount === 0 ? "quiet" : "updated"}
@@ -200,7 +241,7 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
               : <>
                 <div className={styles.qualifiedGrid}>{v2.top10.entries.map((entry) => <article className={styles.qualifiedCard} key={entry.code}><h3 className={styles.companyName}>{entry.name}</h3><p className={styles.symbol}>({entry.code}){entry.owned ? " · Owned" : ""}</p><p>{entry.sector} · score <strong>{entry.totalScore.toFixed(1)}</strong></p><p className={styles.reason}>{entry.reasons.join(" ")}</p></article>)}</div>
                 {/* Approval controls exist only when there is something to approve. */}
-                {v2.top10.status === "draft" && <div className={styles.actionList}><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("approved")} type="button">Approve Top 10</button><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("rejected")} type="button">Reject Top 10</button></div>}
+                {top10Review?.status === "draft" && <div className={styles.actionList}><p className={styles.candidateNote}>{v2.top10.status === "approved" ? "A researched replacement is awaiting approval; the approved list remains active until then." : "Research draft awaiting approval."}</p><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("approved")} type="button">Approve Top 10</button><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("rejected")} type="button">Reject Top 10</button></div>}
               </>}
           </StatusRow>}
 

@@ -37,14 +37,11 @@ from pathlib import Path
 HERE = Path(__file__).parent
 BUDGET_FILE = HERE / "llm_budget.json"
 
-# Anthropic is chosen over the OpenAI integration already in the repo because
-# that one lives in the Cloudflare Worker (app/lib/research-agent.ts) with its
-# budget tracked in D1, which this Python producer cannot reach. A new secret
-# and a separate ledger were needed either way, so the choice was free. Every
-# call goes through `_complete` -- swapping vendors is a one-function change.
-API_URL = "https://api.anthropic.com/v1/messages"
-MODEL = os.environ.get("TASI_LLM_MODEL", "claude-sonnet-5")
-API_VERSION = "2023-06-01"
+# The digest runs in Python, independently from the Cloudflare research helper.
+# Gemini is therefore configured here with its own GitHub Actions secret. Every
+# provider-specific detail remains inside `_complete`.
+PROVIDER = "gemini"
+MODEL = os.environ.get("TASI_LLM_MODEL", "gemini-2.5-flash")
 MAX_TOKENS = 2000
 MONTHLY_CALL_CAP = int(os.environ.get("TASI_LLM_MONTHLY_CALLS", "40"))
 
@@ -69,6 +66,27 @@ session. Rules:
 
 Return ONLY valid JSON, no prose around it, in exactly this shape:
 {"takes":[{"code":"1303","lean":"positive|negative|neutral","confidence":"low|medium|high","take":"...","drivers":["..."]}]}"""
+
+RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "takes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "lean": {"type": "string", "enum": list(LEANS)},
+                    "confidence": {"type": "string", "enum": list(CONFIDENCES)},
+                    "take": {"type": "string"},
+                    "drivers": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["code", "lean", "confidence", "take", "drivers"],
+            },
+        },
+    },
+    "required": ["takes"],
+}
 
 
 def _month() -> str:
@@ -183,20 +201,26 @@ def parse_response(payload: str) -> dict:
 
 
 def _complete(prompt: str, *, api_key: str, timeout: int = 60) -> str:
-    """The only network call. Swap vendors here and nowhere else."""
-    import requests
+    """Call Gemini once and return its structured JSON text.
 
-    response = requests.post(
-        API_URL,
-        headers={"x-api-key": api_key, "anthropic-version": API_VERSION,
-                 "content-type": "application/json"},
-        json={"model": MODEL, "max_tokens": MAX_TOKENS, "system": SYSTEM,
-              "messages": [{"role": "user", "content": prompt}]},
-        timeout=timeout,
+    The SDK validates the response schema request; `parse_response` remains the
+    second, local validation boundary before an answer reaches Discord.
+    """
+    from google import genai
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config={
+            "system_instruction": SYSTEM,
+            "max_output_tokens": MAX_TOKENS,
+            "response_mime_type": "application/json",
+            "response_json_schema": RESPONSE_SCHEMA,
+            "http_options": {"timeout": timeout * 1000},
+        },
     )
-    response.raise_for_status()
-    body = response.json()
-    return "".join(part.get("text", "") for part in body.get("content", []))
+    return str(response.text or "")
 
 
 def get_leans(recs: list, *, api_key: str | None = None,
@@ -208,9 +232,9 @@ def get_leans(recs: list, *, api_key: str | None = None,
     differently -- collapsing them into an empty dict is exactly the mistake
     _fmt_news documents having already been made once with news.
     """
-    key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+    key = api_key or os.environ.get("GEMINI_API_KEY")
     if not key:
-        return {"_status": {"ok": False, "reason": "no ANTHROPIC_API_KEY configured"}}
+        return {"_status": {"ok": False, "reason": "no GEMINI_API_KEY configured"}}
     if not recs:
         return {"_status": {"ok": False, "reason": "no names to read"}}
     remaining = budget_remaining(budget_path)
@@ -229,5 +253,10 @@ def get_leans(recs: list, *, api_key: str | None = None,
                             "reason": f"model returned unparseable output ({type(exc).__name__})"}}
     if not leans:
         return {"_status": {"ok": False, "reason": "model returned no usable takes"}}
-    leans["_status"] = {"ok": True, "model": MODEL, "calls_left": remaining - 1}
+    leans["_status"] = {
+        "ok": True,
+        "provider": PROVIDER,
+        "model": MODEL,
+        "calls_left": remaining - 1,
+    }
     return leans

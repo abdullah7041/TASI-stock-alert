@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { ActionCockpit } from "@/app/components/ActionCockpit";
-import type { DashboardPayload, DashboardSnapshotV2 } from "@/app/lib/dashboard-types";
+import type { DashboardPayload, DashboardSnapshotV2, DashboardSnapshotV3 } from "@/app/lib/dashboard-types";
 import type { MovementAlert } from "@/app/lib/evidence-types";
 
 function alert(index: number, overrides: Partial<MovementAlert> = {}): MovementAlert {
@@ -40,6 +40,27 @@ const snapshot: DashboardSnapshotV2 = {
   portfolio: { confirmedAt: "2026-08-19T06:00:00Z", cashSar: 120.5, contributionMonth: null, holdings: [], proposal: null },
   alerts: [],
   forecast: { status: "unavailable", asOf: "2026-08-19", reason: "validation gates not passed." },
+};
+
+const canonicalSnapshot: DashboardSnapshotV3 = {
+  ...snapshot,
+  schemaVersion: 3,
+  artifactKind: "digest",
+  artifactId: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  scheduledFor: "2026-08-19T06:45:00Z",
+  producer: { generatedAt: "2026-08-19T06:40:00Z" },
+  digestRecords: [{ code: "4164", name: "Nahdi Medical", lean: { unavailable: "no GEMINI_API_KEY configured" } }],
+  leanStatus: { ok: false, provider: "gemini", reason: "no GEMINI_API_KEY configured" },
+  charts: [{
+    code: "4164", name: "Nahdi Medical", status: "available",
+    bars: [
+      { date: "2026-08-13", Open: 120, High: 122, Low: 119, Close: 121, Volume: 1100 },
+      { date: "2026-08-14", Open: 121, High: 123, Low: 120, Close: 122, Volume: 1200 },
+      { date: "2026-08-16", Open: 122, High: 124, Low: 121, Close: 123, Volume: 1300 },
+      { date: "2026-08-17", Open: 123, High: 125, Low: 122, Close: 124, Volume: 1400 },
+      { date: "2026-08-18", Open: 124, High: 126, Low: 123, Close: 125, Volume: 1500 },
+    ], levels: { stop: 118, trim: 126, target: 130 },
+  }],
 };
 
 function payload(overrides: Partial<DashboardPayload> = {}): DashboardPayload {
@@ -208,7 +229,7 @@ test("the status rail is one compact row per surface and keeps its explanations"
   renderCockpit(payload());
 
   const labels = [...document.querySelectorAll("[data-label]")].map((row) => row.getAttribute("data-label"));
-  expect(labels).toEqual(["Portfolio", "Top 10", "Forecast", "Scanner"]);
+  expect(labels).toEqual(["Delivery", "Portfolio", "Top 10", "Forecast", "Scanner"]);
 
   const forecast = document.querySelector("[data-label='Forecast']") as HTMLElement;
   expect(forecast.textContent).toContain("Forecast unavailable: validation gates not passed.");
@@ -231,4 +252,30 @@ test("alerts are rendered above the supporting status rail", async () => {
   const railHeading = screen.getByRole("heading", { name: /Everything else/ });
 
   expect(alertsHeading.compareDocumentPosition(railHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("a keyboard-accessible chart expands from the canonical three-month data", async () => {
+  renderCockpit(payload({ snapshot: canonicalSnapshot }));
+
+  const toggle = await screen.findByRole("button", { name: /Show 3-month chart for Nahdi Medical/i });
+  toggle.focus();
+  await userEvent.keyboard("{Enter}");
+
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.getByRole("img", { name: /Nahdi Medical 3-month price and volume chart/i })).toBeTruthy();
+  expect(screen.getByText(/Stop 118.00/)).toBeTruthy();
+});
+
+test("a failed manual refresh retains the last-good cockpit view", async () => {
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify(payload()), { headers: { "content-type": "application/json" } }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ error: "Temporary API failure" }), { status: 503, headers: { "content-type": "application/json" } }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(<ActionCockpit dashboard={payload()} />);
+
+  await screen.findByText("Today’s decisions, without the noise.");
+  await userEvent.click(screen.getByRole("button", { name: "Refresh cockpit" }));
+
+  expect((await screen.findByRole("status")).textContent).toMatch(/Refresh failed/i);
+  expect(screen.getByText("Today’s decisions, without the noise.")).toBeTruthy();
 });

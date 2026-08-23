@@ -2,7 +2,7 @@ import { DashboardStore } from "@/app/lib/dashboard-store";
 
 export async function GET() {
   const { env } = await import("cloudflare:workers");
-  const acceptedSchemaVersions = [1, 2];
+  const acceptedSchemaVersions = [1, 2, 3];
   if (!env.DB) {
     return Response.json({ ok: false, deployedCommit: env.DEPLOYED_COMMIT_SHA ?? "unknown", acceptedSchemaVersions, database: "unavailable", latestSnapshot: null }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }

@@ -32,6 +32,7 @@ from pathlib import Path
 import config as cfg
 import data as dat
 import analyze as az
+import artifacts
 import notify as nt
 import indicators as ind
 import history as histmod
@@ -52,6 +53,7 @@ BUDGET_FILE = HERE / "budget_state.json"
 HISTORY_FILE = HERE / "history.json"
 DASHBOARD_FILE = HERE / "dashboard.json"
 TOP10_FILE = HERE / "top10_draft.json"
+TOP10_ACTIVE_FILE = HERE / "top10_active.json"
 MOVEMENT_STATE_FILE = HERE / "movement_state.json"
 ALERTS_FILE = HERE / "movement_alerts.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
@@ -173,6 +175,26 @@ def _unavailable_top10(generated_at: str) -> dict:
     return {"proposalId": f"top10-{generated_at[:10]}-evidence-pending", "status": "draft", "researchedAt": generated_at, "entries": []}
 
 
+def _active_top10() -> dict | None:
+    """Read an approved list fetched from the owner-only cockpit, if any."""
+    value = _load(TOP10_ACTIVE_FILE, None)
+    if isinstance(value, dict) and value.get("status") == "approved" and value.get("entries"):
+        return value
+    return None
+
+
+def _top10_review_due(active: dict | None, today: date) -> bool:
+    """Initial draft immediately; later drafts only after their 3-month date."""
+    if not active:
+        return today.weekday() in (6, 0, 1, 2, 3)  # Riyadh trading Sun-Thu
+    due_text = str(active.get("nextReviewAt") or "")[:10]
+    try:
+        due = date.fromisoformat(due_text)
+    except ValueError:
+        return False
+    return today >= due and today.weekday() in (6, 0, 1, 2, 3)
+
+
 def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) -> dict | None:
     """Build a draft only from dated, local primary-source reviews; never fill it from price data alone."""
     raw_records = _load(EVIDENCE_FILE, [])
@@ -204,7 +226,8 @@ def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) 
                         "evidence": {"source": evidence.source_name, "observedAt": evidence.published_at,
                                      "receivedAt": evidence.retrieved_at, "latency": "official-filing",
                                      "freshness": "current", "url": evidence.source_url}})
-    return {"proposalId": f"top10-{generated_at[:10]}-evidence", "status": "draft", "researchedAt": generated_at, "entries": entries}
+    return {"proposalId": f"top10-{generated_at[:10]}-evidence", "status": "draft", "researchedAt": generated_at,
+            "reviewWindow": "1-3 months", "entries": entries}
 
 
 def _forecast(generated_at: str) -> dict:
@@ -254,7 +277,7 @@ def _changed_entries(recs: list) -> list:
     return entries
 
 
-def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, alerts: list | None = None, scheduled_for: str | None = None) -> dict:
+def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, top10_review: dict | None = None, alerts: list | None = None, scheduled_for: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     urgent = []
@@ -305,6 +328,8 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
                 "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
                 "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
                 "alerts": alerts or [], "forecast": _forecast(generated_at)}
+    if top10_review is not None:
+        snapshot["top10Review"] = top10_review
     snapshot["summaryV1"] = build_summary_v1(snapshot, scheduled_for=scheduled_for)
     snapshot["summary"] = summary_lines(snapshot["summaryV1"])
     return snapshot
@@ -547,7 +572,7 @@ def _scanner_block(result: dict | None = None) -> str:
 CHART_DIR = HERE / ".charts"
 
 
-def _render_charts(recs: list) -> tuple[dict, dict]:
+def _chart_bundle(recs: list) -> tuple[dict, dict, list[dict]]:
     """Render one candlestick+volume chart per name for the pre-open digest.
 
     Returns ({code: filename}, {filename: Path}) -- the first for the embeds,
@@ -558,20 +583,20 @@ def _render_charts(recs: list) -> tuple[dict, dict]:
     digest that already reads well as text, so a matplotlib problem or a thin
     history must cost you the picture, never the message.
     """
-    try:
-        import charts as chartmod
-    except Exception as exc:
-        print(f"charts unavailable ({type(exc).__name__}: {exc}) — sending text only")
-        return {}, {}
-
     codes = [r["code"] for r in recs]
     try:
         frames = dat.get_histories(codes, cfg.TECH["history_period"])
     except Exception as exc:
         print(f"charts: history fetch failed ({type(exc).__name__}) — sending text only")
-        return {}, {}
+        return {}, {}, artifacts.chart_artifacts(recs, {}, {})
 
     stored_levels = _load(LEVELS_FILE, {})
+    chart_data = artifacts.chart_artifacts(recs, frames, stored_levels)
+    try:
+        import charts as chartmod
+    except Exception as exc:
+        print(f"Discord chart rendering unavailable ({type(exc).__name__}: {exc}) â€” structured charts retained")
+        return {}, {}, chart_data
     by_code, by_name = {}, {}
     for rec in recs:
         try:
@@ -584,10 +609,16 @@ def _render_charts(recs: list) -> tuple[dict, dict]:
             by_code[rec["code"]] = path.name
             by_name[path.name] = path
     print(f"charts rendered: {len(by_code)}/{len(recs)}")
+    return by_code, by_name, chart_data
+
+
+def _render_charts(recs: list) -> tuple[dict, dict]:
+    """Compatibility wrapper for callers that only need Discord PNGs."""
+    by_code, by_name, _chart_data = _chart_bundle(recs)
     return by_code, by_name
 
 
-def _attach_leans(recs: list) -> None:
+def _attach_leans(recs: list) -> dict:
     """Ask the model for a pre-open lean and attach it to each rec, in place.
 
     Deliberately runs AFTER the dashboard snapshot is saved. The lean is the one
@@ -611,13 +642,14 @@ def _attach_leans(recs: list) -> None:
         print(f"pre-open lean unavailable: {reason}")
         for rec in recs:
             rec["lean"] = {"unavailable": reason}
-        return
+        return status
 
     print(f"pre-open lean: {len(leans) - 1} takes from {status.get('model')}, "
           f"{status.get('calls_left')} calls left this month")
     for rec in recs:
         take = leans.get(rec["code"])
         rec["lean"] = take or {"unavailable": "the model returned no take for this name"}
+    return status
 
 
 def _persist_attached_leans(recs: list) -> None:
@@ -653,18 +685,23 @@ def mode_digest() -> int:
     scanner_result = _scanner_result()
     snapshot = _dashboard_snapshot(
         regime, recs, budget, scanner_result,
-        top10=_load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))),
+        top10=_active_top10() or _load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))),
+        top10_review=_load(TOP10_FILE, None),
         scheduled_for=os.environ.get("SCHEDULED_FOR"),
     )
+    # Deterministic market/history state is durable before Gemini and charts.
     _save(DASHBOARD_FILE, snapshot)
-    _attach_leans(recs)
+    lean_status = _attach_leans(recs)
     _persist_attached_leans(recs)
 
-    charts_by_code, chart_files = _render_charts(recs)
+    charts_by_code, chart_files, chart_data = _chart_bundle(recs)
+    artifact = artifacts.build_digest_artifact(
+        snapshot, recs=recs, lean_status=lean_status, charts=chart_data,
+        scheduled_for=os.environ.get("SCHEDULED_FOR"),
+    )
+    _save(DASHBOARD_FILE, artifact)
     embeds = nt.build_digest_embeds(
-        recs, regime=regime, trade_date=snapshot["tradeDate"], budget=budget,
-        levels_by_code=_load(LEVELS_FILE, {}), warnings=snapshot.get("warnings"),
-        charts_by_code=charts_by_code,
+        artifact=artifact, charts_by_code=charts_by_code,
     )
     ok = nt.send_discord(embeds=embeds, files=chart_files)
     if not ok:
@@ -697,12 +734,27 @@ def mode_research_evidence() -> int:
 
 def mode_top10_draft() -> int:
     """Create a dated draft snapshot; user approval remains required on the site."""
+    active = _active_top10()
+    pending = _load(TOP10_FILE, None)
+    if not active and isinstance(pending, dict) and pending.get("status") == "draft" and pending.get("entries"):
+        print("Initial Top 10 draft is awaiting approval; it remains unchanged.")
+        return 0
+    if not _top10_review_due(active, date.today()):
+        print("Top 10 review is not due; approved list remains unchanged.")
+        return 0
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)
     scanner_result = _scanner_result()
     generated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     draft = _evidence_top10(scanner_result, recs, generated_at) or _unavailable_top10(generated_at)
     _save(TOP10_FILE, draft)
-    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result, as_of=generated_at, top10=draft))
+    snapshot = _dashboard_snapshot(regime, recs, budget, scanner_result, as_of=generated_at,
+                                   top10=active or draft, top10_review=draft,
+                                   scheduled_for=os.environ.get("SCHEDULED_FOR"))
+    _save(DASHBOARD_FILE, artifacts.build_digest_artifact(
+        snapshot, recs=recs,
+        lean_status={"ok": False, "provider": "gemini", "reason": "Gemini is not run for a Top 10 review."},
+        charts=[], scheduled_for=os.environ.get("SCHEDULED_FOR"),
+    ))
     print("Top 10 evidence draft snapshot written; no list was approved or traded.")
     return 0
 
@@ -711,7 +763,16 @@ def mode_cockpit_refresh() -> int:
     """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions."""
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)
     scanner_result = _scanner_result()
-    _save(DASHBOARD_FILE, _dashboard_snapshot(regime, recs, budget, scanner_result))
+    snapshot = _dashboard_snapshot(
+        regime, recs, budget, scanner_result,
+        top10=_active_top10() or _load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))),
+        top10_review=_load(TOP10_FILE, None), scheduled_for=os.environ.get("SCHEDULED_FOR"),
+    )
+    _save(DASHBOARD_FILE, artifacts.build_digest_artifact(
+        snapshot, recs=recs,
+        lean_status={"ok": False, "provider": "gemini", "reason": "Gemini is only generated for the pre-open digest."},
+        charts=[], scheduled_for=os.environ.get("SCHEDULED_FOR"),
+    ))
     print("cockpit refresh written; no Discord message or order was sent.")
     return 0
 
@@ -847,10 +908,11 @@ def _movement_alerts(recs: list, received_at: str | None = None, state: dict | N
 def mode_run() -> int:
     _regime, recs, _budget = _collect_recs(include_news=False, record_history=False)
     movement_alerts = _movement_alerts(recs)
-    _save(ALERTS_FILE, {"alerts": movement_alerts})
+    as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    movement_artifact = artifacts.build_movement_artifact(movement_alerts, as_of=as_of)
+    _save(ALERTS_FILE, movement_artifact)
     if movement_alerts:
-        as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        msg = nt.build_movement_alert_message(movement_alerts, as_of)
+        msg = nt.build_movement_alert_message(movement_artifact["alerts"], movement_artifact["asOf"])
         ok = nt.send_discord(msg)
         print("movement alert sent:", ok, "| alerts:", len(movement_alerts))
         return 0 if ok else 1

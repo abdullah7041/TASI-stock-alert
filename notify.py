@@ -580,10 +580,11 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
     return embed
 
 
-def build_digest_embeds(recs: list, *, regime: str, trade_date: str,
-                        budget: dict | None = None, levels_by_code: dict | None = None,
-                        warnings: list | None = None, today: date | None = None,
-                        charts_by_code: dict | None = None) -> list:
+def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
+                        trade_date: str | None = None, budget: dict | None = None,
+                        levels_by_code: dict | None = None, warnings: list | None = None,
+                        today: date | None = None, charts_by_code: dict | None = None,
+                        artifact: dict | None = None) -> list:
     """The pre-open digest as embeds: a header, then one embed per name.
 
     Replaces build_dashboard_digest's four-card message as the digest body.
@@ -592,6 +593,21 @@ def build_digest_embeds(recs: list, *, regime: str, trade_date: str,
     when something about them moved; the rest are named in one trailing line so
     a quiet name is visibly quiet rather than silently missing.
     """
+    if artifact is not None:
+        # The Discord view must not compose an independent truth.  The v3
+        # artifact is also what the cockpit stores and renders.
+        recs = artifact["digestRecords"]
+        regime = artifact["regime"]
+        trade_date = artifact["tradeDate"]
+        budget = {"monthly_cap": artifact.get("monthlyBudgetSar")}
+        warnings = artifact.get("warnings") or []
+        levels_by_code = {
+            item["code"]: item.get("levels") or {}
+            for item in artifact.get("charts") or []
+            if item.get("status") == "available"
+        }
+    if recs is None or regime is None or trade_date is None:
+        raise ValueError("Digest embeds require records, regime, and trade date.")
     levels_by_code = levels_by_code or {}
     header_lines = [f"**Regime:** {regime}", "**Data:** delayed daily bars (free tier)"]
     if budget:

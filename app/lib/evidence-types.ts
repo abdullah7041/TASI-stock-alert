@@ -25,6 +25,9 @@ export type Top10Proposal = {
   status: "draft" | "approved" | "rejected";
   researchedAt: string;
   entries: Top10Entry[];
+  approvedAt?: string;
+  nextReviewAt?: string;
+  reviewWindow?: "1-3 months";
 };
 
 export type PortfolioHolding = { code: string; name: string; shares: number; avgCostSar?: number };

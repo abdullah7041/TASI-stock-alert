@@ -70,7 +70,11 @@ function expectedSnapshotDateInRiyadh(now) {
 
 export function parseDashboardSnapshot(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Dashboard snapshot must be an object.");
-  if (![1, 2].includes(value.schemaVersion)) throw new Error("Unsupported dashboard snapshot version.");
+  if (![1, 2, 3].includes(value.schemaVersion)) throw new Error("Unsupported dashboard snapshot version.");
+  if (value.schemaVersion === 3 &&
+      (typeof value.artifactId !== "string" || !/^sha256:[a-f0-9]{64}$/.test(value.artifactId))) {
+    throw new Error("artifactId must be a SHA-256 ID.");
+  }
   if (value.dataStatus !== "delayed-daily") throw new Error("Dashboard data must be labelled delayed-daily.");
   const asOf = text(value, "asOf");
   if (!Number.isFinite(Date.parse(asOf))) throw new Error("asOf must be a valid timestamp.");
@@ -140,11 +144,67 @@ export function parseDashboardSnapshot(value) {
       })),
     };
   }
-  return {
+  const parsedV2 = {
     ...common, schemaVersion: 2, summary: list(value.summary, "summary").map((line) => text({ line }, "line")),
     top10: { proposalId: text(top10, "proposalId"), status: enumValue(top10.status, "top10.status", ["draft", "approved", "rejected"]), researchedAt: timestamp(top10.researchedAt, "top10.researchedAt"), entries },
     portfolio: { confirmedAt: timestamp(portfolio.confirmedAt, "portfolio.confirmedAt"), cashSar: nonNegative(portfolio, "cashSar"), contributionMonth: portfolio.contributionMonth === null ? null : text(portfolio, "contributionMonth"), holdings: list(portfolio.holdings, "portfolio.holdings").map((holding) => ({ code: text(holding, "code"), name: text(holding, "name"), shares: nonNegative(holding, "shares"), ...(typeof holding.avgCostSar === "number" ? { avgCostSar: nonNegative(holding, "avgCostSar") } : {}) })), proposal: portfolio.proposal === null ? null : portfolio.proposal },
     ...(summaryV1 ? { summaryV1 } : {}), alerts, forecast: parsedForecast,
+  };
+  if (value.schemaVersion === 2) return parsedV2;
+
+  if (value.artifactKind !== "digest") throw new Error("v3 artifactKind must be digest.");
+  const artifactId = text(value, "artifactId");
+  if (!/^sha256:[a-f0-9]{64}$/.test(artifactId)) throw new Error("artifactId must be a SHA-256 ID.");
+  const producer = value.producer;
+  if (!producer || typeof producer !== "object") throw new Error("producer must be an object.");
+  const leanStatus = value.leanStatus;
+  if (!leanStatus || typeof leanStatus !== "object" || typeof leanStatus.ok !== "boolean") throw new Error("leanStatus must include ok.");
+  const parsedLeanStatus = {
+    ok: leanStatus.ok,
+    provider: text(leanStatus, "provider"),
+    ...(typeof leanStatus.model === "string" && leanStatus.model ? { model: leanStatus.model } : {}),
+    ...(typeof leanStatus.reason === "string" && leanStatus.reason ? { reason: leanStatus.reason } : {}),
+    ...(typeof leanStatus.calls_left === "number" && Number.isFinite(leanStatus.calls_left) ? { calls_left: leanStatus.calls_left } : {}),
+  };
+  if (!parsedLeanStatus.ok && !parsedLeanStatus.reason) throw new Error("Unavailable leanStatus needs a reason.");
+  const digestRecords = list(value.digestRecords, "digestRecords").map((record) => {
+    if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("digestRecords items must be objects.");
+    return { ...record, code: text(record, "code"), name: text(record, "name") };
+  });
+  const charts = list(value.charts, "charts").map((chart) => {
+    if (!chart || typeof chart !== "object" || Array.isArray(chart)) throw new Error("charts items must be objects.");
+    const commonChart = { code: text(chart, "code"), name: text(chart, "name"), status: enumValue(chart.status, "chart.status", ["available", "unavailable"]) };
+    if (commonChart.status === "unavailable") return { ...commonChart, reason: text(chart, "reason") };
+    const bars = list(chart.bars, "chart.bars");
+    if (bars.length < 5 || bars.length > 90) throw new Error("Available charts need 5-90 daily bars.");
+    const parsedBars = bars.map((bar) => {
+      if (!bar || typeof bar !== "object" || Array.isArray(bar)) throw new Error("chart bars must be objects.");
+      return { date: tradeDate(bar.date), Open: number(bar, "Open"), High: number(bar, "High"), Low: number(bar, "Low"), Close: number(bar, "Close"), Volume: nonNegative(bar, "Volume") };
+    });
+    const rawLevels = chart.levels;
+    if (!rawLevels || typeof rawLevels !== "object" || Array.isArray(rawLevels)) throw new Error("chart levels must be an object.");
+    const levels = Object.fromEntries(["stop", "trim", "target"].flatMap((key) => typeof rawLevels[key] === "number" && Number.isFinite(rawLevels[key]) ? [[key, rawLevels[key]]] : []));
+    return { ...commonChart, bars: parsedBars, levels };
+  });
+  let top10Review;
+  if (value.top10Review !== undefined && value.top10Review !== null) {
+    const review = value.top10Review;
+    if (!review || typeof review !== "object" || Array.isArray(review)) throw new Error("top10Review must be an object.");
+    const reviewEntries = list(review.entries, "top10Review.entries");
+    if (!reviewEntries.every((entry) => entry && typeof entry === "object" && typeof entry.code === "string" && typeof entry.name === "string")) throw new Error("top10Review entries are invalid.");
+    top10Review = { ...review, proposalId: text(review, "proposalId"), status: enumValue(review.status, "top10Review.status", ["draft", "approved", "rejected"]), researchedAt: timestamp(review.researchedAt, "top10Review.researchedAt"), entries: reviewEntries };
+  }
+  return {
+    ...parsedV2,
+    schemaVersion: 3,
+    artifactKind: "digest",
+    artifactId,
+    scheduledFor: value.scheduledFor === null ? null : timestamp(value.scheduledFor, "scheduledFor"),
+    producer: { generatedAt: timestamp(producer.generatedAt, "producer.generatedAt") },
+    digestRecords,
+    leanStatus: parsedLeanStatus,
+    charts,
+    ...(top10Review ? { top10Review } : {}),
   };
 }
 

@@ -52,8 +52,8 @@ that honest rather than merely disclaimed:
   watch, not a claim. For calibration: a naive always-positive call scores about
   54% on the history recorded so far. That is the bar it has to beat.
 
-Set `ANTHROPIC_API_KEY` to enable it. Without the secret every name reads
-`Pre-open lean: unavailable — no ANTHROPIC_API_KEY configured`, and every other
+Set `GEMINI_API_KEY` to enable it. Without the secret every name reads
+`Pre-open lean: unavailable — no GEMINI_API_KEY configured`, and every other
 field still ships. Calls are capped monthly in `llm_budget.json`.
 
 ## What it does not do
@@ -95,7 +95,7 @@ News is an auditable keyword/phrase tally over free Google News headlines — wo
 2. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
    - `DISCORD_WEBHOOK_URL` = your Discord channel webhook URL.
    - `SAHMK_API_KEY` = your SAHMK Free key (optional; only used as a fallback and for the index).
-   - `ANTHROPIC_API_KEY` = optional. Enables the pre-open lean. Without it the digest ships every fact it has and each name says the lean is unavailable and why.
+   - `GEMINI_API_KEY` = optional. Enables Gemini pre-open leans. Without it the digest ships every fact it has and each name says the lean is unavailable and why.
 3. In `config.py`, set `BUDGET["monthly_budget_sar"]` to what you are willing to commit to new buys per calendar month. It ships at 500.
 4. Commit and push. The schedule runs automatically.
 
