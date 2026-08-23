@@ -280,6 +280,13 @@ def _changed_entries(recs: list) -> list:
 def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: dict | None, *, as_of: str | None = None, top10: dict | None = None, top10_review: dict | None = None, alerts: list | None = None, scheduled_for: str | None = None) -> dict:
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    # Manual operations used the literal "manual" historically. Keep such
+    # source metadata honest but never emit an invalid timestamp into v3.
+    try:
+        parsed_schedule = datetime.fromisoformat(str(scheduled_for).replace("Z", "+00:00")) if scheduled_for else None
+        scheduled_for = scheduled_for if parsed_schedule and parsed_schedule.tzinfo else None
+    except ValueError:
+        scheduled_for = None
     urgent = []
     unknown_cost = []
     for r in recs:

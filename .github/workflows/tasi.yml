@@ -67,7 +67,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
-            echo "scheduled_for=manual" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "45 6 * * 0,1,2,3,4" ]; then
             echo "mode=digest" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T06:45:00Z" >> "$GITHUB_OUTPUT"
@@ -213,6 +213,7 @@ jobs:
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi
+          git pull --rebase origin main
           git push
 
       - name: Fail if runtime failed

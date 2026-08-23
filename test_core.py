@@ -51,6 +51,12 @@ def test_dashboard_snapshot_publishes_only_a_supplied_dated_top10_draft():
     assert not any("Top 10 draft unavailable" in warning for warning in snapshot["warnings"])
 
 
+def test_manual_schedule_marker_never_reaches_the_timestamped_v3_contract():
+    snapshot = main._dashboard_snapshot("ok", [], {"monthly_cap": 500}, {"candidates": [], "names": {}},
+                                        as_of="2026-08-23T06:45:00Z", scheduled_for="manual")
+    assert snapshot["summaryV1"]["scheduledFor"] is None
+
+
 def test_summary_v1_is_dated_and_keeps_missing_evidence_honest():
     snapshot = {
         "asOf": "2026-08-17T07:38:24Z", "tradeDate": "2026-08-17",
