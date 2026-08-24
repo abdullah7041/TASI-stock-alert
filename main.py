@@ -645,7 +645,14 @@ def _attach_leans(recs: list) -> dict:
 
     status = leans.get("_status") or {}
     if not status.get("ok"):
-        reason = status.get("reason", "unknown")
+        # The V3 artifact is validated by the cockpit. A model outage is
+        # expected input, so its status must remain structurally complete.
+        status = {
+            "ok": False,
+            "provider": str(status.get("provider") or "gemini"),
+            "reason": str(status.get("reason") or "unknown"),
+        }
+        reason = status["reason"]
         print(f"pre-open lean unavailable: {reason}")
         for rec in recs:
             rec["lean"] = {"unavailable": reason}

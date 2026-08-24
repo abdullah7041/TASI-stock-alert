@@ -2877,6 +2877,24 @@ def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
     assert not [k for k in out if k != "_status"]
 
 
+def test_attach_leans_normalizes_a_failed_gemini_status_for_the_v3_artifact(monkeypatch):
+    monkeypatch.setattr(
+        llm,
+        "get_leans",
+        lambda _recs: {"_status": {"ok": False, "reason": "model call failed (ClientError)"}},
+    )
+    recs = [_lean_rec()]
+
+    status = main._attach_leans(recs)
+
+    assert status == {
+        "ok": False,
+        "provider": "gemini",
+        "reason": "model call failed (ClientError)",
+    }
+    assert recs[0]["lean"] == {"unavailable": "model call failed (ClientError)"}
+
+
 def test_lean_stops_at_the_monthly_call_cap(tmp_path, monkeypatch):
     ledger = tmp_path / "llm_budget.json"
     ledger.write_text(json.dumps({"month": time.strftime("%Y-%m"),
