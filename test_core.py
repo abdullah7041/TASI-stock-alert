@@ -2877,6 +2877,28 @@ def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
     assert not [k for k in out if k != "_status"]
 
 
+def test_lean_reports_safe_gemini_http_diagnostics(monkeypatch, tmp_path):
+    class ClientError(Exception):
+        code = 404
+
+    def boom(*_args, **_kwargs):
+        raise ClientError("models/gemini-2.5-flash is not found for this project")
+
+    monkeypatch.setattr(llm, "_complete", boom)
+
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "budget.json")
+
+    assert out["_status"] == {
+        "ok": False,
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "reason": "model call failed (ClientError)",
+        "errorType": "ClientError",
+        "httpStatus": 404,
+        "errorCategory": "not_found",
+    }
+
+
 def test_attach_leans_normalizes_a_failed_gemini_status_for_the_v3_artifact(monkeypatch):
     monkeypatch.setattr(
         llm,

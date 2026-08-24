@@ -47,6 +47,14 @@ MONTHLY_CALL_CAP = int(os.environ.get("TASI_LLM_MONTHLY_CALLS", "40"))
 
 LEANS = ("positive", "negative", "neutral")
 CONFIDENCES = ("low", "medium", "high")
+HTTP_ERROR_CATEGORIES = {
+    400: "invalid_request",
+    401: "unauthenticated",
+    403: "forbidden",
+    404: "not_found",
+    408: "timeout",
+    429: "rate_limited",
+}
 
 SYSTEM = """You are a sell-side analyst writing a pre-open note on Saudi (Tadawul) equities.
 
@@ -223,6 +231,27 @@ def _complete(prompt: str, *, api_key: str, timeout: int = 60) -> str:
     return str(response.text or "")
 
 
+def _failure_status(exc: Exception) -> dict:
+    """Return diagnostics that help operations without exposing provider text."""
+    status = {
+        "ok": False,
+        "provider": PROVIDER,
+        "model": MODEL,
+        "reason": f"model call failed ({type(exc).__name__})",
+        "errorType": type(exc).__name__,
+        "errorCategory": "client_error",
+    }
+    value = getattr(exc, "code", None)
+    if type(value) is not int:
+        value = getattr(exc, "status_code", None)
+    if type(value) is int and 400 <= value <= 599:
+        status["httpStatus"] = value
+        status["errorCategory"] = HTTP_ERROR_CATEGORIES.get(
+            value, "upstream_error" if value >= 500 else "client_error"
+        )
+    return status
+
+
 def get_leans(recs: list, *, api_key: str | None = None,
               budget_path: Path | None = None) -> dict:
     """{code: take} plus a `_status` entry. Never raises.
@@ -244,7 +273,7 @@ def get_leans(recs: list, *, api_key: str | None = None,
     try:
         raw = _complete(build_prompt(recs), api_key=key)
     except Exception as exc:
-        return {"_status": {"ok": False, "reason": f"model call failed ({type(exc).__name__})"}}
+        return {"_status": _failure_status(exc)}
     _record_call(budget_path)
     try:
         leans = parse_response(raw)

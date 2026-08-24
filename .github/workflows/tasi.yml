@@ -144,6 +144,13 @@ jobs:
               snapshot = json.loads(Path("dashboard.json").read_text(encoding="utf-8"))
               print(f"dashboard_as_of={snapshot.get('asOf')}")
               print(f"snapshot_schema={snapshot.get('schemaVersion')}")
+              lean = snapshot.get("leanStatus")
+              if isinstance(lean, dict):
+                  print(f"lean_provider={lean.get('provider')}")
+                  print(f"lean_model={lean.get('model')}")
+                  print(f"lean_error_type={lean.get('errorType')}")
+                  print(f"lean_http_status={lean.get('httpStatus')}")
+                  print(f"lean_error_category={lean.get('errorCategory')}")
           if Path("movement_alerts.json").exists():
               alerts = json.loads(Path("movement_alerts.json").read_text(encoding="utf-8"))
               print(f"movement_alert_count={len(alerts.get('alerts') or [])}")

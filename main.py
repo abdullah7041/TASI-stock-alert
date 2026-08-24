@@ -652,6 +652,13 @@ def _attach_leans(recs: list) -> dict:
             "provider": str(status.get("provider") or "gemini"),
             "reason": str(status.get("reason") or "unknown"),
         }
+        for key in ("model", "errorType", "errorCategory"):
+            value = (leans.get("_status") or {}).get(key)
+            if isinstance(value, str) and value:
+                status[key] = value
+        http_status = (leans.get("_status") or {}).get("httpStatus")
+        if type(http_status) is int and 400 <= http_status <= 599:
+            status["httpStatus"] = http_status
         reason = status["reason"]
         print(f"pre-open lean unavailable: {reason}")
         for rec in recs:

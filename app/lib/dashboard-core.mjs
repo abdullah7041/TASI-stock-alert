@@ -165,6 +165,9 @@ export function parseDashboardSnapshot(value) {
     ...(typeof leanStatus.model === "string" && leanStatus.model ? { model: leanStatus.model } : {}),
     ...(typeof leanStatus.reason === "string" && leanStatus.reason ? { reason: leanStatus.reason } : {}),
     ...(typeof leanStatus.calls_left === "number" && Number.isFinite(leanStatus.calls_left) ? { calls_left: leanStatus.calls_left } : {}),
+    ...(typeof leanStatus.errorType === "string" && leanStatus.errorType ? { errorType: leanStatus.errorType } : {}),
+    ...(Number.isInteger(leanStatus.httpStatus) && leanStatus.httpStatus >= 400 && leanStatus.httpStatus <= 599 ? { httpStatus: leanStatus.httpStatus } : {}),
+    ...(typeof leanStatus.errorCategory === "string" && leanStatus.errorCategory ? { errorCategory: leanStatus.errorCategory } : {}),
   };
   if (!parsedLeanStatus.ok && !parsedLeanStatus.reason) throw new Error("Unavailable leanStatus needs a reason.");
   const digestRecords = list(value.digestRecords, "digestRecords").map((record) => {

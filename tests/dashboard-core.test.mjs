@@ -103,6 +103,43 @@ test("accepts a canonical v3 artifact with shared lean and chart content", () =>
   assert.equal(snapshot.charts[0].bars.length, 5);
 });
 
+test("preserves safe diagnostics for an unavailable Gemini lean", () => {
+  const parsed = parseDashboardSnapshot({
+    ...validSnapshot,
+    schemaVersion: 3,
+    artifactKind: "digest",
+    artifactId: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    scheduledFor: "2026-08-09T06:45:00Z",
+    producer: { generatedAt: "2026-08-09T06:45:00Z" },
+    digestRecords: [{ code: "1150", name: "Alinma Bank", lean: { unavailable: "model call failed (ClientError)" } }],
+    leanStatus: {
+      ok: false,
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+      reason: "model call failed (ClientError)",
+      errorType: "ClientError",
+      httpStatus: 404,
+      errorCategory: "not_found",
+    },
+    charts: [],
+    summary: ["legacy line"],
+    top10: { proposalId: "top10-2026-08-09", status: "draft", researchedAt: "2026-08-09T06:45:00Z", entries: [] },
+    portfolio: { confirmedAt: "2026-08-09T06:45:00Z", cashSar: 0, contributionMonth: null, holdings: [], proposal: null },
+    alerts: [],
+    forecast: { status: "unavailable", asOf: "2026-08-09", reason: "Validation gates not passed." },
+  });
+
+  assert.deepEqual(parsed.leanStatus, {
+    ok: false,
+    provider: "gemini",
+    model: "gemini-2.5-flash",
+    reason: "model call failed (ClientError)",
+    errorType: "ClientError",
+    httpStatus: 404,
+    errorCategory: "not_found",
+  });
+});
+
 test("rejects a v3 artifact without a SHA-256 identity", () => {
   assert.throws(() => parseDashboardSnapshot({ ...validSnapshot, schemaVersion: 3, artifactKind: "digest", artifactId: "not-an-id" }), /artifactId/i);
 });
