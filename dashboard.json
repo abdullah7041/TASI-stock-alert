@@ -1,7 +1,7 @@
 {
   "alerts": [],
   "artifactKind": "digest",
-  "asOf": "2026-08-24T13:15:26Z",
+  "asOf": "2026-08-24T13:31:18Z",
   "changed": [],
   "charts": [],
   "dataStatus": "delayed-daily",
@@ -677,7 +677,7 @@
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE5meHctM19IV3ZjMC1ITjVScDdFV1JiSUE1Q18xbGw1X1JTMjVfSkh5em9hN1A2YklMbVVOOGh1bmt1LUFIWkdER21SVDhfamE3dXR6dlI1b1U3ZXBmWUE?oc=5",
-            "published": "Tue, 19 Mar 2024 07:00:00 GMT",
+            "published": "Sat, 10 Sep 2022 07:00:00 GMT",
             "title": "4260 Stock Price and Chart — TADAWUL:4260 - TradingView"
           },
           {
@@ -1036,6 +1036,11 @@
       "news": {
         "headlines": [
           {
+            "link": "https://news.google.com/rss/articles/CBMieEFVX3lxTE5IY2NLcDR2NmhTNjQzZVdXSnkwOHhnRzFLczZHTGlzalZYcFNkZzJzekNKZy11LUg4OUlESDhKUHVaRXJ0amc1STFoVW9NXzJqUkJPa3lnVHBsSkRfQlZabVRFSUoyRllrZEZtTUtIVVBoWlNCNm9wOA?oc=5",
+            "published": "Tue, 28 Jul 2026 16:15:40 GMT",
+            "title": "SAL Saudi Logistics Services Company Revenue Breakdown – TADAWUL:4263 - TradingView"
+          },
+          {
             "link": "https://news.google.com/rss/articles/CBMi7wFBVV95cUxNQVc4b2YyUVlDSUN4MTh4TlZCZ2tNNWdIZkZoRVI5VjNTTm9ZblhGbnFmekIzdklSclV6NDFZQUotRXNGVUxYbFJuYlhQYlp4b0lsSW4ta0U4ay1MWkM5cHRYMm9KRzJkV1ZPRjhoczNkSE9YTkZyQ3YxbTdXTjd0cFFFbjhnSmxXQXFBR1ByT3dmQTB5ekhIWmFkYzRoRUhhQV9Wbi1maGZnMktBYTd5di03ZWlneE1JaUZqTkxtUy1VYTRRNG9lU3hGOENnbGEwNV9MMFh1dFprYWx1WW1PY1NsM1ljZk1xM19wR2ZWONIB9AFBVV95cUxQelpMbUVtNHlFZ2RSX1RzSmtCd3BuaHdZX3Voek5jOVozNEpidGJiUHhqdmRLWWlHUVBxbnlwNG1Wb0s2YkZ6VEhnbEsyRG5QczRSUXN1OE5uTzNVWjFRaWVJVE9LZ3EtQ0NfM2E0RFh4MW5DX1RzWlY0UTNnNHBRUGhiWm51b3BFMEpqeXdWeW9RNnhlZnNGVUJuVlRhckt6ZXplWFh2R0JIWDFqMHdrSlZjY2JGbU5LVzJad1VDU1NHWmViSnhtRFlpU1gwR1FZU3E2YW9rSG1nWjZSVTRGYlRvTk9rbUx5RXoxZDNJZnRxaWVX?oc=5",
             "published": "Mon, 03 Aug 2026 07:00:00 GMT",
             "title": "Don't Race Out To Buy SAL Saudi Logistics Services Company (TADAWUL:4263) Just Because It's Going Ex-Dividend - simplywall.st"
@@ -1044,11 +1049,6 @@
             "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxONWhTMkYzX3JqV0ktSVFsQjdheDI4Y3R3MXRubVJrelpXZkJPOXdsZERMM2VIUWtoQXV6VlFHXzNJOVhNcmx3RVZMWmR6ckVlWTJDUm1NYnJRUkZfdXVrMWFOUVJzSldCZUFOMm9Rb3lvNVRXTnRNVFRzMlNySnkzSmdCS2hNQ29jd0pPT0dTRXJHUGp3eW1YWWxLNnZDZmZEOWFuenNPS2pXc2ZDNjlSWnI2RHZORnRORHhBaFpQc0dpbTNq?oc=5",
             "published": "Mon, 20 Jul 2026 07:00:00 GMT",
             "title": "Saudi Arabia stocks higher at close of trade; Tadawul All Share up 0.23% - Investing.com"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE1VRXFfY0dVRXV0YzJOYnp3RU4xQzh3ZkdFbFJURENqMXA4aUF0dVlTcmF4OWt4V2JkdlBjeVh0eG1ZUUJSUHp5VEluM2Ntd09BOHdkMm1UZVhHczk3Rmc?oc=5",
-            "published": "Wed, 01 Nov 2023 08:49:40 GMT",
-            "title": "SAL Stock Price and Chart — TADAWUL:4263 - TradingView"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMi7wFBVV95cUxPLTFUNi1YYWFLMC1fMElQeVFrbmJVNTJSeW9QWUVnYWFGZnNiN2xWY0RBYVU2Z2FaaW9fdEZpNmNVZlhRZlMtcGNvaFRndjJLM2wtTXIwTEV5dWFIVHVLSFl0MjNORk4yNENCZ0RDMjJDeUtaYnZSOXFIc2pvQ0xJTDFZMmxUdHRxNFhYU09NNnBSaVItQTBnWVduRW9DUXpfRWpUSG8wLThqb0NWUUJGbFZHWmRQMFprTWtiOXY5ZDJhdmVFMDNPR1RfVVVWSXBhNGhzX2lwdkhZVzNJRV9ZeXY5VVFCZEgwTndaQUNMZ9IB9AFBVV95cUxNS0hlQ3Q0OW5rU3VvaW5WWGtEUWJhc0tGZ1JkOGpHaF9VaXM1Rlc0ZVRycjBBTDZZbm5QWjBMNG81cENHYThzaDBybS1lN0xaamNBR0JuMElPMGZQQ1U1dVRyTzZWc1BJZFVlaTRsYVo5MmV3LTlhOFd6UGs5WDgzWmF4VmFHdEQxUzd3RXhVbm9MejBIRHcwNG5nNTlRV1V2cUZKUGR1ZUZ6NjJORWJWSnplSzFHSUJGUXdkQWk1cUxGRmU0Q2Z6SWZkVzZtZzFBS1Zib3hzbktGMGZmNnM0UWVwTHdfOThJU2QtWmthLTBrWHpS?oc=5",
@@ -1061,6 +1061,11 @@
             "title": "Saudi Arabia shares higher at close of trade; Tadawul All Share up 0.23% - Investing.com UK"
           },
           {
+            "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE1VRXFfY0dVRXV0YzJOYnp3RU4xQzh3ZkdFbFJURENqMXA4aUF0dVlTcmF4OWt4V2JkdlBjeVh0eG1ZUUJSUHp5VEluM2Ntd09BOHdkMm1UZVhHczk3Rmc?oc=5",
+            "published": "Wed, 01 Nov 2023 08:49:40 GMT",
+            "title": "SAL Stock Price and Chart — TADAWUL:4263 - TradingView"
+          },
+          {
             "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTE9LSVZpc05XQlpxdDFtS1pfWHhOekJJaXJlUTBCMDRNSzc5R1dXQWs4YkdoX0c3OEt0U29nZm1jbW5YcmE2UEF3TGdFLU9iRW5OUzhXQ2dwWXJDUk5hTHBXdlBlbGh1aFo4U1E?oc=5",
             "published": "Mon, 30 Oct 2023 07:00:00 GMT",
             "title": "SAL Logistics to debut on Tadawul on Nov. 1 - ارقام"
@@ -1069,11 +1074,6 @@
             "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNSEVBcG03RzVLYlQ2WTZRcFVtYk1YQlotTlZwbUlLS3J3UzdYRDMtM0M4cUwwMkZGRmhLOTNBNnBiVThWby0xRUJoM0pLeDZFbW5aQ1gyTTNoYVFzTWxXYy1jRWxWMUVZa0R3Z20xejBwVEhjeHVnVlhoWXdRSHJkU3NoRFRtSXNYZ1FUOUp5Y3h4Wmc?oc=5",
             "published": "Fri, 06 Oct 2023 07:00:00 GMT",
             "title": "Saudi Arabia’s SAL Logistics gets $49bn in orders for IPO - Gulf Business"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMihwFBVV95cUxPNkQtVHg1Q2NTNS1jRUdsdlFJd1U3dFBEY1JOQ0NEREpMdUhYaDBGVEJXVHZvblByZDE5cXYwVGl1VnNzSk9pUlQ0ZHAyTG5YQkgxTXlEQXVNd0d5N2FaV29jRlM3bE5scFFYNXhaX3lhNE9CT0lpMWw4VWw4eGFXSU94OWRDemc?oc=5",
-            "published": "Sat, 28 Dec 2024 07:24:21 GMT",
-            "title": "SAL company-actions | 4263 | TADAWUL | TASI - ارقام"
           }
         ],
         "label": "positive",
@@ -1274,12 +1274,12 @@
   "leanStatus": {
     "ok": false,
     "provider": "gemini",
-    "reason": "Gemini is only generated for the pre-open digest."
+    "reason": "Gemini is not run for a Top 10 review."
   },
   "monthlyBudgetSar": 500.0,
   "portfolio": {
     "cashSar": 0.0,
-    "confirmedAt": "2026-08-24T13:15:26Z",
+    "confirmedAt": "2026-08-24T13:31:18Z",
     "contributionMonth": null,
     "holdings": [
       {
@@ -1304,12 +1304,12 @@
     "proposal": null
   },
   "producer": {
-    "generatedAt": "2026-08-24T13:15:26Z"
+    "generatedAt": "2026-08-24T13:31:18Z"
   },
   "qualified": [],
   "regime": "unknown",
   "researchCount": 10,
-  "scheduledFor": "2026-08-24T12:15:00Z",
+  "scheduledFor": "2026-08-24T12:30:00Z",
   "schemaVersion": 3,
   "summary": [
     "No confirmed trade requires action.",
@@ -1340,21 +1340,21 @@
         "text": "Forecast unavailable: validation gates not passed."
       }
     ],
-    "generatedAt": "2026-08-24T13:15:26Z",
-    "latenessMinutes": 60,
-    "scheduledFor": "2026-08-24T12:15:00Z",
+    "generatedAt": "2026-08-24T13:31:18Z",
+    "latenessMinutes": 61,
+    "scheduledFor": "2026-08-24T12:30:00Z",
     "version": 1
   },
   "top10": {
     "entries": [],
-    "proposalId": "top10-2026-08-23-evidence-pending",
-    "researchedAt": "2026-08-23T13:10:59Z",
+    "proposalId": "top10-2026-08-24-evidence-pending",
+    "researchedAt": "2026-08-24T13:31:18Z",
     "status": "draft"
   },
   "top10Review": {
     "entries": [],
-    "proposalId": "top10-2026-08-23-evidence-pending",
-    "researchedAt": "2026-08-23T13:10:59Z",
+    "proposalId": "top10-2026-08-24-evidence-pending",
+    "researchedAt": "2026-08-24T13:31:18Z",
     "status": "draft"
   },
   "tradeDate": "2026-08-24",
@@ -1363,5 +1363,5 @@
     "Market regime unavailable: the index (^TASI.SR) returned 1 usable bars this run, so no regime could be computed.",
     "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."
   ],
-  "artifactId": "sha256:1b7cf93dbee581368abe24b2936c9b09476f5321419c0609f4a4489c41595d97"
+  "artifactId": "sha256:e47d5b16d12cbf700192834b0f41afe4f196c8d2bca49b2909505dac10fcb4a3"
 }
