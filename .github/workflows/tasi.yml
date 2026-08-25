@@ -129,6 +129,38 @@ jobs:
               target.unlink()
           PY
 
+      - name: Load the confirmed portfolio for producer
+        # What you own and what you have spent are recorded by you, in the
+        # cockpit ledger. Fetched the same fail-soft way as the Top 10: a failed
+        # read leaves no file, and main.py falls back to config.py rather than
+        # reporting that you own nothing.
+        if: contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          rm -f portfolio_active.json
+          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ]; then
+            echo "cockpit tokens absent; using config.py holdings"
+            exit 0
+          fi
+          if ! curl --fail --silent --show-error \
+              -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
+              -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+              https://tasi-action-cockpit.busaud7041.chatgpt.site/api/portfolio/current \
+              > .portfolio-current.json; then
+            echo "portfolio read failed; using config.py holdings"
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path(".portfolio-current.json").read_text(encoding="utf-8"))
+          if isinstance(payload, dict) and isinstance(payload.get("view"), dict):
+              Path("portfolio_active.json").write_text(
+                  json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+          PY
+
       - name: Run
         id: run
         # State must survive a delivery failure. The final step restores the

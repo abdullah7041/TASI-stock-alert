@@ -542,6 +542,14 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
             embed["fields"].append(_field(
                 "Size", f"{sizing['shares']} sh x {price:.2f} = **{sizing['spend']} SAR** "
                         f"({sizing.get('budget_left_after')} SAR left this month)"))
+        elif sizing and sizing.get("skip"):
+            # A skipped buy must say WHY it was skipped and when that changes.
+            # "no size" beside a qualifying name otherwise reads as the engine
+            # disagreeing with its own call.
+            embed["fields"].append(_field(
+                "Size", f"Not sized — {sizing['skip']}."
+                        + (f" Resets {explain.next_budget_reset()}."
+                           if "budget" in sizing["skip"] else "")))
 
     news_lines = _fmt_news(rec.get("news") or {}, today=current_day)
     embed["fields"].append(_field(

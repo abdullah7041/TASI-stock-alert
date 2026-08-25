@@ -3,6 +3,10 @@ function finitePositive(value, field) {
   return value;
 }
 
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
 function wholeShares(value) {
   if (!Number.isInteger(value) || value <= 0) throw new Error("shares must be positive whole shares.");
   return value;
@@ -23,9 +27,16 @@ export function foldPortfolio(events) {
     if (event.kind === "contribution") {
       if (!/^\d{4}-\d{2}$/.test(event.month ?? "")) throw new Error("contribution month is required.");
       if (contributions.has(event.month)) throw new Error("duplicate monthly contribution.");
-      if (event.cashSar !== 500) throw new Error("contribution must be exactly 500 SAR.");
+      // Was pinned to exactly 500. That made a month where a different sum went
+      // in unrecordable, which is not a rule -- it is the ledger refusing to
+      // describe what happened. The monthly CAP still lives in config.BUDGET and
+      // is enforced where budgets are decided, not here where facts are stored.
+      const contributed = event.cashSar ?? 500;
+      if (typeof contributed !== "number" || !Number.isFinite(contributed) || contributed <= 0) {
+        throw new Error("contribution must be a positive amount.");
+      }
       contributions.add(event.month);
-      cashSar += 500;
+      cashSar += contributed;
       continue;
     }
     if (event.kind === "cash_adjustment") {
@@ -41,17 +52,30 @@ export function foldPortfolio(events) {
     const priceSar = finitePositive(event.priceSar, "priceSar");
     const feesSar = event.feesSar ?? 0;
     if (typeof feesSar !== "number" || !Number.isFinite(feesSar) || feesSar < 0) throw new Error("feesSar must not be negative.");
-    const holding = holdings.get(event.code) ?? { code: event.code, name: event.name, shares: 0 };
+    const holding = holdings.get(event.code)
+      ?? { code: event.code, name: event.name, shares: 0, avgCostSar: 0, realisedSar: 0 };
     if (event.kind === "buy") {
       const spend = shares * priceSar + feesSar;
       if (spend > cashSar + 1e-9) throw new Error("buy exceeds confirmed cash.");
       cashSar -= spend;
+      // Weighted average cost, fees included because they are part of what the
+      // position actually cost. Without this the ledger knew how many shares you
+      // held and not what you paid, so profit and loss could not come from it --
+      // which is why config.py carried a hand-maintained avg_cost, recomputed by
+      // hand on every top-up.
+      const priorCost = holding.avgCostSar * holding.shares;
       holding.shares += shares;
+      holding.avgCostSar = round2((priorCost + spend) / holding.shares);
       holdings.set(event.code, holding);
     } else {
       if (shares > holding.shares) throw new Error("sell exceeds confirmed holding.");
+      const proceeds = shares * priceSar - feesSar;
+      // Average cost is unchanged by a sale: selling part of a position does not
+      // alter what the remainder cost. The gain is booked separately so it stays
+      // visible after the shares are gone.
+      holding.realisedSar = round2(holding.realisedSar + proceeds - shares * holding.avgCostSar);
       holding.shares -= shares;
-      cashSar += shares * priceSar - feesSar;
+      cashSar += proceeds;
       if (holding.shares === 0) holdings.delete(event.code); else holdings.set(event.code, holding);
     }
   }

@@ -50,6 +50,8 @@ SYMBOLS_FILE = HERE / "symbols.json"
 LEVELS_FILE = HERE / "levels.json"
 STATE_FILE = HERE / "state.json"
 BUDGET_FILE = HERE / "budget_state.json"
+# Fetched per run from the cockpit by the workflow, like top10_active.json.
+PORTFOLIO_FILE = HERE / "portfolio_active.json"
 HISTORY_FILE = HERE / "history.json"
 DASHBOARD_FILE = HERE / "dashboard.json"
 TOP10_FILE = HERE / "top10_draft.json"
@@ -98,12 +100,71 @@ def _month_key() -> str:
     return time.strftime("%Y-%m")
 
 
-def _budget_remaining() -> float:
-    """Monthly cap minus what has already been RECOMMENDED this calendar month.
-    Edit budget_state.json by hand if you skipped a recommended buy."""
+def _portfolio_ledger() -> dict | None:
+    """The confirmed portfolio, as recorded by you, or None when unavailable.
+
+    Written by the workflow from the cockpit's authenticated read, in the same
+    way top10_active.json already is. Shape:
+
+        {"view": {"cashSar": float, "holdings": [...], "contributionMonth": str},
+         "spentThisMonthSar": float, "month": "YYYY-MM"}
+
+    None means the fetch did not happen or the file is unusable -- never that
+    the portfolio is empty. Callers fall back to config.py, so a bad deploy
+    cannot make your holdings vanish from the morning digest.
+    """
+    value = _load(PORTFOLIO_FILE, None)
+    if not isinstance(value, dict) or not isinstance(value.get("view"), dict):
+        return None
+    return value
+
+
+def _holdings() -> list[dict]:
+    """What you own, ledger first, config.py as the backstop.
+
+    config.HOLDINGS was the only source and it is hand-edited: recording that
+    you bought 20 more shares meant editing Python and recomputing a weighted
+    average cost yourself. The ledger does that arithmetic; this is where it
+    takes over, without ever leaving the digest with nothing to report.
+    """
+    ledger = _portfolio_ledger()
+    holdings = ((ledger or {}).get("view") or {}).get("holdings") or []
+    if not holdings:
+        return list(cfg.HOLDINGS)
+    return [
+        {"code": str(item["code"]), "name": str(item.get("name") or item["code"]),
+         "shares": int(item.get("shares") or 0),
+         "avg_cost": float(item.get("avgCostSar") or 0.0)}
+        for item in holdings if int(item.get("shares") or 0) > 0
+    ]
+
+
+def _budget_spent_this_month() -> float:
+    """What you have actually SPENT this calendar month.
+
+    This used to be what the engine had *recommended*, read from
+    budget_state.json -- so a suggestion you ignored still consumed your budget,
+    and the documented remedy was editing that file by hand (README, "Monthly
+    buy budget"). Recommendations are not purchases. The ledger knows the
+    difference because you tell it.
+    """
+    ledger = _portfolio_ledger()
+    if ledger is not None and ledger.get("month") == _month_key():
+        return max(0.0, float(ledger.get("spentThisMonthSar") or 0.0))
+    # No ledger yet: fall back to the old recommendation ledger rather than
+    # reporting a full budget that may already be spent.
     state = _load(BUDGET_FILE, {})
-    spent = float(state.get(_month_key(), {}).get("spent", 0.0))
-    return max(0.0, cfg.BUDGET["monthly_budget_sar"] - spent)
+    return float(state.get(_month_key(), {}).get("spent", 0.0))
+
+
+def _budget_remaining() -> float:
+    """Monthly cap minus what you have actually spent this calendar month.
+
+    Fresh cap every month: unspent budget does not roll over. The ledger's cash
+    balance does carry forward, because that is a true statement about money --
+    but the CAP is a spending rule, and it resets.
+    """
+    return max(0.0, cfg.BUDGET["monthly_budget_sar"] - _budget_spent_this_month())
 
 
 # --- symbol verification ----------------------------------------------------
@@ -207,7 +268,7 @@ def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) 
         return None
     candidates = {item.get("code"): item for item in (scanner_result or {}).get("candidates", [])}
     reads = {item.get("code"): item for item in recs}
-    owned = {item["code"] for item in cfg.HOLDINGS}
+    owned = {item["code"] for item in _holdings()}
     scored = []
     for symbol, evidence in records.items():
         candidate = candidates.get(symbol, {})
@@ -344,8 +405,9 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         warnings.append("Top 10 draft unavailable: no current primary-source evidence has been reviewed yet.")
     holdings = [
         {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
-        for item in cfg.HOLDINGS
+        for item in _holdings()
     ]
+    ledger_view = ((_portfolio_ledger() or {}).get("view") or {})
     snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
                 "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
                 "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
@@ -353,7 +415,13 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
                 "earlyMovers": early_movers,
                 "indexUnavailable": bool((scanner_result or {}).get("indexUnavailable")),
                 "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
-                "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
+                # cashSar and contributionMonth were hardcoded 0.0/None, so the
+                # cockpit could only ever say "0.00 SAR cash" no matter what the
+                # ledger held. They come from the ledger now when there is one.
+                "portfolio": {"confirmedAt": (ledger_view.get("confirmedAt") or generated_at),
+                              "cashSar": float(ledger_view.get("cashSar") or 0.0),
+                              "contributionMonth": ledger_view.get("contributionMonth"),
+                              "holdings": holdings, "proposal": None},
                 "alerts": alerts or [], "forecast": _forecast(generated_at)}
     if top10_review is not None:
         snapshot["top10Review"] = top10_review
@@ -403,9 +471,9 @@ def mode_discord_smoke() -> int:
 
 
 def mode_suggest() -> int:
-    dat.get_histories([x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST],
+    dat.get_histories([x["code"] for x in _holdings() + cfg.WATCHLIST],
                       cfg.TECH["history_period"])  # one batch; loop reads cache.
-    for item in cfg.HOLDINGS + cfg.WATCHLIST:
+    for item in _holdings() + cfg.WATCHLIST:
         code = item["code"]
         df = _load_history(code)
         if df.empty:
@@ -421,9 +489,9 @@ def mode_suggest() -> int:
 
 def mode_autolevels() -> int:
     out = _load(LEVELS_FILE, {})
-    dat.get_histories([x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST],
+    dat.get_histories([x["code"] for x in _holdings() + cfg.WATCHLIST],
                       cfg.TECH["history_period"])  # one batch; loop reads cache.
-    for item in cfg.HOLDINGS + cfg.WATCHLIST:
+    for item in _holdings() + cfg.WATCHLIST:
         code = item["code"]
         df = _load_history(code)
         if df.empty or len(df) < cfg.TECH["min_history_bars"]:
@@ -463,7 +531,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     requests), levels.json loaded once (was once per name).
     """
     index_code = cfg.REGIME["index_code"]
-    all_codes = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST] + [index_code]
+    all_codes = [x["code"] for x in _holdings() + cfg.WATCHLIST] + [index_code]
     hist = dat.get_histories(all_codes, cfg.TECH["history_period"])
 
     idx = hist.get(index_code)
@@ -505,7 +573,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
         print(_DATA_WARNING)
 
     stored_levels = _load(LEVELS_FILE, {})
-    verify = _verify_symbols(cfg.HOLDINGS + cfg.WATCHLIST)
+    verify = _verify_symbols(_holdings() + cfg.WATCHLIST)
 
     news_by_code = {}
     if include_news:
@@ -519,7 +587,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
                 return w["code"], newsmod.NewsResult(query="", ok=False)
 
         with ThreadPoolExecutor(max_workers=8) as ex:
-            news_by_code = dict(ex.map(_fetch, cfg.HOLDINGS + cfg.WATCHLIST))
+            news_by_code = dict(ex.map(_fetch, _holdings() + cfg.WATCHLIST))
 
         for code, result in news_by_code.items():
             newsmod.archive_headlines(code, result)
@@ -528,7 +596,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
 
     unverified = []
     recs = []
-    for h in cfg.HOLDINGS:
+    for h in _holdings():
         df = hist.get(h["code"])
         if df is None or df.empty:
             continue
@@ -575,7 +643,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     # them from what is left of this month's budget.
     buys = [r for r in recs if r["action"] == "BUY"]
     budget_summary = az.allocate_budget(buys, _budget_remaining(),
-                                        current_positions=len(cfg.HOLDINGS),
+                                        current_positions=len(_holdings()),
                                         max_positions=cfg.RISK["max_positions"])
     budget_summary["monthly_cap"] = cfg.BUDGET["monthly_budget_sar"]
     budget_summary["unverified"] = unverified
@@ -1029,7 +1097,7 @@ def _backtest_codes() -> list:
         return codes
     print("universe.json missing — falling back to config names only. "
           "Run MODE=universe first for a tunable sample size.")
-    return [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST]
+    return [x["code"] for x in _holdings() + cfg.WATCHLIST]
 
 
 def mode_universe() -> int:
@@ -1135,7 +1203,7 @@ def mode_intraday_probe() -> int:
     """
     import yfinance as yf
 
-    codes = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST] + [cfg.REGIME["index_code"]]
+    codes = [x["code"] for x in _holdings() + cfg.WATCHLIST] + [cfg.REGIME["index_code"]]
     attempts = [("5m", "5d"), ("15m", "5d"), ("15m", "1mo"), ("60m", "1mo")]
     results = []
     for code in codes:

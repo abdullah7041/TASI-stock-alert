@@ -832,7 +832,7 @@ def test_allocate_skips_share_pricier_than_budget():
 def test_allocate_zero_budget_skips_all():
     buys = [_buy("A", 10.0)]
     az.allocate_budget(buys, 0.0)
-    assert buys[0]["sizing"]["skip"] == "monthly budget exhausted"
+    assert buys[0]["sizing"]["skip"] == "no budget left this month"
 
 def test_allocate_budget_caps_at_max_positions_counting_existing_holdings():
     buys = [{"code": "A", "price": 10.0}, {"code": "B", "price": 10.0},
@@ -2714,6 +2714,46 @@ def test_holdings_and_watchlist_are_visibly_separated():
     assert any("WATCHING" in t for t in titles)
     # One holding is a holding, not "1 HOLDINGS".
     assert not any("1 HOLDINGS" in t for t in titles)
+
+
+def test_an_unsized_buy_still_says_why_and_until_when():
+    """A qualifying name with no size must not read as the engine changing its mind."""
+    rec = _embed_rec(kind="watchlist", action="BUY")
+    rec["sizing"] = {"shares": 0, "spend": 0.0, "skip": "no budget left this month"}
+    blob = json.dumps(nt.build_name_embed(rec))
+    assert "no budget left this month" in blob
+    assert "Resets" in blob
+
+
+def test_budget_counts_purchases_not_recommendations(monkeypatch, tmp_path):
+    """A suggestion you ignored must not consume your budget.
+
+    budget_state.json recorded what the engine RECOMMENDED, so a name it sized
+    and you skipped still ate the month -- and the documented remedy was editing
+    that file by hand. The ledger records what you actually bought.
+    """
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0},
+         "spentThisMonthSar": 180.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    assert main._budget_spent_this_month() == 180.0
+    assert main._budget_remaining() == cfg.BUDGET["monthly_budget_sar"] - 180.0
+
+
+def test_holdings_fall_back_to_config_when_the_ledger_is_unreachable(monkeypatch):
+    """A failed fetch must never read as "you own nothing"."""
+    monkeypatch.setattr(main, "_load", lambda _p, default=None: default)
+    assert [h["code"] for h in main._holdings()] == [h["code"] for h in cfg.HOLDINGS]
+
+
+def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [{"code": "1303", "name": "EIC", "shares": 124,
+                                "avgCostSar": 12.84}], "cashSar": 40.0},
+         "spentThisMonthSar": 0.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    holdings = main._holdings()
+    assert holdings == [{"code": "1303", "name": "EIC", "shares": 124, "avg_cost": 12.84}]
 
 
 def test_early_movers_reach_the_reader_at_all():

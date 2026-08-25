@@ -28,6 +28,8 @@ Three rules this module keeps
 
 from __future__ import annotations
 
+from datetime import date
+
 # --- tones ------------------------------------------------------------------
 # Four states a reader can act on, and one for absent data. Deliberately fewer
 # than the engine's action vocabulary: SELL (STOP) and SELL (TARGET) are the
@@ -283,3 +285,14 @@ EARLY_MOVERS_CAVEAT = (
     "owned or sized. Two conditions are measured; the rest were tested and "
     "dropped for not working. You decide._"
 )
+
+
+def next_budget_reset(today: date | None = None) -> str:
+    """When the monthly cap refills, said as a date rather than "next month".
+
+    The budget is a fresh amount each calendar month; unspent does not carry.
+    A reader told "no budget left" needs to know how long that lasts.
+    """
+    current = today or date.today()
+    year, month = (current.year + 1, 1) if current.month == 12 else (current.year, current.month + 1)
+    return date(year, month, 1).strftime("%-d %b")

@@ -243,7 +243,17 @@ Config codes are hand-entered, and a wrong code silently resolves to a real but 
 
 ## Monthly buy budget
 
-`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them **equally**, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
+`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them **equally**, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash.
+
+**The budget counts what you bought, not what was suggested.** It used to count recommendations, recorded in `budget_state.json` — so a name the engine sized and you ignored still consumed the month, and the documented fix was to edit that JSON by hand. Purchases now come from the confirmed portfolio ledger, which you write by recording a trade. `budget_state.json` remains only as the fallback for runs made before any ledger exists.
+
+The cap is **fresh every calendar month**; unspent budget does not roll over. The ledger's cash balance *does* carry forward, because that is a true statement about money — but the cap is a spending rule, and it resets on the 1st.
+
+When the cap is reached, a qualifying name still appears with its full reasoning and its trigger price, marked `Not sized — no budget left this month. Resets 1 Sep.` — the same pattern `max_positions` already uses. Hiding a setup because of an accounting rule is how you miss the one that was building all month.
+
+### What you own
+
+`config.HOLDINGS` is the **opening balance**, not the running total. Once the ledger has entries it becomes authoritative: shares and weighted average cost are maintained from the buys and sells you record, including topping up a position you already hold. If the ledger cannot be read, the digest falls back to `config.py` — a failed fetch must never read as "you own nothing".
 
 ## Validation (does any of this actually work?)
 
