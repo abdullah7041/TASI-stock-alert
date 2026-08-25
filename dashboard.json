@@ -1,7 +1,7 @@
 {
   "alerts": [],
   "artifactKind": "digest",
-  "asOf": "2026-08-25T13:13:27Z",
+  "asOf": "2026-08-25T13:29:30Z",
   "changed": [],
   "charts": [],
   "dataStatus": "delayed-daily",
@@ -297,11 +297,6 @@
             "title": "Jamjoom Pharma sees a surge in its profits and its stock rises sharply at the start of today's trading - المتداول العربي"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiiwJBVV95cUxOY0d2REVJdmdkdUJxbUY4OFdLZmxrOUhvSHpzQW5JdG4zc2VRVnpwWDBzVkw0Rks2bW5hQXdyVE5ILVZiYkVEc3FoNUR1M2t6anY3Q3ZEemV4SEtmcVhSTFVmemJneFp3QkhZVExmWnBqWUs2UkptZHAxX2NXaVdySmRfaHBzUVU0WE5rSXJjZVJ4NWtYSDI1S1N4SFRFRTQ5ZlNVWGpWZ3E3WEwzUlRnNVpzTkdIZFhqNmFqc21kQzZiUEY0cTNNUHJsZUlWZEpjRjRyNTI3SEd2UXBodUNfbDM2Q1hjcWZTYlVReWlZV2U5WDY2UEFOYmUtX2pwOElZZnhqZUQ4Y3UxU1HSAZACQVVfeXFMT0w4UFBpdm5jYmpzTTVhejc3Y1NMRUFtcS1zMnBEaGt1Q0xYMVltQjBvTTRoUVlxNzAxT2hTT3J0YlZaRVFxRVIxWTVxcEhKUEQwVEptckgwTU5VRjh6YVJJTFc4T0IyM2JhX3drc3JjNHBzUkpFWS1yRVFQcXlqMmRCSGpmNFRXdElxazRVWVZUamJ5ZlFhT0pzaUdCd0FrNE82MTlSNW05Z3FCalhVcHFaUmM3MWMyUy1KQllJRlNwQkZtUTR4Y01wRmpXbUZlY2Fhc18zS1ktS2N1N1VxdjZKdjZIUGV3UlBjMUVIeW1KYTNMTzlITXV5TGNib3ZLczR2SnEybkk4ZmkxVHpLNnI?oc=5",
-            "published": "Mon, 27 Jul 2026 07:00:00 GMT",
-            "title": "Idorsia advances global rollout of QUVIVIQ with Jamjoom Pharma partnership in Saudi Arabia and the Levant - The Manila Times"
-          },
-          {
             "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTFA0eWI1WExoc19yRE5XVEpYbENOdGhrcGViNm9PaGhtemM2X2tfVktNOWt5MFdkYkdKWmZreTFBbGZMMmNrbnowNFdKNHlBaEVPQzg2dXc4Qi05Qi1lcEVYcC1JYXhtWHRNWFJYNw?oc=5",
             "published": "Tue, 18 Jul 2023 20:10:52 GMT",
             "title": "Technical Analysis of Jamjoom Pharmaceuticals Factory Co. (TADAWUL:4015) - TradingView"
@@ -310,6 +305,11 @@
             "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxQV1Bfa1JFYlo2WmlkSzRJeXFoMWVpTmt5eWhRZkRDdUU3alBhVnhUT2NJMGRFcGgxN0hzLWtlejV4aHJfT1FMS1pDZU90YXpqQVFnNlBhTzI0MFRoS1ZLUTYtbGhtQU9iT1pPUVNzUGV5Zk9SN0gyRTRKRHduVkRCclI5MA?oc=5",
             "published": "Wed, 03 Jan 2024 08:00:00 GMT",
             "title": "Tarek Youssef Hosni - Forbes Middle East"
+          },
+          {
+            "link": "https://news.google.com/rss/articles/CBMifkFVX3lxTE85WWQwb1k4WFJZOEpJdU5sb3J4V1llUlVIUDNHdmZ1TjYxbnZES3cteUxGMWVsVU02NTQ1eTM2SmR0dkJRcEN0Q3J6aGhaOElyOUYzeVIwODh1R3JLV0hMckZDZE9GS0N5RjlYdTBCSlI3d2tMZVJHQ3V1T0VtZw?oc=5",
+            "published": "Fri, 05 May 2023 00:34:14 GMT",
+            "title": "JAMJOOM PHARMA shareholder-history | 4015 | TADAWUL | TASI - ارقام"
           }
         ],
         "label": "positive",
@@ -1274,12 +1274,12 @@
   "leanStatus": {
     "ok": false,
     "provider": "gemini",
-    "reason": "Gemini is only generated for the pre-open digest."
+    "reason": "Gemini is not run for a Top 10 review."
   },
   "monthlyBudgetSar": 500.0,
   "portfolio": {
     "cashSar": 0.0,
-    "confirmedAt": "2026-08-25T13:13:27Z",
+    "confirmedAt": "2026-08-25T13:29:30Z",
     "contributionMonth": null,
     "holdings": [
       {
@@ -1304,12 +1304,12 @@
     "proposal": null
   },
   "producer": {
-    "generatedAt": "2026-08-25T13:13:27Z"
+    "generatedAt": "2026-08-25T13:29:30Z"
   },
   "qualified": [],
   "regime": "unknown",
   "researchCount": 10,
-  "scheduledFor": "2026-08-25T12:15:00Z",
+  "scheduledFor": "2026-08-25T12:30:00Z",
   "schemaVersion": 3,
   "summary": [
     "No confirmed trade requires action.",
@@ -1340,21 +1340,21 @@
         "text": "Forecast unavailable: validation gates not passed."
       }
     ],
-    "generatedAt": "2026-08-25T13:13:27Z",
-    "latenessMinutes": 58,
-    "scheduledFor": "2026-08-25T12:15:00Z",
+    "generatedAt": "2026-08-25T13:29:30Z",
+    "latenessMinutes": 59,
+    "scheduledFor": "2026-08-25T12:30:00Z",
     "version": 1
   },
   "top10": {
     "entries": [],
-    "proposalId": "top10-2026-08-24-evidence-pending",
-    "researchedAt": "2026-08-24T13:31:18Z",
+    "proposalId": "top10-2026-08-25-evidence-pending",
+    "researchedAt": "2026-08-25T13:29:30Z",
     "status": "draft"
   },
   "top10Review": {
     "entries": [],
-    "proposalId": "top10-2026-08-24-evidence-pending",
-    "researchedAt": "2026-08-24T13:31:18Z",
+    "proposalId": "top10-2026-08-25-evidence-pending",
+    "researchedAt": "2026-08-25T13:29:30Z",
     "status": "draft"
   },
   "tradeDate": "2026-08-25",
@@ -1363,5 +1363,5 @@
     "Market regime unavailable: the index (^TASI.SR) returned 1 usable bars this run, so no regime could be computed.",
     "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet."
   ],
-  "artifactId": "sha256:77e955dad8259bc71208312e694661f114d83df155be1dfcc5d159061b71bcbd"
+  "artifactId": "sha256:d800702e955b819fda1e9b4c325bd87e44d8e41548f146081ceb1d386354ab00"
 }
