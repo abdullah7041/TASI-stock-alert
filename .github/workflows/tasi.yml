@@ -142,6 +142,10 @@ jobs:
           # Optional. Absent, Gemini is explicitly unavailable while delayed
           # deterministic facts and Discord delivery continue normally.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TASI_LLM_PROVIDERS: ${{ vars.TASI_LLM_PROVIDERS }}
+          TASI_LLM_MODEL_OPENROUTER: ${{ vars.TASI_LLM_MODEL_OPENROUTER }}
+          TASI_LLM_MODEL_GEMINI: ${{ vars.TASI_LLM_MODEL_GEMINI }}
         run: python main.py
 
       - name: Record job telemetry

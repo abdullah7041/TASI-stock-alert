@@ -2964,8 +2964,13 @@ def test_lean_reports_gemini_provider_metadata_for_structured_takes(monkeypatch,
     assert out["_status"] == {
         "ok": True,
         "provider": "gemini",
-        "model": "gemini-2.5-flash",
+        "model": llm.GEMINI_MODEL,
         "calls_left": llm.MONTHLY_CALL_CAP - 1,
+        # OpenRouter is first in the default order and unconfigured here, so the
+        # skip is recorded rather than hidden: a fallback that silently never
+        # ran is indistinguishable from one that ran and worked.
+        "attempts": [{"provider": "openrouter",
+                      "reason": "no OPENROUTER_API_KEY configured"}],
     }
 
 
@@ -2982,10 +2987,107 @@ def test_gemini_completion_requests_a_structured_json_schema(monkeypatch):
 
     assert llm._complete("facts", api_key="key", timeout=23) == '{"takes": []}'
     assert captured["client"] == {"api_key": "key"}
-    assert captured["model"] == "gemini-2.5-flash"
+    # Never a pinned ID: gemini-2.5-flash was pinned here and began returning
+    # 404 while still listed, which is what took the lean down for good.
+    assert captured["model"] == llm.GEMINI_MODEL
+    assert llm.GEMINI_MODEL == "gemini-flash-latest"
     assert captured["config"]["response_mime_type"] == "application/json"
     assert captured["config"]["response_json_schema"] == llm.RESPONSE_SCHEMA
     assert captured["config"]["http_options"] == {"timeout": 23_000}
+
+
+def test_a_dead_provider_falls_through_to_the_next_one(monkeypatch, tmp_path):
+    """The whole point of the chain: one provider dying is not an outage.
+
+    This is the 2026-08-24 failure replayed. Back then a 404 from the only
+    provider ended the feature; now it is a reason to ask the next one.
+    """
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setattr(llm, "OPENROUTER_MODEL", "vendor/some-model")
+
+    class ClientError(Exception):
+        code = 404
+
+    def dead(*_a, **_kw):
+        raise ClientError("model retired")
+
+    monkeypatch.setattr(llm, "_complete_openrouter", dead)
+    monkeypatch.setattr(
+        llm, "_complete",
+        lambda *_a, **_kw: '{"takes":[{"code":"1303","lean":"positive",'
+                           '"confidence":"low","take":"t","drivers":[]}]}')
+
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert out["1303"]["lean"] == "positive"
+    assert out["_status"]["ok"] is True
+    assert out["_status"]["provider"] == "gemini"
+    # The dead provider is still named. A fallback that hides what it routed
+    # around cannot be debugged the next time it routes around everything.
+    assert out["_status"]["attempts"][0]["provider"] == "openrouter"
+    assert out["_status"]["attempts"][0]["httpStatus"] == 404
+
+
+def test_a_rate_limit_is_retried_before_the_chain_moves_on(monkeypatch, tmp_path):
+    """429 is the one failure a retry actually fixes."""
+    monkeypatch.setattr(llm, "BACKOFF_SECONDS", 0)
+    calls = []
+
+    class RateLimited(Exception):
+        code = 429
+
+    def flaky(*_a, **_kw):
+        calls.append(True)
+        if len(calls) == 1:
+            raise RateLimited("slow down")
+        return '{"takes":[{"code":"1303","lean":"neutral","confidence":"low","take":"t","drivers":[]}]}'
+
+    monkeypatch.setattr(llm, "_complete", flaky)
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert len(calls) == 2, "a 429 must be retried, not abandoned"
+    assert out["_status"]["ok"] is True
+
+
+def test_openrouter_is_skipped_loudly_when_it_has_no_model(monkeypatch, tmp_path):
+    """OpenRouter publishes no evergreen alias, so an unset model is a real state.
+
+    It must never fall back to a hardcoded name -- that is the exact class of bug
+    this chain exists to prevent.
+    """
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setattr(llm, "OPENROUTER_MODEL", "")
+    monkeypatch.setattr(llm, "_complete_openrouter",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(AssertionError("must not call")))
+    monkeypatch.setattr(
+        llm, "_complete",
+        lambda *_a, **_kw: '{"takes":[{"code":"1303","lean":"neutral",'
+                           '"confidence":"low","take":"t","drivers":[]}]}')
+
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert out["_status"]["provider"] == "gemini"
+    assert "TASI_LLM_MODEL_OPENROUTER" in out["_status"]["attempts"][0]["reason"]
+
+
+def test_every_provider_failing_still_names_each_one(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setattr(llm, "OPENROUTER_MODEL", "vendor/some-model")
+    monkeypatch.setattr(llm, "BACKOFF_SECONDS", 0)
+
+    class Boom(Exception):
+        code = 401
+
+    monkeypatch.setattr(llm, "_complete_openrouter",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(Boom("bad key")))
+    monkeypatch.setattr(llm, "_complete",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(Boom("bad key")))
+
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert out["_status"]["ok"] is False
+    assert [a["provider"] for a in out["_status"]["attempts"]] == ["openrouter", "gemini"]
+    assert not [k for k in out if k != "_status"], "no half-answer on total failure"
 
 
 def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
@@ -3003,7 +3105,10 @@ def test_lean_reports_safe_gemini_http_diagnostics(monkeypatch, tmp_path):
     class ClientError(Exception):
         code = 404
 
+    calls = []
+
     def boom(*_args, **_kwargs):
+        calls.append(True)
         raise ClientError("models/gemini-2.5-flash is not found for this project")
 
     monkeypatch.setattr(llm, "_complete", boom)
@@ -3013,12 +3118,20 @@ def test_lean_reports_safe_gemini_http_diagnostics(monkeypatch, tmp_path):
     assert out["_status"] == {
         "ok": False,
         "provider": "gemini",
-        "model": "gemini-2.5-flash",
+        "model": llm.GEMINI_MODEL,
         "reason": "model call failed (ClientError)",
         "errorType": "ClientError",
         "httpStatus": 404,
         "errorCategory": "not_found",
+        "attempts": [
+            {"provider": "openrouter", "reason": "no OPENROUTER_API_KEY configured"},
+            {"provider": "gemini", "reason": "model call failed (ClientError)",
+             "httpStatus": 404},
+        ],
     }
+    # A 404 is the request being wrong, not the network being flaky. Retrying it
+    # only delays the fallback, so it must be attempted exactly once.
+    assert len(calls) == 1
 
 
 def test_attach_leans_normalizes_a_failed_gemini_status_for_the_v3_artifact(monkeypatch):

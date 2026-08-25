@@ -52,9 +52,32 @@ that honest rather than merely disclaimed:
   watch, not a claim. For calibration: a naive always-positive call scores about
   54% on the history recorded so far. That is the bar it has to beat.
 
-Set `GEMINI_API_KEY` to enable it. Without the secret every name reads
-`Pre-open lean: unavailable — no GEMINI_API_KEY configured`, and every other
-field still ships. Calls are capped monthly in `llm_budget.json`.
+**Providers are a chain, not a single point of failure.** On 2026-08-24 every
+lean read `model call failed (ClientError)` with HTTP 404: Google had retired
+`gemini-2.5-flash`, and `llm.py` named that model in a constant with no retry,
+no second model and no second provider. One stale string took the whole feature
+down. Two rules came out of it:
+
+- **No hardcoded model ID that can rot.** Gemini is addressed through the
+  `gemini-flash-latest` alias, which Google hot-swaps to the current release.
+  OpenRouter publishes no such alias, so its model is *required* from the
+  environment and the provider is skipped with that stated as the reason —
+  never a silent fall back to a name that may itself have been retired.
+- **Providers are tried in order.** A fatal answer from one is a reason to ask
+  the next, not a reason to give up. Retries apply only to statuses a retry can
+  fix (429, 5xx, timeouts); a 404 or 401 moves on immediately. Every attempt,
+  including a skip, is recorded in the artifact's `leanStatus.attempts`, so
+  "why was there no lean today" is answerable without reading a log.
+
+Configure with repository **secrets** `GEMINI_API_KEY` and/or
+`OPENROUTER_API_KEY`, and repository **variables** `TASI_LLM_PROVIDERS`
+(default `openrouter,gemini`), `TASI_LLM_MODEL_OPENROUTER` (required to use
+OpenRouter — e.g. a `vendor/model` string from openrouter.ai/models) and
+`TASI_LLM_MODEL_GEMINI` (default `gemini-flash-latest`).
+
+With no key at all, every name reads `Pre-open lean: unavailable — ...` naming
+each provider and why it was skipped, and every other field still ships. Calls
+are capped monthly in `llm_budget.json`.
 
 ## What it does not do
 
@@ -95,7 +118,9 @@ News is an auditable keyword/phrase tally over free Google News headlines — wo
 2. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
    - `DISCORD_WEBHOOK_URL` = your Discord channel webhook URL.
    - `SAHMK_API_KEY` = your SAHMK Free key (optional; only used as a fallback and for the index).
-   - `GEMINI_API_KEY` = optional. Enables Gemini pre-open leans. Without it the digest ships every fact it has and each name says the lean is unavailable and why.
+   - `GEMINI_API_KEY` = optional. Enables Gemini pre-open leans (free tier).
+   - `OPENROUTER_API_KEY` = optional. Enables OpenRouter as the first provider in the chain; also set the `TASI_LLM_MODEL_OPENROUTER` variable, or it is skipped.
+   Without either, the digest ships every fact it has and each name says the lean is unavailable and why.
 3. In `config.py`, set `BUDGET["monthly_budget_sar"]` to what you are willing to commit to new buys per calendar month. It ships at 500.
 4. Commit and push. The schedule runs automatically.
 

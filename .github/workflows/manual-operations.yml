@@ -42,6 +42,11 @@ jobs:
           SCHEDULED_FOR: manual
           SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TASI_LLM_PROVIDERS: ${{ vars.TASI_LLM_PROVIDERS }}
+          TASI_LLM_MODEL_OPENROUTER: ${{ vars.TASI_LLM_MODEL_OPENROUTER }}
+          TASI_LLM_MODEL_GEMINI: ${{ vars.TASI_LLM_MODEL_GEMINI }}
         # No `continue-on-error`: a failed Discord delivery must fail the run,
         # otherwise the smoke test proves nothing.
         run: python main.py

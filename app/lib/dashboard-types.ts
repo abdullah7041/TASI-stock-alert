@@ -32,10 +32,17 @@ export type DashboardSnapshotV2 = Omit<DashboardSnapshot, "schemaVersion"> & {
 
 export type LeanStatus = {
   ok: boolean;
-  provider: "gemini";
+  // Not a literal. The producer tries providers in order and reports whichever
+  // one answered, so pinning this to "gemini" made a working fallback fail
+  // type-checking here -- the site rejecting a snapshot precisely because the
+  // producer had successfully routed around an outage.
+  provider: string;
   model?: string;
   reason?: string;
   calls_left?: number;
+  // Each provider that was tried or skipped, with why. Present when the chain
+  // did anything other than succeed first time.
+  attempts?: { provider: string; reason: string; httpStatus?: number }[];
 };
 
 export type ChartBar = { date: string; Open: number; High: number; Low: number; Close: number; Volume: number };
