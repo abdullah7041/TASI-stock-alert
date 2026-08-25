@@ -12,6 +12,8 @@ import os
 from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 
+import explain
+
 
 COCKPIT_URL = "https://tasi-action-cockpit.busaud7041.chatgpt.site"
 
@@ -323,6 +325,7 @@ def build_movement_alert_message(alerts: list[dict], as_of: str) -> str:
 # request with a 400, which would look exactly like "the bot went quiet" -- the
 # failure mode this repo already refuses everywhere else.
 EMBED_TITLE_LIMIT = 256
+EMBED_DESCRIPTION_LIMIT = 4096
 EMBED_FIELD_NAME_LIMIT = 256
 EMBED_FIELD_VALUE_LIMIT = 1024
 EMBED_FIELDS_LIMIT = 25
@@ -469,11 +472,19 @@ def _fmt_delta(delta: dict | None) -> str | None:
 
 def build_name_embed(rec: dict, *, levels: dict | None = None,
                      today: date | None = None, chart: str | None = None) -> dict:
-    """One Discord embed for one name.
+    """One Discord embed for one name: the decision first, the numbers under it.
 
-    Every field here is data the engine already computed on every run and then
-    discarded, because build_dashboard_digest renders only the four summaryV1
-    cards. Nothing new is fetched to fill this in.
+    This used to open with ten raw fields -- RSI, trend, two momentum windows,
+    three price levels, a rules-met count -- and no sentence saying what to do
+    or what would change it. Everything needed to write that sentence was
+    already in `rec`; it was simply never assembled. So the decision now leads,
+    and the same numbers follow underneath for whoever wants them. No value
+    changed, and nothing new is fetched.
+
+    Colour follows the DECISION, not the price. The left bar used to be green
+    when a name rose yesterday and red when it fell, so a BUY on a down day
+    showed red -- colour actively arguing against the call beside it. It is also
+    never the only carrier: the verdict is the first word of the title.
 
     The three-way honesty rule from _fmt_news/_fmt_disclosures is preserved
     throughout: a failed fetch, an empty result, and real content must never
@@ -483,60 +494,49 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
     delta = rec.get("delta")
     price = float(rec.get("price") or 0.0)
 
-    move = (delta or {}).get("price_pct")
-    if move is None:
-        title_move, color = "", COLOR_FLAT
-    else:
-        title_move = f"  ({move:+.1f}% today)"
-        color = COLOR_UP if move > 0 else COLOR_DOWN if move < 0 else COLOR_FLAT
-    if str(rec.get("action", "")).startswith("SELL") or rec.get("action") == "TRIM":
-        color = COLOR_ATTENTION
+    label, tone = explain.verdict(rec)
+    color = explain.TONE_COLORS[tone]
 
+    move = explain.move_phrase(rec)
+    title_move = f"  ({move})" if move else ""
     embed = {
-        "title": _clip(f"{rec['code']} {rec['name']} — {price:.2f} SAR{title_move}",
+        "title": _clip(f"{label} · {rec['code']} {rec['name']} — {price:.2f} SAR{title_move}",
                        EMBED_TITLE_LIMIT),
         "color": color,
         "fields": [],
     }
 
-    action = rec.get("action", "?")
+    # The decision, in three sentences: where you stand, what would move it,
+    # and the engine's own stated reason.
+    lines = [explain.situation(rec)]
+    change = explain.what_would_change_it(rec, levels)
+    if change:
+        lines.append(change)
     reasons = rec.get("reason") or []
-    embed["fields"].append(_field(
-        "Call", f"**{action}**" + (f" — {reasons[0]}" if reasons else "")))
-
-    if rec.get("kind") == "holding":
-        pnl = rec.get("unrealized_pct")
-        embed["fields"].append(_field(
-            "Position",
-            "cost basis unknown — set avg_cost in config.py" if pnl is None
-            else f"unrealised **{pnl:+.1f}%**",
-            inline=True))
-    else:
-        met, total = rec.get("rules_met"), rec.get("rules_total")
-        if met is not None and total:
-            embed["fields"].append(_field("Rules", f"**{met}/{total}** met", inline=True))
-
-    embed["fields"].append(_field("Volume", _fmt_volume(rec.get("volume")), inline=True))
-    embed["fields"].append(_field("Levels", _fmt_levels(levels, price)))
-
-    short = rec.get("short_term") or {}
-    long = rec.get("long_term") or {}
-    streak = rec.get("trend_streak")
-    tech = (f"RSI {long.get('rsi')} · trend {long.get('trend')} · "
-            f"10d {short.get('momentum_pct')}% · 120d {long.get('momentum_pct')}%")
-    if streak:
-        tech += f"\n{_TREND_PHRASE.get(long.get('trend'), 'trend unknown')}, " \
-                f"{_ordinal(streak['days'])} day (since {streak['started']})"
-    embed["fields"].append(_field("Technicals", tech))
-
-    changed = _fmt_delta(delta)
-    if changed:
-        embed["fields"].append(_field("Since yesterday", changed))
+    if reasons:
+        lines.append(f"_Why: {reasons[0]}_")
+    embed["description"] = _clip("\n".join(lines), EMBED_DESCRIPTION_LIMIT)
 
     if rec.get("kind") == "watchlist":
-        trigger = _fmt_trigger(rec.get("triggers") or [])
-        if trigger:
-            embed["fields"].append(_field("Next-bar trigger", trigger.split(": ", 1)[-1]))
+        met, total = rec.get("rules_met"), rec.get("rules_total")
+        if met is not None and total:
+            embed["fields"].append(_field("Conditions", f"**{met}/{total}** met", inline=True))
+
+    embed["fields"].append(_field("Volume", _fmt_volume(rec.get("volume")), inline=True))
+    embed["fields"].append(_field("Your levels", _fmt_levels(levels, price)))
+    embed["fields"].append(_field("The numbers", explain.numbers(rec)))
+
+    # `_fmt_delta` renders "RSI +3.2 · rules met +1", which states a change in a
+    # unit the reader would have to already understand to care about. Lead with
+    # what it means; keep the raw deltas beside it for whoever reads them.
+    changed = _fmt_delta(delta)
+    plain_change = explain.changed_phrase(delta)
+    if changed and changed not in (plain_change,):
+        embed["fields"].append(_field("Since yesterday", f"{plain_change}\n_{changed}_"))
+    else:
+        embed["fields"].append(_field("Since yesterday", plain_change))
+
+    if rec.get("kind") == "watchlist":
         sizing = rec.get("sizing")
         if sizing and not sizing.get("skip"):
             embed["fields"].append(_field(
@@ -581,6 +581,11 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
 
     embed["fields"] = embed["fields"][:EMBED_FIELDS_LIMIT]
     return embed
+
+
+def _section(title: str, subtitle: str) -> dict:
+    """A visible divider between what you own and what you are watching."""
+    return {"title": f"━━ {title} ━━", "color": COLOR_FLAT, "description": subtitle}
 
 
 def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
@@ -649,10 +654,33 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
     quiet = [r for r in watch if r not in shown]
 
     charts_by_code = charts_by_code or {}
+
+    def _named(rec: dict) -> dict:
+        return build_name_embed(rec, levels=levels_by_code.get(rec["code"]),
+                                today=today, chart=charts_by_code.get(rec["code"]))
+
+    # Holdings and watchlist were already separated here, and rendered as
+    # visually identical embeds -- so the split existed and the reader could not
+    # see it. The only way to tell what you owned from what you were merely
+    # watching was to notice which fields an embed happened to carry.
     embeds = [header]
-    embeds += [build_name_embed(r, levels=levels_by_code.get(r["code"]), today=today,
-                                chart=charts_by_code.get(r["code"]))
-               for r in holdings + shown]
+    if holdings:
+        embeds.append(_section(
+            f"YOUR {len(holdings)} HOLDING" + ("S" if len(holdings) != 1 else ""),
+                               "What you own. These appear every day, including "
+                               "the days nothing happens to them."))
+        embeds += [_named(rec) for rec in holdings]
+    if shown:
+        embeds.append(_section("WATCHING",
+                               "Not owned. Listed here only when something about "
+                               "them moved or they became actionable."))
+        embeds += [_named(rec) for rec in shown]
+
+    embeds.append({
+        "title": explain.LEGEND_TITLE,
+        "color": COLOR_FLAT,
+        "description": _clip("\n".join(explain.LEGEND_LINES), 4096),
+    })
 
     footer_bits = []
     if quiet:

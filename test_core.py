@@ -20,6 +20,7 @@ import pandas as pd
 import indicators as ind
 import analyze as az
 import artifacts
+import explain
 import llm
 import session_gate
 import backtest as bt
@@ -256,7 +257,7 @@ def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
     assert "1303 EIC" in blob and "15.09" in blob
     assert "3.2x" in blob                      # volume vs its own median
     assert "trend flipped" in blob             # compute_delta, previously discarded
-    assert "unrealised" in blob                # P/L on a holding
+    assert "up 21.6% on what you paid" in blob  # P/L on a holding, in words
 
 
 def test_digest_reports_a_discord_outage_after_writing_state(monkeypatch):
@@ -2643,10 +2644,76 @@ def test_name_embed_carries_price_volume_levels_and_change():
     )
     blob = json.dumps(embed)
     assert "1303 EIC" in embed["title"] and "15.09" in embed["title"]
-    assert "+1.2% today" in embed["title"]
+    # "today" was a lie on a pre-open run: the newest daily bar is the
+    # PREVIOUS session's close, so that move belongs to a day that had
+    # already finished before the digest was written.
+    assert "+1.2% last session" in embed["title"]
+    assert "today" not in embed["title"]
     assert "3.2x" in blob
     assert "13.95" in blob and "16.59" in blob
     assert "trend flipped" in blob
+
+
+def test_the_verdict_is_the_first_thing_the_reader_sees():
+    """Colour follows the decision; the title says it too.
+
+    The old left bar was green when a name rose yesterday and red when it fell,
+    so a BUY on a down day rendered red -- colour arguing against the call
+    printed beside it. Colour must never be the only carrier either: a reader
+    who cannot distinguish the bar still gets the word.
+    """
+    falling_buy = _embed_rec(action="BUY", kind="watchlist",
+                             delta={"price_pct": -2.4, "rsi_delta": 0.0,
+                                    "rules_met_delta": 0, "flipped": [],
+                                    "trend_flipped": False})
+    embed = nt.build_name_embed(falling_buy)
+    assert embed["title"].startswith("BUY ·")
+    assert embed["color"] == explain.TONE_COLORS[explain.GOOD]
+
+
+def test_a_stop_and_a_target_are_told_apart_by_colour():
+    """Both mean "sell now" and they are opposite news."""
+    stop = nt.build_name_embed(_embed_rec(action="SELL (STOP)"))
+    target = nt.build_name_embed(_embed_rec(action="SELL (TARGET)"))
+    assert stop["color"] == explain.TONE_COLORS[explain.ACT_BAD]
+    assert target["color"] == explain.TONE_COLORS[explain.ACT_GOOD]
+    assert stop["title"].startswith("SELL NOW")
+    assert target["title"].startswith("TAKE PROFIT")
+
+
+def test_missing_data_is_not_rendered_as_a_flat_day():
+    """Grey used to mean both "no prior day" and "moved exactly 0.0%"."""
+    absent = nt.build_name_embed(_embed_rec(price=0.0))
+    flat = nt.build_name_embed(_embed_rec(
+        delta={"price_pct": 0.0, "rsi_delta": 0.0, "rules_met_delta": 0,
+               "flipped": [], "trend_flipped": False}))
+    assert absent["color"] == explain.TONE_COLORS[explain.NO_DATA]
+    assert flat["color"] != explain.TONE_COLORS[explain.NO_DATA]
+    assert absent["title"].startswith("NO DATA")
+
+
+def test_every_digest_carries_the_colour_legend():
+    """A colour scheme with no key is a puzzle, not a signal."""
+    blob = json.dumps(nt.build_digest_embeds(
+        [_embed_rec()], regime="neutral", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500}),
+        ensure_ascii=False)
+    assert explain.LEGEND_TITLE in blob
+    for glyph in ("🟢", "🟡", "🟠", "🔴", "⚪"):
+        assert glyph in blob
+
+
+def test_holdings_and_watchlist_are_visibly_separated():
+    """The split already existed in code and was invisible on screen."""
+    held = _embed_rec(kind="holding", code="1303")
+    watched = _embed_rec(kind="watchlist", code="4015", action="BUY")
+    titles = [e.get("title", "") for e in nt.build_digest_embeds(
+        [held, watched], regime="neutral", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500})]
+    assert any("HOLDING" in t for t in titles)
+    assert any("WATCHING" in t for t in titles)
+    # One holding is a holding, not "1 HOLDINGS".
+    assert not any("1 HOLDINGS" in t for t in titles)
 
 
 def test_name_embed_says_volume_is_not_predictive():
