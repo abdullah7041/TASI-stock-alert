@@ -235,3 +235,51 @@ def changed_phrase(delta: dict | None) -> str:
     if moved < 0:
         return f"It met {abs(moved)} fewer buy condition(s) than yesterday."
     return "Nothing changed since yesterday."
+
+
+# --- early movers -----------------------------------------------------------
+# Measured over 2021-2026 daily bars in docs/scanner-findings-2026-07-30.md.
+# These are the only honest anchors this repo has for "is that a lot?", and
+# until now they appeared solely in scanner.py's CLI output and the README --
+# never next to a candidate the reader was actually looking at.
+BASE_RATE_TOUCH_PCT = 27.97   # any intraday touch of +15% within 60 sessions
+BASE_RATE_HELD_PCT = 12.85    # +15% still held at the 60-session mark
+REL_STRENGTH_LIFT = 1.46      # top-decile relative strength, vs the touch rate
+
+
+def early_mover_odds(entry: dict) -> str:
+    """State a candidate's odds as a measured rate, never as a confidence.
+
+    A rank with no base rate beside it is unreadable: "ranked 1st of 265" says
+    nothing about whether that is worth acting on. This repo already measured
+    the answer and then only ever printed it to a CLI nobody runs.
+    """
+    if entry.get("relativeStrengthMet"):
+        lifted = BASE_RATE_TOUCH_PCT * REL_STRENGTH_LIFT
+        return (f"Names with this much relative strength went on to touch +15% "
+                f"within 60 sessions about {lifted:.0f}% of the time, against "
+                f"{BASE_RATE_TOUCH_PCT:.0f}% for a name picked at random.")
+    return (f"For reference, a randomly picked name touched +15% within 60 "
+            f"sessions {BASE_RATE_TOUCH_PCT:.0f}% of the time.")
+
+
+def early_mover_line(entry: dict) -> str:
+    """One candidate, said plainly."""
+    bits = []
+    if entry.get("relativeStrengthMet"):
+        bits.append(f"outperforming the market by {entry['relativeStrengthPct']:+.0f}% "
+                    f"over three months")
+    elif entry.get("relativeStrengthPct"):
+        bits.append(f"{entry['relativeStrengthPct']:+.0f}% vs the market over three months")
+    if entry.get("squeeze"):
+        bits.append("unusually quiet lately, which sometimes precedes a move")
+    detail = "; ".join(bits) or "met one screening condition"
+    return (f"**{entry['code']} {entry['name']}** — {entry['price']:.2f} SAR\n"
+            f"{detail[0].upper()}{detail[1:]}.")
+
+
+EARLY_MOVERS_CAVEAT = (
+    "_These are screening results, not recommendations, and nothing here is "
+    "owned or sized. Two conditions are measured; the rest were tested and "
+    "dropped for not working. You decide._"
+)

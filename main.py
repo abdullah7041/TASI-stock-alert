@@ -312,6 +312,20 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         {"code": c["code"], "name": names.get(c["code"], c["code"]), "relativeStrengthPct": round(float(c.get("rel_strength") or 0.0), 1), "squeeze": bool(c.get("squeeze_met")), "conditionsMet": 2}
         for c in candidates if c.get("conditions_met") == 2
     ]
+    # The 265-name scan runs every morning and almost none of it reached the
+    # reader: only conditions_met == 2 became `qualified`, which was zero names
+    # on every recent run, and the rest was reduced to a bare count. Carry the
+    # ranked candidates themselves so the digest can show the early movers it
+    # already paid to compute.
+    early_movers = [
+        {"code": c["code"], "name": names.get(c["code"], c["code"]),
+         "price": round(float(c.get("price") or 0.0), 2),
+         "conditionsMet": int(c.get("conditions_met") or 0),
+         "relativeStrengthPct": round(float(c.get("rel_strength") or 0.0), 1),
+         "relativeStrengthMet": bool(c.get("rel_strength_met")),
+         "squeeze": bool(c.get("squeeze_met"))}
+        for c in candidates[:EARLY_MOVER_COUNT]
+    ]
     warning = (scanner_result or {}).get("warning")
     warnings = [warning] if warning else []
     if _INDEX_WARNING:
@@ -336,6 +350,8 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
                 "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
                 "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
                 "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
+                "earlyMovers": early_movers,
+                "indexUnavailable": bool((scanner_result or {}).get("indexUnavailable")),
                 "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
                 "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
                 "alerts": alerts or [], "forecast": _forecast(generated_at)}
@@ -422,6 +438,10 @@ def mode_autolevels() -> int:
 
 
 # Set by _collect_recs; read by _dashboard_snapshot. None means no index problem.
+# How many ranked scanner candidates travel to the reader. The scan itself is
+# capped at SCANNER["top_n"]; this is how much of that survives into the digest.
+EARLY_MOVER_COUNT = 5
+
 _INDEX_WARNING: str | None = None
 # Set by _collect_recs; read by _dashboard_snapshot. None means every name got
 # usable price history. data.get_histories absorbs a source outage and returns

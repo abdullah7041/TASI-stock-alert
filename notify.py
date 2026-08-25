@@ -592,6 +592,8 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
                         trade_date: str | None = None, budget: dict | None = None,
                         levels_by_code: dict | None = None, warnings: list | None = None,
                         today: date | None = None, charts_by_code: dict | None = None,
+                        early_movers: list | None = None,
+                        index_unavailable: bool = False,
                         artifact: dict | None = None) -> list:
     """The pre-open digest as embeds: a header, then one embed per name.
 
@@ -609,6 +611,8 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
         trade_date = artifact["tradeDate"]
         budget = {"monthly_cap": artifact.get("monthlyBudgetSar")}
         warnings = artifact.get("warnings") or []
+        early_movers = artifact.get("earlyMovers") or []
+        index_unavailable = bool(artifact.get("indexUnavailable"))
         levels_by_code = {
             item["code"]: item.get("levels") or {}
             for item in artifact.get("charts") or []
@@ -616,6 +620,7 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
         }
     if recs is None or regime is None or trade_date is None:
         raise ValueError("Digest embeds require records, regime, and trade date.")
+    early_movers = early_movers or []
     levels_by_code = levels_by_code or {}
     header_lines = [
         f"**Regime:** {regime}",
@@ -675,6 +680,31 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
                                "Not owned. Listed here only when something about "
                                "them moved or they became actionable."))
         embeds += [_named(rec) for rec in shown]
+
+    # The scanner covers ~265 names every morning. Until now `_scanner_block`
+    # formatted it and nothing called that function, so the entire scan reached
+    # the reader as a single integer in `researchCount`.
+    if early_movers or index_unavailable:
+        embeds.append(_section("EARLY MOVERS",
+                               "Screened from ~265 Tadawul names this morning. "
+                               "Not owned, not on your watchlist, not sized."))
+        if index_unavailable:
+            embeds.append({
+                "color": COLOR_FLAT,
+                "description": "⚠ The market index was unavailable this run, so "
+                               "relative strength could not be computed for any "
+                               "name. Anything below fired on the other condition "
+                               "only.",
+            })
+        for entry in early_movers:
+            embeds.append({
+                "color": explain.TONE_COLORS[explain.WATCH],
+                "description": _clip(
+                    explain.early_mover_line(entry) + "\n"
+                    + explain.early_mover_odds(entry), EMBED_DESCRIPTION_LIMIT),
+            })
+        embeds.append({"color": COLOR_FLAT,
+                       "description": explain.EARLY_MOVERS_CAVEAT})
 
     embeds.append({
         "title": explain.LEGEND_TITLE,

@@ -2716,6 +2716,53 @@ def test_holdings_and_watchlist_are_visibly_separated():
     assert not any("1 HOLDINGS" in t for t in titles)
 
 
+def test_early_movers_reach_the_reader_at_all():
+    """A 265-name scan used to arrive as a single integer.
+
+    Only conditions_met == 2 became `qualified` -- zero names on every recent
+    run -- and everything else collapsed into `researchCount`. The formatter
+    existed; nothing called it.
+    """
+    movers = [{"code": "4321", "name": "Example Co", "price": 22.4,
+               "conditionsMet": 2, "relativeStrengthPct": 31.4,
+               "relativeStrengthMet": True, "squeeze": True}]
+    blob = json.dumps(nt.build_digest_embeds(
+        [_embed_rec()], regime="neutral", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500},
+        early_movers=movers), ensure_ascii=False)
+    assert "EARLY MOVERS" in blob
+    assert "4321 Example Co" in blob
+
+
+def test_an_early_mover_never_appears_without_its_base_rate():
+    """A rank with no base rate beside it cannot be acted on.
+
+    "Ranked first of 265" says nothing about whether that is worth anything.
+    The measured answer is in docs/scanner-findings-2026-07-30.md and used to
+    be printed only to a CLI nobody runs.
+    """
+    strong = explain.early_mover_odds({"relativeStrengthMet": True})
+    weak = explain.early_mover_odds({"relativeStrengthMet": False})
+    assert "41%" in strong and "28%" in strong
+    assert "28%" in weak
+    # The lifted number must never be claimed for a name that did not clear the
+    # threshold the lift was measured on.
+    assert "41%" not in weak
+
+
+def test_early_movers_are_never_labelled_as_recommendations():
+    assert "not recommendations" in explain.EARLY_MOVERS_CAVEAT
+
+
+def test_a_missing_index_is_not_rendered_as_a_quiet_market(monkeypatch):
+    """rel_strength cannot be computed without the index; that is not 'no signal'."""
+    blob = json.dumps(nt.build_digest_embeds(
+        [_embed_rec()], regime="unknown", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500},
+        early_movers=[], index_unavailable=True), ensure_ascii=False)
+    assert "index was unavailable" in blob
+
+
 def test_name_embed_says_volume_is_not_predictive():
     """docs/scanner-findings-2026-07-30.md measured vol_surge as non-predictive.
 
