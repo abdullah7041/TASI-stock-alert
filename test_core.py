@@ -3344,8 +3344,8 @@ def test_matplotlib_is_declared_as_a_runtime_dependency():
 # tests.
 
 def test_live_modes_are_bound_to_the_tadawul_calendar():
-    assert main.GATED_MODES == {"digest": "digest", "run": "session",
-                                "reconcile": "reconcile"}
+    assert main.GATED_MODES == {"digest": "digest", "digest-guard": "digest",
+                                "run": "session", "reconcile": "reconcile"}
 
 
 def test_research_and_manual_modes_are_never_calendar_gated():
@@ -3383,6 +3383,73 @@ def test_late_scheduled_digest_fails_loudly_after_the_delivery_window():
     reason = main.schedule_lateness_reason("digest", now=very_late_start,
                                            scheduled_for=scheduled)
     assert reason is not None and "late" in reason
+
+
+def test_a_late_digest_still_ships_and_says_it_was_late(monkeypatch):
+    """Lateness degrades the digest; it never silences it.
+
+    A late run used to exit 1 and send nothing, which is the worst of both
+    worlds: the reader loses the morning AND is told nothing. The prices are the
+    previous close whether the run is punctual or not -- what changes is that a
+    late one has to say so.
+    """
+    monkeypatch.setattr(main, "gate_or_none", lambda _m, **_k: None)
+    monkeypatch.setattr(main, "schedule_lateness_reason",
+                        lambda _m, **_k: "scheduled digest is 90 minutes late")
+    ran = []
+    monkeypatch.setitem(main.MODES, "digest", lambda: ran.append(True) or 0)
+    monkeypatch.setattr(sys, "argv", ["main.py", "digest"])
+    monkeypatch.setattr(main, "_LATE_WARNING", None)
+
+    assert main.main() == 0
+    assert ran == [True], "a late digest must still run"
+    assert main._LATE_WARNING and "late" in main._LATE_WARNING
+
+
+def test_the_late_warning_reaches_the_reader_not_just_the_log(monkeypatch):
+    """A warning nobody sees is the same as no warning."""
+    monkeypatch.setattr(main, "_LATE_WARNING", "This digest ran late: 90 minutes.")
+    monkeypatch.setattr(main, "_INDEX_WARNING", None)
+    snapshot = main._dashboard_snapshot(
+        "neutral", [], {"monthly_cap": 500.0}, None,
+        top10={"proposalId": "p", "status": "draft", "researchedAt": "2026-08-25T06:00:00Z", "entries": []},
+    )
+    assert any("ran late" in w for w in snapshot["warnings"])
+
+
+def test_the_guard_does_nothing_when_todays_digest_already_shipped(monkeypatch):
+    monkeypatch.setattr(main, "_load",
+                        lambda *_a, **_k: {"tradeDate": main._today(), "artifactKind": "digest"})
+    monkeypatch.setattr(main, "mode_digest",
+                        lambda: (_ for _ in ()).throw(AssertionError("must not re-send")))
+    assert main.mode_digest_guard() == 0
+
+
+def test_the_guard_sends_when_the_scheduled_digest_was_dropped(monkeypatch):
+    """GitHub drops scheduled triggers, not just delays them."""
+    monkeypatch.setattr(main, "_load",
+                        lambda *_a, **_k: {"tradeDate": "1999-01-01", "artifactKind": "digest"})
+    sent = []
+    monkeypatch.setattr(main, "mode_digest", lambda: sent.append(True) or 0)
+    assert main.mode_digest_guard() == 0
+    assert sent == [True]
+
+
+def test_the_guard_sends_when_no_snapshot_exists_at_all(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda *_a, **_k: None)
+    sent = []
+    monkeypatch.setattr(main, "mode_digest", lambda: sent.append(True) or 0)
+    assert main.mode_digest_guard() == 0
+    assert sent == [True]
+
+
+def test_the_pre_open_window_tolerates_the_schedulers_drift():
+    """08:30 Riyadh aimed, 09:20 actual -- still pre-open, must not be refused."""
+    assert session_gate.is_pre_open_window(
+        datetime(2026, 8, 25, 6, 20, tzinfo=timezone.utc)) is True
+    # And the window still closes at the open: 10:00 Riyadh is not pre-open.
+    assert session_gate.is_pre_open_window(
+        datetime(2026, 8, 25, 7, 0, tzinfo=timezone.utc)) is False
 
 
 def test_the_gate_reads_the_recorded_holiday_list():

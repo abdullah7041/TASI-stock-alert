@@ -16,6 +16,7 @@ on:
         options:
           - run
           - digest
+          - digest-guard
           - intraday-probe
           - heartbeat
           - discord-smoke
@@ -26,8 +27,17 @@ on:
           - cockpit-refresh
           - research-evidence
   schedule:
-    # Pre-open digest at 06:45 UTC (09:45 Riyadh), Sun-Thu.
-    - cron: "45 6 * * 0,1,2,3,4"
+    # Pre-open digest at 05:30 UTC (08:30 Riyadh), Sun-Thu.
+    #
+    # It was 06:45 UTC (09:45 Riyadh) until 2026-08-25. Measured lateness on the
+    # GitHub scheduler over the preceding week was 35, 39, 40, 42, 44, 49 and 59
+    # minutes, which put every "pre-open" digest 20-45 minutes AFTER the 10:00
+    # open -- and a slip past 60 minutes killed the run outright. 05:30 buys ~90
+    # minutes of headroom against the same drift.
+    - cron: "30 5 * * 0,1,2,3,4"
+    # Guard rail at 06:10 UTC (09:10 Riyadh). Sends the digest only if the
+    # 05:30 trigger was dropped or is still queued; a no-op on a normal day.
+    - cron: "10 6 * * 0,1,2,3,4"
     # Session checks every 15 min, 07:00-11:59 UTC (10:00-14:59 Riyadh), Sun-Thu.
     - cron: "*/15 7-11 * * 0,1,2,3,4"
     # Post-close reconciliation at 12:15 UTC (15:15 Riyadh), Sun-Thu. Grades the
@@ -42,7 +52,10 @@ permissions:
   contents: write   # to commit state.json / levels.json back.
 
 concurrency:
-  group: tasi-recommender
+  # One queue per trigger, not one queue for the whole workflow. A single shared
+  # group made the pre-open digest wait behind the every-15-minute session runs,
+  # which was a large part of why it kept landing after the open.
+  group: tasi-${{ github.event.schedule || github.event.inputs.mode || 'manual' }}
   cancel-in-progress: false
 
 jobs:
@@ -68,9 +81,12 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "45 6 * * 0,1,2,3,4" ]; then
+          elif [ "${{ github.event.schedule }}" = "30 5 * * 0,1,2,3,4" ]; then
             echo "mode=digest" >> "$GITHUB_OUTPUT"
-            echo "scheduled_for=$(date -u +%F)T06:45:00Z" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%F)T05:30:00Z" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "10 6 * * 0,1,2,3,4" ]; then
+            echo "mode=digest-guard" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=$(date -u +%F)T06:10:00Z" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "15 12 * * 0,1,2,3,4" ]; then
             echo "mode=reconcile" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T12:15:00Z" >> "$GITHUB_OUTPUT"
@@ -87,14 +103,18 @@ jobs:
           echo "actual_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Load approved Top 10 for producer
-        if: contains('digest,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        if: contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
         run: |
-          test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
-          test -n "$COCKPIT_INGEST_TOKEN"
-          if ! curl --fail --silent --show-error -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" https://tasi-action-cockpit.busaud7041.chatgpt.site/api/top10/current > .top10-current.json; then
+          # Fail soft. This step used to hard-assert both secrets with no
+          # continue-on-error, so a missing secret killed the digest before
+          # python ever ran -- the day's analysis lost to an optional preload.
+          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ]; then
+            echo "cockpit tokens absent; continuing without an approved Top 10"
+            printf '%s\n' '{"approved":null}' > .top10-current.json
+          elif ! curl --fail --silent --show-error -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" https://tasi-action-cockpit.busaud7041.chatgpt.site/api/top10/current > .top10-current.json; then
             printf '%s\n' '{"approved":null}' > .top10-current.json
           fi
           python - <<'PY'
@@ -167,21 +187,27 @@ jobs:
           fi
 
       - name: Update private cockpit
-        if: steps.dashboard.outputs.updated == 'true' && contains('digest,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        if: steps.dashboard.outputs.updated == 'true' && contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
         run: |
           test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
           test -n "$COCKPIT_INGEST_TOKEN"
-          RESPONSE=$(curl --fail-with-body --retry 3 --retry-delay 2 \
+          # --fail-with-body captured the reason into a variable and then aborted
+          # under `set -e` before anything echoed it, so every 4xx read as a bare
+          # "exit code 22". Capture the status separately and always print the body.
+          STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 \
+            -o .ingest-response.json -w '%{http_code}' \
             -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest \
             -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
             -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
             -H "Content-Type: application/json" \
             --data-binary @dashboard.json)
-          echo "$RESPONSE"
-          printf 'mode=%s\ncommit=%s\ndashboard_ingest=%s\n' "${{ steps.mode.outputs.mode }}" "$GITHUB_SHA" "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
+          BODY=$(cat .ingest-response.json)
+          echo "HTTP $STATUS: $BODY"
+          printf 'mode=%s\ncommit=%s\ndashboard_ingest_status=%s\ndashboard_ingest_body=%s\n' "${{ steps.mode.outputs.mode }}" "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
+          case "$STATUS" in 2??) ;; *) echo "::error::dashboard ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
 
       - name: Update delayed movement alerts
         if: steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
@@ -191,12 +217,20 @@ jobs:
         run: |
           test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
           test -n "$COCKPIT_INGEST_TOKEN"
-          RESPONSE=$(curl --fail-with-body --retry 3 --retry-delay 2 -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/alerts/ingest -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" -H "Content-Type: application/json" --data-binary @movement_alerts.json)
-          echo "$RESPONSE"
-          printf 'mode=run\ncommit=%s\nalert_ingest=%s\n' "$GITHUB_SHA" "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
+          STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 \
+            -o .ingest-response.json -w '%{http_code}' \
+            -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/alerts/ingest \
+            -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
+            -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @movement_alerts.json)
+          BODY=$(cat .ingest-response.json)
+          echo "HTTP $STATUS: $BODY"
+          printf 'mode=run\ncommit=%s\nalert_ingest_status=%s\nalert_ingest_body=%s\n' "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
+          case "$STATUS" in 2??) ;; *) echo "::error::alert ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
 
       - name: Record confirmed Discord delivery
-        if: steps.run.outcome == 'success' && steps.mode.outputs.mode == 'digest'
+        if: steps.run.outcome == 'success' && contains('digest,digest-guard', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}

@@ -19,7 +19,11 @@ TRADING_WEEKDAYS = {6, 0, 1, 2, 3}
 SESSION_OPEN = time(10, 0)
 SESSION_CLOSE = time(15, 0)
 # The pre-open digest runs before the auction, so it has its own window.
-PRE_OPEN_EARLIEST = time(9, 0)
+# Widened from 09:00 to 07:00 on 2026-08-25: the GitHub schedule drifts 35-59
+# minutes under load, so a digest aimed at 08:30 Riyadh must still be allowed to
+# run when the runner finally picks it up. The window's job is to keep the
+# digest BEFORE the open, not to insist it lands in one narrow hour.
+PRE_OPEN_EARLIEST = time(7, 0)
 
 
 def riyadh_now(now: datetime | None = None) -> datetime:

@@ -318,6 +318,8 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         warnings.append(_INDEX_WARNING)
     if _DATA_WARNING:
         warnings.append(_DATA_WARNING)
+    if _LATE_WARNING:
+        warnings.append(_LATE_WARNING)
     if unknown_cost:
         warnings.append(
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
@@ -427,6 +429,10 @@ _INDEX_WARNING: str | None = None
 # this, a total Yahoo failure ships a correctly-formatted digest containing no
 # names at all, and reads exactly like a quiet market.
 _DATA_WARNING: str | None = None
+# Set by main() when a scheduled digest lands after its intended window. A late
+# digest still ships -- it just has to say so, because its prices are the
+# previous close and the reader must not mistake them for this morning's.
+_LATE_WARNING: str | None = None
 
 
 def _collect_recs(include_news: bool, record_history: bool = False):
@@ -727,6 +733,28 @@ def _persist_attached_leans(recs: list) -> None:
             break
     if changed:
         _save(HISTORY_FILE, history)
+
+
+def mode_digest_guard() -> int:
+    """Send the pre-open digest only if today's has not already gone out.
+
+    GitHub's scheduler drops triggers as well as delaying them: over the week to
+    2026-08-25 roughly half the every-15-minute session slots produced no run at
+    all. A dropped digest is the one that costs you the morning, so a second
+    trigger fires 40 minutes later and asks one question -- did today's digest
+    ship? -- before deciding whether to do anything.
+
+    The check is the committed snapshot's own trade date, because that is what
+    the digest writes and the workflow commits back. On a normal day this exits
+    without touching the network.
+    """
+    snapshot = _load(DASHBOARD_FILE, None) or {}
+    today = _today()
+    if snapshot.get("tradeDate") == today and snapshot.get("artifactKind") == "digest":
+        print(f"digest for {today} already shipped ({snapshot.get('asOf')}); nothing to do.")
+        return 0
+    print(f"no digest recorded for {today} (last: {snapshot.get('tradeDate') or 'none'}); sending now.")
+    return mode_digest()
 
 
 def mode_digest() -> int:
@@ -1158,6 +1186,7 @@ MODES = {
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
+    "digest-guard": mode_digest_guard,
     "research-evidence": mode_research_evidence,
     "top10-draft": mode_top10_draft,
     "cockpit-refresh": mode_cockpit_refresh,
@@ -1173,8 +1202,10 @@ MODES = {
 # Which live modes are bound to the Tadawul calendar, and under which of
 # session_gate's windows. Research and manual modes are deliberately absent:
 # you must be able to run a backtest or a smoke test on a Friday.
-GATED_MODES = {"digest": "digest", "run": "session", "reconcile": "reconcile"}
+GATED_MODES = {"digest": "digest", "digest-guard": "digest",
+               "run": "session", "reconcile": "reconcile"}
 MAX_SCHEDULE_LAG = {"digest": timedelta(minutes=60), "reconcile": timedelta(minutes=60)}
+# digest-guard is deliberately absent: it exists to run late.
 
 
 def _scheduled_time(value: str | datetime | None) -> datetime | None:
@@ -1261,8 +1292,15 @@ def main() -> int:
         return 0
     late = schedule_lateness_reason(mode, now=now, scheduled_for=scheduled_for)
     if late:
-        print(f"failing '{mode}': {late}")
-        return 1
+        # A late digest used to exit 1 and send nothing. That is the worst of
+        # both worlds: the runner was already late, and the reader got silence
+        # instead of a note that says so. Ship it, labelled -- the prices are
+        # the previous close either way, and the label is what keeps that honest.
+        global _LATE_WARNING
+        _LATE_WARNING = (
+            f"This {mode} ran late: {late}. Prices are the previous session's "
+            f"close, and the market may already be open.")
+        print(f"degraded '{mode}': {late}")
     return fn()
 
 

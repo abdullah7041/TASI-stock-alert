@@ -239,5 +239,9 @@ def test_github_keeps_the_digest_and_session_cron_until_the_canary_passes():
     """The cutover disables these deliberately, after a passing canary — not here."""
     scheduled = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
 
-    assert 'cron: "45 6 * * 0,1,2,3,4"' in scheduled
+    # 05:30 UTC since 2026-08-25 (was 06:45). The point of this test is that the
+    # GitHub digest and session cron still EXIST -- the Cloud Run cutover removes
+    # them deliberately, after a passing canary, and not by accident here.
+    assert 'cron: "30 5 * * 0,1,2,3,4"' in scheduled
+    assert 'cron: "10 6 * * 0,1,2,3,4"' in scheduled
     assert 'cron: "*/15 7-11 * * 0,1,2,3,4"' in scheduled
