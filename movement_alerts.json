@@ -1,22 +1,8 @@
 {
-  "alerts": [
-    {
-      "alertId": "28df716dd37b40947312",
-      "code": "4017",
-      "direction": "upside",
-      "excessMovePct": 6.652300538603151,
-      "latency": "delayed-intraday",
-      "name": "Fakeeh Care",
-      "observedAt": "2026-08-26T08:22:32Z",
-      "reason": "Delayed bot confirmation of statistically unusual price movement. Volume confirms participation.",
-      "receivedAt": "2026-08-26T08:22:32Z",
-      "robustZ": 7.430361941329939,
-      "volumeRatio": 2.26881595026697
-    }
-  ],
+  "alerts": [],
   "artifactKind": "movement",
-  "asOf": "2026-08-26T08:22:32Z",
+  "asOf": "2026-08-26T09:07:37Z",
   "dataStatus": "delayed-intraday",
   "schemaVersion": 1,
-  "artifactId": "sha256:e81c7670e00822b99080bd9bd690c3640cd9db4db0a919a6f5f9058ee7d78396"
+  "artifactId": "sha256:643a5abe1e96488218694be24b56f45225a4eae77b8c7fd7ec367c48fab1cba8"
 }
