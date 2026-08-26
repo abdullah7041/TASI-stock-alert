@@ -41,7 +41,7 @@
     "armed": true
   },
   "4017:upside": {
-    "armed": true
+    "armed": false
   },
   "4263:downside": {
     "armed": true
