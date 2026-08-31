@@ -8,10 +8,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
-  resolve: { alias: { "@": fileURLToPath(new URL("./", import.meta.url)) } },
+  resolve: { alias: {
+    "@": fileURLToPath(new URL("./", import.meta.url)),
+    // Only exists inside workerd; see tests/ui/cloudflare-workers-stub.ts.
+    "cloudflare:workers": fileURLToPath(new URL("./tests/ui/cloudflare-workers-stub.ts", import.meta.url)),
+  } },
   test: {
     environment: "jsdom",
-    include: ["tests/ui/**/*.test.tsx"],
+    include: ["tests/ui/**/*.test.{ts,tsx}"],
     globals: false,
     restoreMocks: true,
   },

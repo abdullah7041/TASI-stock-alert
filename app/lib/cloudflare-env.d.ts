@@ -25,6 +25,13 @@ declare module "cloudflare:workers" {
     AGENT_CHAT_MODEL?: string;
     DASHBOARD_INGEST_TOKEN?: string;
     DEPLOYED_COMMIT_SHA?: string;
+    /**
+     * Shared secret proving a request reached the Worker through the
+     * authenticating front door rather than directly at the origin. Owner
+     * identity arrives as request headers, which a direct caller can set
+     * freely; this is what makes those headers trustworthy.
+     */
+    OWNER_PROXY_SECRET?: string;
   };
 }
 
