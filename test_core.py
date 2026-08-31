@@ -3264,9 +3264,22 @@ def test_late_scheduled_digest_fails_loudly_after_the_delivery_window():
 
 
 def test_the_gate_reads_the_recorded_holiday_list():
-    """market_holidays.json is the file an operator edits before Eid."""
+    """market_holidays.json is the file an operator edits before Eid.
+
+    The clock is pinned deliberately. This test used to call gate_reason with a
+    fixed past holiday date and no `now`, so it evaluated against whatever day
+    the suite happened to run -- which meant it passed for unrelated reasons
+    (weekend, outside the pre-open window) almost always, and failed during the
+    07:00-10:00 Riyadh pre-open window. It was observed both passing and failing
+    on the same commit. Pinning `now` is what makes it assert the holiday wiring
+    rather than the wall clock.
+    """
     holidays = json.loads(Path("market_holidays.json").read_text(encoding="utf-8"))
     assert "closed" in holidays and isinstance(holidays["closed"], list)
-    # Empty today, so the gate changes nothing until dates are added -- but the
-    # wiring must exist first, or adding them would change nothing either.
-    assert session_gate.gate_reason("digest", holidays={"2026-08-21"}) is not None
+    # 06:00 UTC = 09:00 Riyadh on a Thursday: a trading day, inside the pre-open
+    # window, so the digest would be allowed to run if nothing blocked it. That
+    # is the only moment at which the holiday list is load-bearing.
+    open_moment = datetime(2026, 8, 20, 6, 0, tzinfo=timezone.utc)
+    assert session_gate.gate_reason("digest", now=open_moment, holidays=set()) is None
+    assert session_gate.gate_reason(
+        "digest", now=open_moment, holidays={"2026-08-20"}) is not None
