@@ -316,6 +316,8 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     warnings = [warning] if warning else []
     if _INDEX_WARNING:
         warnings.append(_INDEX_WARNING)
+    if _DATA_WARNING:
+        warnings.append(_DATA_WARNING)
     if unknown_cost:
         warnings.append(
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
@@ -419,6 +421,12 @@ def mode_autolevels() -> int:
 
 # Set by _collect_recs; read by _dashboard_snapshot. None means no index problem.
 _INDEX_WARNING: str | None = None
+# Set by _collect_recs; read by _dashboard_snapshot. None means every name got
+# usable price history. data.get_histories absorbs a source outage and returns
+# empty frames, which the record loops below skip with `continue` -- so without
+# this, a total Yahoo failure ships a correctly-formatted digest containing no
+# names at all, and reads exactly like a quiet market.
+_DATA_WARNING: str | None = None
 
 
 def _collect_recs(include_news: bool, record_history: bool = False):
@@ -449,6 +457,26 @@ def _collect_recs(include_news: bool, record_history: bool = False):
             f"Market regime unavailable: the index ({index_code}) returned "
             f"{bars} usable bars this run, so no regime could be computed.")
         print(_INDEX_WARNING)
+
+    # The index has its own warning above; this covers the tradeable names.
+    global _DATA_WARNING
+    _DATA_WARNING = None
+    tradeable = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST]
+    missing = [c for c in tradeable
+               if hist.get(c) is None or hist[c].empty]
+    if missing:
+        if len(missing) == len(tradeable):
+            _DATA_WARNING = (
+                f"No price history returned for ANY of the {len(tradeable)} "
+                f"names this run. This digest is empty because the data source "
+                f"failed, not because nothing happened.")
+        else:
+            _DATA_WARNING = (
+                f"Price history unavailable for {len(missing)} of "
+                f"{len(tradeable)} names ({', '.join(sorted(missing))}). They "
+                f"are absent from this digest — absence here is not evidence "
+                f"they were quiet.")
+        print(_DATA_WARNING)
 
     stored_levels = _load(LEVELS_FILE, {})
     verify = _verify_symbols(cfg.HOLDINGS + cfg.WATCHLIST)

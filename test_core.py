@@ -57,6 +57,42 @@ def test_manual_schedule_marker_never_reaches_the_timestamped_v3_contract():
     assert snapshot["summaryV1"]["scheduledFor"] is None
 
 
+def test_a_total_price_outage_says_so_instead_of_shipping_an_empty_digest(monkeypatch):
+    """An empty digest and a dead data source must not look identical.
+
+    data.get_histories absorbs an outage into empty frames, and _collect_recs
+    skips empty frames with `continue`, so a full Yahoo failure produced a
+    well-formed digest with zero names in it and exit code 0.
+    """
+    monkeypatch.setattr(main, "_DATA_WARNING", None)
+    monkeypatch.setattr(main, "_INDEX_WARNING", None)
+    monkeypatch.setattr(main.dat, "get_histories", lambda codes, period: {c: pd.DataFrame() for c in codes})
+    monkeypatch.setattr(main.dat, "get_index_history", lambda code, period="6mo": pd.DataFrame())
+    monkeypatch.setattr(main, "_verify_symbols", lambda names: {})
+    monkeypatch.setattr(main.discl, "fetch_all", lambda: ([], False))
+
+    _regime, recs, _budget = main._collect_recs(include_news=False, record_history=False)
+
+    assert recs == [], "sanity: a total outage really does drop every name"
+    assert main._DATA_WARNING is not None
+    assert "not because nothing happened" in main._DATA_WARNING
+
+
+def test_the_price_outage_warning_reaches_the_snapshot_not_just_the_log(monkeypatch):
+    """A warning nobody sees is the same as no warning."""
+    monkeypatch.setattr(main, "_DATA_WARNING",
+                        "Price history unavailable for 2 of 11 names (1303, 2222).")
+    monkeypatch.setattr(main, "_INDEX_WARNING", None)
+
+    snapshot = main._dashboard_snapshot(
+        "neutral", [], {"monthly_cap": 500.0}, None,
+        top10={"proposalId": "p", "status": "draft",
+               "researchedAt": "2026-08-25T06:00:00Z", "entries": []},
+    )
+
+    assert any("Price history unavailable" in w for w in snapshot["warnings"])
+
+
 def test_summary_v1_is_dated_and_keeps_missing_evidence_honest():
     snapshot = {
         "asOf": "2026-08-17T07:38:24Z", "tradeDate": "2026-08-17",
@@ -2399,6 +2435,92 @@ def test_get_histories_adjusted_end_to_end_fallback_is_tz_naive(monkeypatch):
 
     out = data.get_histories_adjusted(["9955"], "1y_test_e2e_tz")
     assert out["9955"].index.tz is None
+
+
+# --- data.get_histories under source failure ---------------------------------
+def test_get_histories_returns_empty_frames_when_the_source_is_totally_down(monkeypatch):
+    """A dead price source must not raise out of the data layer.
+
+    Every mode calls get_histories at the top of its run. If an outage escaped
+    as an exception the whole job would crash before writing state; the layer
+    absorbs it and returns empty frames instead. Plan 002 makes that outage
+    VISIBLE, but it must stay non-raising.
+    """
+    import yfinance as yf
+
+    def dead_download(*_args, **_kwargs):
+        raise RuntimeError("yahoo is down")
+
+    def dead_ticker(*_args, **_kwargs):
+        raise RuntimeError("yahoo is down")
+
+    monkeypatch.setattr(yf, "download", dead_download)
+    # The per-code retry uses yf.Ticker(...).history(...), a DIFFERENT entry
+    # point from the batch call. Both must be dead to simulate a real outage.
+    monkeypatch.setattr(yf, "Ticker", dead_ticker)
+
+    out = data.get_histories(["1303", "2222"], "1y_test_total_outage")
+
+    assert set(out) == {"1303", "2222"}
+    assert all(frame.empty for frame in out.values())
+
+
+def test_get_histories_reports_each_code_independently_under_partial_failure(monkeypatch):
+    """One dead ticker must not blank the others, and vice versa."""
+    import yfinance as yf
+
+    n = 6
+    idx = pd.date_range("2024-01-01", periods=n)
+    good = pd.DataFrame({"Open": [10.0] * n, "High": [11.0] * n, "Low": [9.0] * n,
+                         "Close": [10.5] * n, "Volume": [1000] * n}, index=idx)
+
+    def partial_download(symbols, **_kwargs):
+        # Batch returns a frame for one symbol only; the other falls through
+        # to the per-code retry, which is dead.
+        return pd.concat({"1303.SR": good}, axis=1)
+
+    def dead_ticker(*_args, **_kwargs):
+        raise RuntimeError("yahoo is down for this symbol")
+
+    monkeypatch.setattr(yf, "download", partial_download)
+    monkeypatch.setattr(yf, "Ticker", dead_ticker)
+
+    out = data.get_histories(["1303", "2222"], "1y_test_partial_outage")
+
+    assert not out["1303"].empty, "a symbol the batch returned must survive"
+    assert out["2222"].empty, "a symbol nothing returned must be an empty frame"
+
+
+def test_an_outage_does_not_poison_the_cache_for_a_different_period(monkeypatch):
+    """Empty frames are cached per (code, period), as real results are.
+
+    Worth pinning because plan 002 adds outage detection around this cache: if
+    a failed fetch leaked into another period's key, the warning it raises
+    would be wrong AND the data would be wrong.
+    """
+    import yfinance as yf
+
+    def dead_download(*_args, **_kwargs):
+        raise RuntimeError("yahoo is down")
+
+    def dead_ticker(*_args, **_kwargs):
+        raise RuntimeError("yahoo is down")
+
+    monkeypatch.setattr(yf, "download", dead_download)
+    monkeypatch.setattr(yf, "Ticker", dead_ticker)
+    failed = data.get_histories(["1303"], "1y_test_cache_poison_a")
+    assert failed["1303"].empty
+
+    n = 4
+    idx = pd.date_range("2024-01-01", periods=n)
+
+    def live_download(symbols, **_kwargs):
+        return pd.DataFrame({"Open": [1.0] * n, "High": [1.0] * n, "Low": [1.0] * n,
+                             "Close": [1.0] * n, "Volume": [1] * n}, index=idx)
+
+    monkeypatch.setattr(yf, "download", live_download)
+    recovered = data.get_histories(["1303"], "1y_test_cache_poison_b")
+    assert not recovered["1303"].empty, "a different period must fetch afresh"
 
 
 def test_risk_config_contains_only_keys_the_engine_reads():
