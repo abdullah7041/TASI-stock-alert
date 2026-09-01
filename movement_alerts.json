@@ -1,22 +1,8 @@
 {
-  "alerts": [
-    {
-      "alertId": "9f2f893713dde7c323c0",
-      "code": "4016",
-      "direction": "upside",
-      "excessMovePct": 4.46489488424745,
-      "latency": "delayed-intraday",
-      "name": "Avalon Pharma",
-      "observedAt": "2026-08-31T14:30:15Z",
-      "reason": "Delayed bot confirmation of statistically unusual price movement. Volume confirms participation.",
-      "receivedAt": "2026-08-31T14:30:15Z",
-      "robustZ": 4.660964475548597,
-      "volumeRatio": 9.34136843308829
-    }
-  ],
+  "alerts": [],
   "artifactKind": "movement",
-  "asOf": "2026-08-31T14:30:15Z",
+  "asOf": "2026-09-01T12:08:57Z",
   "dataStatus": "delayed-intraday",
   "schemaVersion": 1,
-  "artifactId": "sha256:f983b6366a00f44d3889c80198a0b3b427a45c543acf06e182229cfca8e08fd0"
+  "artifactId": "sha256:a6c002913683ac8f8c9059b666b64fae7b8a0e2a035cede69e4395d00b6bb0b2"
 }
