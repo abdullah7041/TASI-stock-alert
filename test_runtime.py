@@ -235,6 +235,29 @@ def test_the_scheduled_workflow_never_runs_the_smoke_test():
     assert all("continue-on-error" not in step for job in manual["jobs"].values() for step in job["steps"])
 
 
+def test_production_smoke_accepts_the_current_schema_advertised_by_health():
+    from scripts.verify_production_smoke import verify_production_smoke
+
+    verify_production_smoke(
+        {
+            "ok": True,
+            "database": "ready",
+            "deployedCommit": "abc123",
+            "acceptedSchemaVersions": [1, 2, 3],
+        },
+        {
+            "snapshot": {
+                "schemaVersion": 3,
+                "dataStatus": "delayed-daily",
+                "tradeDate": "2026-09-03",
+            },
+            "freshness": "current",
+            "alerts": [],
+        },
+        "abc123",
+    )
+
+
 def test_github_keeps_the_digest_and_session_cron_until_the_canary_passes():
     """The cutover disables these deliberately, after a passing canary — not here."""
     scheduled = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
