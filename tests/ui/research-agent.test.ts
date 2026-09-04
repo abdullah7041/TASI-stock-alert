@@ -20,52 +20,28 @@ afterEach(() => {
   for (const key of Object.keys(env)) delete env[key];
 });
 
-test("correct identity headers but no proxy secret header is rejected", async () => {
-  env.OWNER_PROXY_SECRET = "correct-secret";
+test("Sites-authenticated owner identity resolves a private context", async () => {
   env.AGENT_OWNER_EMAIL = "owner@example.com";
   env.DB = {} as never;
   env.OPENAI_API_KEY = "sk-test";
 
   const request = requestWith({ ...ownerHeaders });
 
-  await expect(getPrivateResearchContext(request)).rejects.toMatchObject({ status: 401 });
-});
-
-test("a wrong proxy secret header is rejected", async () => {
-  env.OWNER_PROXY_SECRET = "correct-secret";
-  env.AGENT_OWNER_EMAIL = "owner@example.com";
-  env.DB = {} as never;
-  env.OPENAI_API_KEY = "sk-test";
-
-  const request = requestWith({ ...ownerHeaders, "x-owner-proxy-secret": "wrong-secret" });
-
-  await expect(getPrivateResearchContext(request)).rejects.toMatchObject({ status: 401 });
-});
-
-test("an unset OWNER_PROXY_SECRET is rejected regardless of identity headers", async () => {
-  env.AGENT_OWNER_EMAIL = "owner@example.com";
-  env.DB = {} as never;
-  env.OPENAI_API_KEY = "sk-test";
-
-  const request = requestWith({ ...ownerHeaders, "x-owner-proxy-secret": "anything" });
-
-  await expect(getPrivateResearchContext(request)).rejects.toMatchObject({ status: 503 });
-});
-
-test("the correct secret and the owner's email resolves a context", async () => {
-  env.OWNER_PROXY_SECRET = "correct-secret";
-  env.AGENT_OWNER_EMAIL = "owner@example.com";
-  env.DB = {} as never;
-  env.OPENAI_API_KEY = "sk-test";
-
-  const request = requestWith({ ...ownerHeaders, "x-owner-proxy-secret": "correct-secret" });
-
   const context = await getPrivateResearchContext(request);
   expect(context.ownerId).toBe("user-123");
 });
 
-test("the correct secret with the wrong owner email is still rejected", async () => {
-  env.OWNER_PROXY_SECRET = "correct-secret";
+test("missing Sites identity is rejected", async () => {
+  env.AGENT_OWNER_EMAIL = "owner@example.com";
+  env.DB = {} as never;
+  env.OPENAI_API_KEY = "sk-test";
+
+  const request = requestWith({});
+
+  await expect(getPrivateResearchContext(request)).rejects.toMatchObject({ status: 401 });
+});
+
+test("the wrong owner email is rejected", async () => {
   env.AGENT_OWNER_EMAIL = "owner@example.com";
   env.DB = {} as never;
   env.OPENAI_API_KEY = "sk-test";
@@ -73,7 +49,6 @@ test("the correct secret with the wrong owner email is still rejected", async ()
   const request = requestWith({
     "oai-authenticated-user-id": "user-123",
     "oai-authenticated-user-email": "someone-else@example.com",
-    "x-owner-proxy-secret": "correct-secret",
   });
 
   await expect(getPrivateResearchContext(request)).rejects.toMatchObject({ status: 403 });

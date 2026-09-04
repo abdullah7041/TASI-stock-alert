@@ -18,7 +18,7 @@ there and are recorded under "considered and rejected" so they don't come back.
 |------|-------|----------|--------|------------|--------|
 | 001 | Pin down what the price-data layer does when Yahoo is unavailable | P1 | S | — | **DONE** — landed in `53a11e7`, merged to `main` |
 | 002 | Make a price-data outage visible instead of an empty digest | P1 | S–M | 001 | **DONE** — `53a11e7` |
-| 003 | Stop trusting client-supplied identity headers for owner routes | P1 | S | — | **DONE (not deployable yet)** — `4eb6f02`. Needs `OWNER_PROXY_SECRET` + front-door header injection before deploy |
+| 003 | Stop trusting client-supplied identity headers for owner routes | P1 | S | — | **SUPERSEDED** — private Sites dispatch authenticates visitors and supplies identity headers; owner authorization remains server-side |
 | 004 | Add a CLAUDE.md so agents stop rediscovering this repo | P2 | S | — | **DONE** — `9a4981c` |
 | 005 | Make the holiday-gate test deterministic instead of clock-dependent | P1 | S | — | **DONE** — `4871ff0` |
 
@@ -99,13 +99,10 @@ so the four commits were rebased onto `48d4d6a` (clean; the upstream commit
 touched only `movement_alerts.json` / `movement_state.json`) and re-verified
 before pushing: Python 336 passed, node --test 36 passed.
 
-**`4eb6f02` (plan 003) is armed but not live.** Pushing does not deploy: both
-Sites workflows (`sites-production-smoke`, `sites-release-readiness`) are
-`workflow_dispatch`-only and take an explicit commit SHA, so the cockpit changes
-only on a manually triggered release. Before any Sites release that includes
-`4eb6f02`, `OWNER_PROXY_SECRET` must be set on the Worker AND the front door must
-inject `x-owner-proxy-secret`. Releasing it without both will 401 every owner
-route. Handover to Codex.
+**`4eb6f02` (plan 003) was superseded before release.** Private Sites dispatch
+authenticates visitors and supplies the `oai-authenticated-user-*` headers. The
+application continues to authorize the configured owner email server-side;
+machine routes continue to use their separate bearer token.
 
 ## Dependency notes
 
@@ -114,9 +111,9 @@ route. Handover to Codex.
   STOP conditions tell the executor to refuse to start until 001 is DONE.
 - 003 and 004 are independent of everything and of each other. 003 touches only
   TypeScript; 001/002 touch only Python. They can run in parallel.
-- **003 has a deploy-time operator checkpoint** (its step 5). It must not ship
-  until `OWNER_PROXY_SECRET` is set on the Worker *and* the front door injects
-  the header, or the cockpit will 401 for the owner.
+- 003's custom proxy-secret design is historical and must not be reintroduced.
+  Private Sites access plus server-side owner-email authorization is the active
+  contract.
 
 ## Why this order
 

@@ -9,6 +9,7 @@ node_modules/
 dist/
 .wrangler/
 .next/
+*.tsbuildinfo
 
 # Chart PNGs are rebuilt on every digest run; never committed.
 .charts/

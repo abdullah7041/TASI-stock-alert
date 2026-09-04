@@ -15,19 +15,9 @@ type PrivateResearchContext = {
 
 export async function getPrivateResearchContext(request: Request): Promise<PrivateResearchContext> {
   const { env } = await import("cloudflare:workers");
-  // Owner identity below arrives as plain request headers. A caller that
-  // reaches this Worker directly can set those headers to anything, so they
-  // are only meaningful once we know the request came through the front door
-  // that authenticates users. The machine routes already prove themselves with
-  // a bearer token (see app/api/dashboard/ingest/route.ts); the owner routes
-  // -- which read the portfolio, write trades, approve the Top 10 and spend
-  // the model budget -- did not, which made them the weaker of the two.
-  if (!env.OWNER_PROXY_SECRET) {
-    throw new Response("Owner access is not configured.", { status: 503 });
-  }
-  if (request.headers.get("x-owner-proxy-secret") !== env.OWNER_PROXY_SECRET) {
-    throw new Response("Sign in is required.", { status: 401 });
-  }
+  // Sites authenticates private visitors before dispatch and supplies these
+  // identity headers. Authorization remains server-side through the owner
+  // allowlist below; machine ingestion uses its separate bearer token.
   const ownerId = request.headers.get("oai-authenticated-user-id");
   const ownerEmail = request.headers.get("oai-authenticated-user-email");
   if (!ownerId || !ownerEmail) throw new Response("Sign in is required.", { status: 401 });

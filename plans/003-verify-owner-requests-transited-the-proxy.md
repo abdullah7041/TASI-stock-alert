@@ -1,5 +1,10 @@
 # Plan 003: Stop trusting client-supplied identity headers for owner-only routes
 
+> **Superseded:** Sites private dispatch authenticates visitors and supplies
+> `oai-authenticated-user-*` headers. The custom `OWNER_PROXY_SECRET` design in
+> this historical plan was removed before release; owner authorization remains
+> enforced server-side through `AGENT_OWNER_EMAIL`.
+
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
