@@ -46,9 +46,12 @@ jobs:
           printf '%s\n' "$HEALTH" > health-response.json
           INGEST=$(curl --fail-with-body --retry 3 --retry-delay 2 -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" -H "Content-Type: application/json" --data-binary @dashboard.json)
           echo "$INGEST"
+          ALERT_INGEST=$(curl --fail-with-body --retry 3 --retry-delay 2 -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/alerts/ingest -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" -H "Content-Type: application/json" --data-binary @movement_alerts.json)
+          echo "$ALERT_INGEST"
+          printf '%s\n' "$ALERT_INGEST" > alert-ingest-response.json
           curl --fail-with-body --retry 3 --retry-delay 2 \
             https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard \
             -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
             -o dashboard-response.json
-          python scripts/verify_production_smoke.py health-response.json dashboard-response.json "$EXPECTED_COMMIT_SHA"
-          printf 'Expected commit: `%s`\n\nHealth, schema-compatible safe refresh, and composed alerts verified.\n' "$EXPECTED_COMMIT_SHA" >> "$GITHUB_STEP_SUMMARY"
+          python scripts/verify_production_smoke.py health-response.json dashboard-response.json alert-ingest-response.json movement_alerts.json "$EXPECTED_COMMIT_SHA"
+          printf 'Expected commit: `%s`\n\nHealth, schema-compatible safe refresh, composed alerts, and movement-alert accepted count verified.\n' "$EXPECTED_COMMIT_SHA" >> "$GITHUB_STEP_SUMMARY"

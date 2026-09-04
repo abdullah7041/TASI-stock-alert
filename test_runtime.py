@@ -258,6 +258,15 @@ def test_production_smoke_accepts_the_current_schema_advertised_by_health():
     )
 
 
+def test_production_smoke_verifies_the_alert_ingest_accepted_count():
+    from scripts.verify_production_smoke import verify_alert_ingest
+
+    verify_alert_ingest(
+        {"ok": True, "accepted": 0, "artifactId": "sha256:" + "a" * 64},
+        {"alerts": [], "artifactId": "sha256:" + "a" * 64},
+    )
+
+
 def test_github_keeps_the_digest_and_session_cron_until_the_canary_passes():
     """The cutover disables these deliberately, after a passing canary — not here."""
     scheduled = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
