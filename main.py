@@ -935,14 +935,20 @@ def mode_research_evidence() -> int:
     return 0
 
 
-def mode_top10_draft() -> int:
-    """Create a dated draft snapshot; user approval remains required on the site."""
+def mode_top10_draft(today: date | None = None) -> int:
+    """Create a dated draft snapshot; user approval remains required on the site.
+
+    `today` is injectable for the same reason session_gate's functions take an
+    explicit `now`: the review gate below is a calendar decision, and a test
+    that lets it read the wall clock passes Sun-Thu and fails Fri-Sat. MODES
+    dispatches this with no argument, so the default keeps production behaviour.
+    """
     active = _active_top10()
     pending = _load(TOP10_FILE, None)
     if not active and isinstance(pending, dict) and pending.get("status") == "draft" and pending.get("entries"):
         print("Initial Top 10 draft is awaiting approval; it remains unchanged.")
         return 0
-    if not _top10_review_due(active, date.today()):
+    if not _top10_review_due(active, today or date.today()):
         print("Top 10 review is not due; approved list remains unchanged.")
         return 0
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)

@@ -116,13 +116,21 @@ def test_summary_v1_is_dated_and_keeps_missing_evidence_honest():
 
 
 def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypatch):
+    """The clock is pinned deliberately.
+
+    mode_top10_draft gates on _top10_review_due, which only says yes on a Riyadh
+    trading day (Sun-Thu). Reading the wall clock made this test pass Sun-Thu and
+    fail Fri-Sat -- it was observed failing on a Friday -- so CI was red every
+    weekend for a reason that had nothing to do with the code under test.
+    """
     saved = {}
     draft = {"proposalId": "top10-2026-08-12", "status": "draft", "researchedAt": "2026-08-12T12:00:00Z", "entries": []}
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
     monkeypatch.setattr(main, "_evidence_top10", lambda *args: draft)
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
-    assert main.mode_top10_draft() == 0
+    # 2026-08-12 is a Wednesday: a Tadawul trading day, so the review gate opens.
+    assert main.mode_top10_draft(today=date(2026, 8, 12)) == 0
     assert saved[main.TOP10_FILE] == draft
     assert saved[main.DASHBOARD_FILE]["top10"] == draft
 
