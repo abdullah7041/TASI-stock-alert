@@ -24,6 +24,8 @@ declare module "cloudflare:workers" {
     AGENT_REPORT_MODEL?: string;
     AGENT_CHAT_MODEL?: string;
     DASHBOARD_INGEST_TOKEN?: string;
+    PORTFOLIO_OWNER_ID?: string;
+    DISCORD_APP_PUBLIC_KEY?: string;
     DEPLOYED_COMMIT_SHA?: string;
   };
 }
