@@ -62,3 +62,32 @@ jobs:
         run: npm test
       - name: Check repository patch integrity
         run: git diff --check
+
+  # The producer writes dashboard.json and the cockpit parses it, in different
+  # languages, in different repos' worth of code. Nothing checked that they
+  # agreed -- so they stopped agreeing, and it surfaced in production as an
+  # HTTP 400 on every ingest with the reason invisible. Checking the committed
+  # artifact is not enough either: that file was written by older code than the
+  # producer that will send the next one. This job builds a snapshot from the
+  # CURRENT producer and hands it to the site's own parser.
+  producer-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: pip install -r requirements.txt
+      - run: npm ci
+      - name: Emit a snapshot from the current producer
+        run: python scripts/emit_sample_snapshot.py fresh-dashboard.json
+      - name: Parse it with the cockpit's own parser
+        env:
+          DASHBOARD_SNAPSHOT_PATH: fresh-dashboard.json
+        run: node --test tests/producer-contract.test.mjs

@@ -19,7 +19,11 @@ TRADING_WEEKDAYS = {6, 0, 1, 2, 3}
 SESSION_OPEN = time(10, 0)
 SESSION_CLOSE = time(15, 0)
 # The pre-open digest runs before the auction, so it has its own window.
-PRE_OPEN_EARLIEST = time(9, 0)
+# Widened from 09:00 to 07:00 on 2026-08-25: the GitHub schedule drifts 35-59
+# minutes under load, so a digest aimed at 08:30 Riyadh must still be allowed to
+# run when the runner finally picks it up. The window's job is to keep the
+# digest BEFORE the open, not to insist it lands in one narrow hour.
+PRE_OPEN_EARLIEST = time(7, 0)
 
 
 def riyadh_now(now: datetime | None = None) -> datetime:
@@ -65,6 +69,12 @@ def gate_reason(mode: str, now: datetime | None = None, holidays: set[str] | Non
         return f"market closed on {local.date().isoformat()} (weekend or recorded holiday)"
     if mode == "digest" and not is_pre_open_window(now, holidays):
         return f"pre-open digest window is {PRE_OPEN_EARLIEST:%H:%M}-{SESSION_OPEN:%H:%M} Riyadh, not {local:%H:%M}"
+    # The backstop exists because the scheduled digest was dropped or delayed,
+    # so refusing it for being late is refusing it for the reason it was called.
+    # It runs any time before the close; after that, tomorrow's digest is nearer
+    # than today's and a stale one would be worse than none.
+    if mode == "digest-backstop" and local.time() >= SESSION_CLOSE:
+        return f"the pre-open backstop is pointless after the {SESSION_CLOSE:%H:%M} Riyadh close, not {local:%H:%M}"
     if mode == "session" and not is_session_open(now, holidays):
         return f"session window is {SESSION_OPEN:%H:%M}-{SESSION_CLOSE:%H:%M} Riyadh, not {local:%H:%M}"
     if mode == "reconcile" and local.time() < SESSION_CLOSE:

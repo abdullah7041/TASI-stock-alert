@@ -52,9 +52,32 @@ that honest rather than merely disclaimed:
   watch, not a claim. For calibration: a naive always-positive call scores about
   54% on the history recorded so far. That is the bar it has to beat.
 
-Set `GEMINI_API_KEY` to enable it. Without the secret every name reads
-`Pre-open lean: unavailable — no GEMINI_API_KEY configured`, and every other
-field still ships. Calls are capped monthly in `llm_budget.json`.
+**Providers are a chain, not a single point of failure.** On 2026-08-24 every
+lean read `model call failed (ClientError)` with HTTP 404: Google had retired
+`gemini-2.5-flash`, and `llm.py` named that model in a constant with no retry,
+no second model and no second provider. One stale string took the whole feature
+down. Two rules came out of it:
+
+- **No hardcoded model ID that can rot.** Gemini is addressed through the
+  `gemini-flash-latest` alias, which Google hot-swaps to the current release.
+  OpenRouter publishes no such alias, so its model is *required* from the
+  environment and the provider is skipped with that stated as the reason —
+  never a silent fall back to a name that may itself have been retired.
+- **Providers are tried in order.** A fatal answer from one is a reason to ask
+  the next, not a reason to give up. Retries apply only to statuses a retry can
+  fix (429, 5xx, timeouts); a 404 or 401 moves on immediately. Every attempt,
+  including a skip, is recorded in the artifact's `leanStatus.attempts`, so
+  "why was there no lean today" is answerable without reading a log.
+
+Configure with repository **secrets** `GEMINI_API_KEY` and/or
+`OPENROUTER_API_KEY`, and repository **variables** `TASI_LLM_PROVIDERS`
+(default `openrouter,gemini`), `TASI_LLM_MODEL_OPENROUTER` (required to use
+OpenRouter — e.g. a `vendor/model` string from openrouter.ai/models) and
+`TASI_LLM_MODEL_GEMINI` (default `gemini-flash-latest`).
+
+With no key at all, every name reads `Pre-open lean: unavailable — ...` naming
+each provider and why it was skipped, and every other field still ships. Calls
+are capped monthly in `llm_budget.json`.
 
 ## What it does not do
 
@@ -95,7 +118,9 @@ News is an auditable keyword/phrase tally over free Google News headlines — wo
 2. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
    - `DISCORD_WEBHOOK_URL` = your Discord channel webhook URL.
    - `SAHMK_API_KEY` = your SAHMK Free key (optional; only used as a fallback and for the index).
-   - `GEMINI_API_KEY` = optional. Enables Gemini pre-open leans. Without it the digest ships every fact it has and each name says the lean is unavailable and why.
+   - `GEMINI_API_KEY` = optional. Enables Gemini pre-open leans (free tier).
+   - `OPENROUTER_API_KEY` = optional. Enables OpenRouter as the first provider in the chain; also set the `TASI_LLM_MODEL_OPENROUTER` variable, or it is skipped.
+   Without either, the digest ships every fact it has and each name says the lean is unavailable and why.
 3. In `config.py`, set `BUDGET["monthly_budget_sar"]` to what you are willing to commit to new buys per calendar month. It ships at 500.
 4. Commit and push. The schedule runs automatically.
 
@@ -218,7 +243,17 @@ Config codes are hand-entered, and a wrong code silently resolves to a real but 
 
 ## Monthly buy budget
 
-`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on recommended new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them **equally**, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash. Recommendations are recorded in `budget_state.json` per month; later runs only allocate what's left. If you skipped a recommended buy, edit that file to give the budget back.
+`BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them **equally**, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash.
+
+**The budget counts what you bought, not what was suggested.** It used to count recommendations, recorded in `budget_state.json` — so a name the engine sized and you ignored still consumed the month, and the documented fix was to edit that JSON by hand. Purchases now come from the confirmed portfolio ledger, which you write by recording a trade. `budget_state.json` remains only as the fallback for runs made before any ledger exists.
+
+The cap is **fresh every calendar month**; unspent budget does not roll over. The ledger's cash balance *does* carry forward, because that is a true statement about money — but the cap is a spending rule, and it resets on the 1st.
+
+When the cap is reached, a qualifying name still appears with its full reasoning and its trigger price, marked `Not sized — no budget left this month. Resets 1 Sep.` — the same pattern `max_positions` already uses. Hiding a setup because of an accounting rule is how you miss the one that was building all month.
+
+### What you own
+
+`config.HOLDINGS` is the **opening balance**, not the running total. Once the ledger has entries it becomes authoritative: shares and weighted average cost are maintained from the buys and sells you record, including topping up a position you already hold. If the ledger cannot be read, the digest falls back to `config.py` — a failed fetch must never read as "you own nothing".
 
 ## Validation (does any of this actually work?)
 

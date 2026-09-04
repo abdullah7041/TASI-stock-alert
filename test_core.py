@@ -20,6 +20,7 @@ import pandas as pd
 import indicators as ind
 import analyze as az
 import artifacts
+import explain
 import llm
 import session_gate
 import backtest as bt
@@ -115,13 +116,21 @@ def test_summary_v1_is_dated_and_keeps_missing_evidence_honest():
 
 
 def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypatch):
+    """The clock is pinned deliberately.
+
+    mode_top10_draft gates on _top10_review_due, which only says yes on a Riyadh
+    trading day (Sun-Thu). Reading the wall clock made this test pass Sun-Thu and
+    fail Fri-Sat -- it was observed failing on a Friday -- so CI was red every
+    weekend for a reason that had nothing to do with the code under test.
+    """
     saved = {}
     draft = {"proposalId": "top10-2026-08-12", "status": "draft", "researchedAt": "2026-08-12T12:00:00Z", "entries": []}
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
     monkeypatch.setattr(main, "_evidence_top10", lambda *args: draft)
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
-    assert main.mode_top10_draft() == 0
+    # 2026-08-12 is a Wednesday: a Tadawul trading day, so the review gate opens.
+    assert main.mode_top10_draft(today=date(2026, 8, 12)) == 0
     assert saved[main.TOP10_FILE] == draft
     assert saved[main.DASHBOARD_FILE]["top10"] == draft
 
@@ -256,7 +265,7 @@ def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
     assert "1303 EIC" in blob and "15.09" in blob
     assert "3.2x" in blob                      # volume vs its own median
     assert "trend flipped" in blob             # compute_delta, previously discarded
-    assert "unrealised" in blob                # P/L on a holding
+    assert "up 21.6% on what you paid" in blob  # P/L on a holding, in words
 
 
 def test_digest_reports_a_discord_outage_after_writing_state(monkeypatch):
@@ -831,7 +840,7 @@ def test_allocate_skips_share_pricier_than_budget():
 def test_allocate_zero_budget_skips_all():
     buys = [_buy("A", 10.0)]
     az.allocate_budget(buys, 0.0)
-    assert buys[0]["sizing"]["skip"] == "monthly budget exhausted"
+    assert buys[0]["sizing"]["skip"] == "no budget left this month"
 
 def test_allocate_budget_caps_at_max_positions_counting_existing_holdings():
     buys = [{"code": "A", "price": 10.0}, {"code": "B", "price": 10.0},
@@ -2643,10 +2652,163 @@ def test_name_embed_carries_price_volume_levels_and_change():
     )
     blob = json.dumps(embed)
     assert "1303 EIC" in embed["title"] and "15.09" in embed["title"]
-    assert "+1.2% today" in embed["title"]
+    # "today" was a lie on a pre-open run: the newest daily bar is the
+    # PREVIOUS session's close, so that move belongs to a day that had
+    # already finished before the digest was written.
+    assert "+1.2% last session" in embed["title"]
+    assert "today" not in embed["title"]
     assert "3.2x" in blob
     assert "13.95" in blob and "16.59" in blob
     assert "trend flipped" in blob
+
+
+def test_the_verdict_is_the_first_thing_the_reader_sees():
+    """Colour follows the decision; the title says it too.
+
+    The old left bar was green when a name rose yesterday and red when it fell,
+    so a BUY on a down day rendered red -- colour arguing against the call
+    printed beside it. Colour must never be the only carrier either: a reader
+    who cannot distinguish the bar still gets the word.
+    """
+    falling_buy = _embed_rec(action="BUY", kind="watchlist",
+                             delta={"price_pct": -2.4, "rsi_delta": 0.0,
+                                    "rules_met_delta": 0, "flipped": [],
+                                    "trend_flipped": False})
+    embed = nt.build_name_embed(falling_buy)
+    assert embed["title"].startswith("BUY ·")
+    assert embed["color"] == explain.TONE_COLORS[explain.GOOD]
+
+
+def test_a_stop_and_a_target_are_told_apart_by_colour():
+    """Both mean "sell now" and they are opposite news."""
+    stop = nt.build_name_embed(_embed_rec(action="SELL (STOP)"))
+    target = nt.build_name_embed(_embed_rec(action="SELL (TARGET)"))
+    assert stop["color"] == explain.TONE_COLORS[explain.ACT_BAD]
+    assert target["color"] == explain.TONE_COLORS[explain.ACT_GOOD]
+    assert stop["title"].startswith("SELL NOW")
+    assert target["title"].startswith("TAKE PROFIT")
+
+
+def test_missing_data_is_not_rendered_as_a_flat_day():
+    """Grey used to mean both "no prior day" and "moved exactly 0.0%"."""
+    absent = nt.build_name_embed(_embed_rec(price=0.0))
+    flat = nt.build_name_embed(_embed_rec(
+        delta={"price_pct": 0.0, "rsi_delta": 0.0, "rules_met_delta": 0,
+               "flipped": [], "trend_flipped": False}))
+    assert absent["color"] == explain.TONE_COLORS[explain.NO_DATA]
+    assert flat["color"] != explain.TONE_COLORS[explain.NO_DATA]
+    assert absent["title"].startswith("NO DATA")
+
+
+def test_every_digest_carries_the_colour_legend():
+    """A colour scheme with no key is a puzzle, not a signal."""
+    blob = json.dumps(nt.build_digest_embeds(
+        [_embed_rec()], regime="neutral", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500}),
+        ensure_ascii=False)
+    assert explain.LEGEND_TITLE in blob
+    for glyph in ("🟢", "🟡", "🟠", "🔴", "⚪"):
+        assert glyph in blob
+
+
+def test_holdings_and_watchlist_are_visibly_separated():
+    """The split already existed in code and was invisible on screen."""
+    held = _embed_rec(kind="holding", code="1303")
+    watched = _embed_rec(kind="watchlist", code="4015", action="BUY")
+    titles = [e.get("title", "") for e in nt.build_digest_embeds(
+        [held, watched], regime="neutral", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500})]
+    assert any("HOLDING" in t for t in titles)
+    assert any("WATCHING" in t for t in titles)
+    # One holding is a holding, not "1 HOLDINGS".
+    assert not any("1 HOLDINGS" in t for t in titles)
+
+
+def test_an_unsized_buy_still_says_why_and_until_when():
+    """A qualifying name with no size must not read as the engine changing its mind."""
+    rec = _embed_rec(kind="watchlist", action="BUY")
+    rec["sizing"] = {"shares": 0, "spend": 0.0, "skip": "no budget left this month"}
+    blob = json.dumps(nt.build_name_embed(rec))
+    assert "no budget left this month" in blob
+    assert "Resets" in blob
+
+
+def test_budget_counts_purchases_not_recommendations(monkeypatch, tmp_path):
+    """A suggestion you ignored must not consume your budget.
+
+    budget_state.json recorded what the engine RECOMMENDED, so a name it sized
+    and you skipped still ate the month -- and the documented remedy was editing
+    that file by hand. The ledger records what you actually bought.
+    """
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0},
+         "spentThisMonthSar": 180.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    assert main._budget_spent_this_month() == 180.0
+    assert main._budget_remaining() == cfg.BUDGET["monthly_budget_sar"] - 180.0
+
+
+def test_holdings_fall_back_to_config_when_the_ledger_is_unreachable(monkeypatch):
+    """A failed fetch must never read as "you own nothing"."""
+    monkeypatch.setattr(main, "_load", lambda _p, default=None: default)
+    assert [h["code"] for h in main._holdings()] == [h["code"] for h in cfg.HOLDINGS]
+
+
+def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [{"code": "1303", "name": "EIC", "shares": 124,
+                                "avgCostSar": 12.84}], "cashSar": 40.0},
+         "spentThisMonthSar": 0.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    holdings = main._holdings()
+    assert holdings == [{"code": "1303", "name": "EIC", "shares": 124, "avg_cost": 12.84}]
+
+
+def test_early_movers_reach_the_reader_at_all():
+    """A 265-name scan used to arrive as a single integer.
+
+    Only conditions_met == 2 became `qualified` -- zero names on every recent
+    run -- and everything else collapsed into `researchCount`. The formatter
+    existed; nothing called it.
+    """
+    movers = [{"code": "4321", "name": "Example Co", "price": 22.4,
+               "conditionsMet": 2, "relativeStrengthPct": 31.4,
+               "relativeStrengthMet": True, "squeeze": True}]
+    blob = json.dumps(nt.build_digest_embeds(
+        [_embed_rec()], regime="neutral", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500},
+        early_movers=movers), ensure_ascii=False)
+    assert "EARLY MOVERS" in blob
+    assert "4321 Example Co" in blob
+
+
+def test_an_early_mover_never_appears_without_its_base_rate():
+    """A rank with no base rate beside it cannot be acted on.
+
+    "Ranked first of 265" says nothing about whether that is worth anything.
+    The measured answer is in docs/scanner-findings-2026-07-30.md and used to
+    be printed only to a CLI nobody runs.
+    """
+    strong = explain.early_mover_odds({"relativeStrengthMet": True})
+    weak = explain.early_mover_odds({"relativeStrengthMet": False})
+    assert "41%" in strong and "28%" in strong
+    assert "28%" in weak
+    # The lifted number must never be claimed for a name that did not clear the
+    # threshold the lift was measured on.
+    assert "41%" not in weak
+
+
+def test_early_movers_are_never_labelled_as_recommendations():
+    assert "not recommendations" in explain.EARLY_MOVERS_CAVEAT
+
+
+def test_a_missing_index_is_not_rendered_as_a_quiet_market(monkeypatch):
+    """rel_strength cannot be computed without the index; that is not 'no signal'."""
+    blob = json.dumps(nt.build_digest_embeds(
+        [_embed_rec()], regime="unknown", trade_date="2026-08-25",
+        budget={"allocated": 0, "budget": 500, "monthly_cap": 500},
+        early_movers=[], index_unavailable=True), ensure_ascii=False)
+    assert "index was unavailable" in blob
 
 
 def test_name_embed_says_volume_is_not_predictive():
@@ -2964,8 +3126,13 @@ def test_lean_reports_gemini_provider_metadata_for_structured_takes(monkeypatch,
     assert out["_status"] == {
         "ok": True,
         "provider": "gemini",
-        "model": "gemini-2.5-flash",
+        "model": llm.GEMINI_MODEL,
         "calls_left": llm.MONTHLY_CALL_CAP - 1,
+        # OpenRouter is first in the default order and unconfigured here, so the
+        # skip is recorded rather than hidden: a fallback that silently never
+        # ran is indistinguishable from one that ran and worked.
+        "attempts": [{"provider": "openrouter",
+                      "reason": "no OPENROUTER_API_KEY configured"}],
     }
 
 
@@ -2982,10 +3149,107 @@ def test_gemini_completion_requests_a_structured_json_schema(monkeypatch):
 
     assert llm._complete("facts", api_key="key", timeout=23) == '{"takes": []}'
     assert captured["client"] == {"api_key": "key"}
-    assert captured["model"] == "gemini-2.5-flash"
+    # Never a pinned ID: gemini-2.5-flash was pinned here and began returning
+    # 404 while still listed, which is what took the lean down for good.
+    assert captured["model"] == llm.GEMINI_MODEL
+    assert llm.GEMINI_MODEL == "gemini-flash-latest"
     assert captured["config"]["response_mime_type"] == "application/json"
     assert captured["config"]["response_json_schema"] == llm.RESPONSE_SCHEMA
     assert captured["config"]["http_options"] == {"timeout": 23_000}
+
+
+def test_a_dead_provider_falls_through_to_the_next_one(monkeypatch, tmp_path):
+    """The whole point of the chain: one provider dying is not an outage.
+
+    This is the 2026-08-24 failure replayed. Back then a 404 from the only
+    provider ended the feature; now it is a reason to ask the next one.
+    """
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setattr(llm, "OPENROUTER_MODEL", "vendor/some-model")
+
+    class ClientError(Exception):
+        code = 404
+
+    def dead(*_a, **_kw):
+        raise ClientError("model retired")
+
+    monkeypatch.setattr(llm, "_complete_openrouter", dead)
+    monkeypatch.setattr(
+        llm, "_complete",
+        lambda *_a, **_kw: '{"takes":[{"code":"1303","lean":"positive",'
+                           '"confidence":"low","take":"t","drivers":[]}]}')
+
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert out["1303"]["lean"] == "positive"
+    assert out["_status"]["ok"] is True
+    assert out["_status"]["provider"] == "gemini"
+    # The dead provider is still named. A fallback that hides what it routed
+    # around cannot be debugged the next time it routes around everything.
+    assert out["_status"]["attempts"][0]["provider"] == "openrouter"
+    assert out["_status"]["attempts"][0]["httpStatus"] == 404
+
+
+def test_a_rate_limit_is_retried_before_the_chain_moves_on(monkeypatch, tmp_path):
+    """429 is the one failure a retry actually fixes."""
+    monkeypatch.setattr(llm, "BACKOFF_SECONDS", 0)
+    calls = []
+
+    class RateLimited(Exception):
+        code = 429
+
+    def flaky(*_a, **_kw):
+        calls.append(True)
+        if len(calls) == 1:
+            raise RateLimited("slow down")
+        return '{"takes":[{"code":"1303","lean":"neutral","confidence":"low","take":"t","drivers":[]}]}'
+
+    monkeypatch.setattr(llm, "_complete", flaky)
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert len(calls) == 2, "a 429 must be retried, not abandoned"
+    assert out["_status"]["ok"] is True
+
+
+def test_openrouter_is_skipped_loudly_when_it_has_no_model(monkeypatch, tmp_path):
+    """OpenRouter publishes no evergreen alias, so an unset model is a real state.
+
+    It must never fall back to a hardcoded name -- that is the exact class of bug
+    this chain exists to prevent.
+    """
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setattr(llm, "OPENROUTER_MODEL", "")
+    monkeypatch.setattr(llm, "_complete_openrouter",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(AssertionError("must not call")))
+    monkeypatch.setattr(
+        llm, "_complete",
+        lambda *_a, **_kw: '{"takes":[{"code":"1303","lean":"neutral",'
+                           '"confidence":"low","take":"t","drivers":[]}]}')
+
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert out["_status"]["provider"] == "gemini"
+    assert "TASI_LLM_MODEL_OPENROUTER" in out["_status"]["attempts"][0]["reason"]
+
+
+def test_every_provider_failing_still_names_each_one(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setattr(llm, "OPENROUTER_MODEL", "vendor/some-model")
+    monkeypatch.setattr(llm, "BACKOFF_SECONDS", 0)
+
+    class Boom(Exception):
+        code = 401
+
+    monkeypatch.setattr(llm, "_complete_openrouter",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(Boom("bad key")))
+    monkeypatch.setattr(llm, "_complete",
+                        lambda *_a, **_kw: (_ for _ in ()).throw(Boom("bad key")))
+
+    out = llm.get_leans([_lean_rec()], api_key="k", budget_path=tmp_path / "b.json")
+
+    assert out["_status"]["ok"] is False
+    assert [a["provider"] for a in out["_status"]["attempts"]] == ["openrouter", "gemini"]
+    assert not [k for k in out if k != "_status"], "no half-answer on total failure"
 
 
 def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
@@ -3003,7 +3267,10 @@ def test_lean_reports_safe_gemini_http_diagnostics(monkeypatch, tmp_path):
     class ClientError(Exception):
         code = 404
 
+    calls = []
+
     def boom(*_args, **_kwargs):
+        calls.append(True)
         raise ClientError("models/gemini-2.5-flash is not found for this project")
 
     monkeypatch.setattr(llm, "_complete", boom)
@@ -3013,12 +3280,20 @@ def test_lean_reports_safe_gemini_http_diagnostics(monkeypatch, tmp_path):
     assert out["_status"] == {
         "ok": False,
         "provider": "gemini",
-        "model": "gemini-2.5-flash",
+        "model": llm.GEMINI_MODEL,
         "reason": "model call failed (ClientError)",
         "errorType": "ClientError",
         "httpStatus": 404,
         "errorCategory": "not_found",
+        "attempts": [
+            {"provider": "openrouter", "reason": "no OPENROUTER_API_KEY configured"},
+            {"provider": "gemini", "reason": "model call failed (ClientError)",
+             "httpStatus": 404},
+        ],
     }
+    # A 404 is the request being wrong, not the network being flaky. Retrying it
+    # only delays the fallback, so it must be attempted exactly once.
+    assert len(calls) == 1
 
 
 def test_attach_leans_normalizes_a_failed_gemini_status_for_the_v3_artifact(monkeypatch):
@@ -3269,7 +3544,32 @@ def test_chart_artifact_keeps_at_most_ninety_valid_daily_ohlcv_sessions():
 def test_chart_artifact_makes_missing_history_an_explicit_unavailable_state():
     charts = artifacts.chart_artifacts([_lean_rec()], {"1303": pd.DataFrame()}, {})
     assert charts == [{"code": "1303", "name": "EIC", "status": "unavailable",
-                       "reason": "No usable daily OHLCV history."}]
+                       "reason": "No usable daily OHLCV history.", "levels": {}}]
+
+
+def test_a_name_keeps_its_levels_even_when_its_chart_cannot_be_drawn():
+    """Whether there was enough history to plot says nothing about the stop.
+
+    Levels reach the Discord embed through this structure, so filtering them by
+    chart availability silently stripped stop/trim/target from every
+    thin-history name -- and dropped them for EVERY name when the history fetch
+    itself failed.
+    """
+    stored = {"1303": {"stop": 9.5, "trim": 11.5, "target": 12.5,
+                       "price_at_derivation": 10.0}}
+    charts = artifacts.chart_artifacts([_lean_rec()], {}, stored)
+
+    assert charts[0]["status"] == "unavailable"
+    assert charts[0]["levels"] == {"stop": 9.5, "trim": 11.5, "target": 12.5,
+                                   "price_at_derivation": 10.0}
+    # price_at_derivation is what _fmt_levels compares against to warn that the
+    # levels are stale. Without it that warning can never fire.
+    blob = json.dumps(nt.build_digest_embeds(artifact={
+        "digestRecords": [_lean_rec(price=13.0)], "regime": "neutral",
+        "tradeDate": "2026-08-25", "monthlyBudgetSar": 500, "warnings": [],
+        "charts": charts}), ensure_ascii=False)
+    assert "9.50" in blob
+    assert "re-run `autolevels`" in blob
 
 
 def test_chart_renders_a_png_with_levels(tmp_path):
@@ -3344,8 +3644,25 @@ def test_matplotlib_is_declared_as_a_runtime_dependency():
 # tests.
 
 def test_live_modes_are_bound_to_the_tadawul_calendar():
-    assert main.GATED_MODES == {"digest": "digest", "run": "session",
-                                "reconcile": "reconcile"}
+    assert main.GATED_MODES == {"digest": "digest", "digest-guard": "digest-backstop",
+                                "run": "session", "reconcile": "reconcile"}
+
+
+def test_the_backstop_is_not_refused_for_the_lateness_it_exists_to_absorb():
+    """Gating the backstop on the pre-open hour defeated the backstop.
+
+    It fires at 06:10 UTC and the pre-open window closes at 07:00 UTC, so 50
+    minutes of scheduler drift -- inside the 35-59 minute band the workflow
+    documents -- made it decline silently on the exact morning the 05:30 digest
+    had been dropped.
+    """
+    after_the_open = datetime(2026, 8, 25, 8, 30, tzinfo=timezone.utc)  # 11:30 Riyadh
+    assert session_gate.is_pre_open_window(after_the_open) is False
+    assert session_gate.gate_reason("digest", after_the_open, holidays=set()) is not None
+    assert session_gate.gate_reason("digest-backstop", after_the_open, holidays=set()) is None
+    # But a backstop is pointless once the session has closed.
+    after_the_close = datetime(2026, 8, 25, 12, 30, tzinfo=timezone.utc)  # 15:30 Riyadh
+    assert session_gate.gate_reason("digest-backstop", after_the_close, holidays=set()) is not None
 
 
 def test_research_and_manual_modes_are_never_calendar_gated():
@@ -3383,6 +3700,106 @@ def test_late_scheduled_digest_fails_loudly_after_the_delivery_window():
     reason = main.schedule_lateness_reason("digest", now=very_late_start,
                                            scheduled_for=scheduled)
     assert reason is not None and "late" in reason
+
+
+def test_a_late_digest_still_ships_and_says_it_was_late(monkeypatch):
+    """Lateness degrades the digest; it never silences it.
+
+    A late run used to exit 1 and send nothing, which is the worst of both
+    worlds: the reader loses the morning AND is told nothing. The prices are the
+    previous close whether the run is punctual or not -- what changes is that a
+    late one has to say so.
+    """
+    monkeypatch.setattr(main, "gate_or_none", lambda _m, **_k: None)
+    monkeypatch.setattr(main, "schedule_lateness_reason",
+                        lambda _m, **_k: "scheduled digest is 90 minutes late")
+    ran = []
+    monkeypatch.setitem(main.MODES, "digest", lambda: ran.append(True) or 0)
+    monkeypatch.setattr(sys, "argv", ["main.py", "digest"])
+    monkeypatch.setattr(main, "_LATE_WARNING", None)
+
+    assert main.main() == 0
+    assert ran == [True], "a late digest must still run"
+    assert main._LATE_WARNING and "late" in main._LATE_WARNING
+
+
+def test_the_late_warning_reaches_the_reader_not_just_the_log(monkeypatch):
+    """A warning nobody sees is the same as no warning."""
+    monkeypatch.setattr(main, "_LATE_WARNING", "This digest ran late: 90 minutes.")
+    monkeypatch.setattr(main, "_INDEX_WARNING", None)
+    snapshot = main._dashboard_snapshot(
+        "neutral", [], {"monthly_cap": 500.0}, None,
+        top10={"proposalId": "p", "status": "draft", "researchedAt": "2026-08-25T06:00:00Z", "entries": []},
+    )
+    assert any("ran late" in w for w in snapshot["warnings"])
+
+
+def test_the_guard_does_nothing_when_todays_digest_already_shipped(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda *_a, **_k: {
+        "tradeDate": main._today(), "artifactKind": "digest",
+        "deliveries": {"discord": {"status": "success"}}})
+    monkeypatch.setattr(main, "mode_digest",
+                        lambda: (_ for _ in ()).throw(AssertionError("must not re-send")))
+    assert main.mode_digest_guard() == 0
+
+
+def test_a_digest_shaped_artifact_nobody_received_does_not_satisfy_the_guard(monkeypatch):
+    """cockpit-refresh and top10-draft write artifactKind "digest" too.
+
+    Neither sends anything, so trusting the kind alone let a manual refresh on a
+    morning the 05:30 trigger was dropped convince the backstop that the digest
+    had shipped -- and no digest was ever sent, with every step green.
+    """
+    monkeypatch.setattr(main, "_load",
+                        lambda *_a, **_k: {"tradeDate": main._today(), "artifactKind": "digest"})
+    sent = []
+    monkeypatch.setattr(main, "mode_digest", lambda: sent.append(True) or 0)
+    assert main.mode_digest_guard() == 0
+    assert sent == [True]
+
+
+def test_a_refresh_never_replaces_the_digest_that_already_went_out(monkeypatch):
+    """Reconcile runs cockpit-refresh after the close, every trading day.
+
+    Rebuilding produces a digest-shaped artifact with no charts and no lean, so
+    saving it stripped both from the cockpit and re-identified the day's
+    artifact, orphaning the Discord receipt keyed to the old ID.
+    """
+    monkeypatch.setattr(main, "_load", lambda *_a, **_k: {
+        "tradeDate": main._today(), "artifactKind": "digest", "asOf": "2026-08-30T05:30:00Z",
+        "deliveries": {"discord": {"status": "success"}}})
+    monkeypatch.setattr(main, "_save",
+                        lambda *_a: (_ for _ in ()).throw(AssertionError("must not overwrite")))
+    monkeypatch.setattr(main, "_collect_recs",
+                        lambda **_: (_ for _ in ()).throw(AssertionError("must not refetch")))
+    assert main.mode_cockpit_refresh() == 0
+
+
+def test_the_guard_sends_when_the_scheduled_digest_was_dropped(monkeypatch):
+    """GitHub drops scheduled triggers, not just delays them."""
+    monkeypatch.setattr(main, "_load",
+                        lambda *_a, **_k: {"tradeDate": "1999-01-01", "artifactKind": "digest"})
+    sent = []
+    monkeypatch.setattr(main, "mode_digest", lambda: sent.append(True) or 0)
+    assert main.mode_digest_guard() == 0
+    assert sent == [True]
+
+
+def test_the_guard_sends_when_no_snapshot_exists_at_all(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda *_a, **_k: None)
+    sent = []
+    monkeypatch.setattr(main, "mode_digest", lambda: sent.append(True) or 0)
+    assert main.mode_digest_guard() == 0
+    assert sent == [True]
+
+
+def test_the_pre_open_window_tolerates_the_schedulers_drift():
+    """08:30 Riyadh aimed, 09:20 actual -- still pre-open, must not be refused."""
+    assert session_gate.is_pre_open_window(
+        datetime(2026, 8, 25, 6, 20, tzinfo=timezone.utc)) is True
+    # And the window still closes at the open: 10:00 Riyadh is not pre-open.
+    assert session_gate.is_pre_open_window(
+        datetime(2026, 8, 25, 7, 0, tzinfo=timezone.utc)) is False
 
 
 def test_the_gate_reads_the_recorded_holiday_list():

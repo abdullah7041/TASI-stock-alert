@@ -17,6 +17,10 @@ from typing import Any
 
 IDENTITY_EXCLUDED_FIELDS = {"artifactId", "deliveries", "deliveryReceipts"}
 MAX_CHART_BARS = 90
+# Everything levels.json carries that a reader acts on. price_at_derivation is
+# not a price line -- it is what _fmt_levels compares against to warn that the
+# levels are stale -- so it travels with them or that warning can never fire.
+LEVEL_FIELDS = ("stop", "trim", "target", "price_at_derivation")
 
 
 def _normalise(value: Any, *, identity: bool = False) -> Any:
@@ -56,6 +60,24 @@ def _with_id(artifact: dict) -> dict:
     return output
 
 
+def timestamp_or_none(value: Any) -> str | None:
+    """Keep a real offset-bearing ISO timestamp; anything else becomes null.
+
+    Manual runs historically set SCHEDULED_FOR to the literal "manual". The v3
+    contract types that field as a timestamp, so the marker has to be dropped
+    here -- in the one place every artifact is built -- rather than by each
+    caller. A caller that sanitises and a builder that does not is how the two
+    ended up disagreeing.
+    """
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return str(value) if parsed.tzinfo else None
+
+
 def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict,
                           charts: list[dict], scheduled_for: str | None) -> dict:
     """Create DigestArtifactV3 from deterministic facts plus fail-soft extras."""
@@ -63,7 +85,7 @@ def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict
         **snapshot,
         "schemaVersion": 3,
         "artifactKind": "digest",
-        "scheduledFor": scheduled_for,
+        "scheduledFor": timestamp_or_none(scheduled_for),
         "producer": {"generatedAt": snapshot["asOf"]},
         "digestRecords": recs,
         "leanStatus": lean_status,
@@ -92,14 +114,24 @@ def _finite_number(row: Any, key: str) -> float | None:
 
 
 def chart_artifacts(recs: list[dict], frames: dict, levels_by_code: dict) -> list[dict]:
-    """Return portable up-to-90-session OHLCV chart data for each digest name."""
+    """Return portable up-to-90-session OHLCV chart data for each digest name.
+
+    Levels travel with every name, including one whose chart could not be drawn.
+    They come from levels.json and have nothing to do with whether there is
+    enough history to plot: a holding with a thin frame still has a stop, and
+    the digest reads its levels from here.
+    """
     output = []
     for rec in recs:
         code, name = str(rec["code"]), str(rec["name"])
+        levels = {
+            key: value for key in LEVEL_FIELDS
+            if (value := _finite_number(levels_by_code.get(code) or {}, key)) is not None
+        }
         frame = frames.get(code)
         if frame is None or getattr(frame, "empty", True):
             output.append({"code": code, "name": name, "status": "unavailable",
-                           "reason": "No usable daily OHLCV history."})
+                           "reason": "No usable daily OHLCV history.", "levels": levels})
             continue
         bars = []
         try:
@@ -114,13 +146,8 @@ def chart_artifacts(recs: list[dict], frames: dict, levels_by_code: dict) -> lis
             bars = []
         if len(bars) < 5:
             output.append({"code": code, "name": name, "status": "unavailable",
-                           "reason": "No usable daily OHLCV history."})
+                           "reason": "No usable daily OHLCV history.", "levels": levels})
             continue
-        raw_levels = levels_by_code.get(code) or {}
-        levels = {
-            key: value for key in ("stop", "trim", "target")
-            if (value := _finite_number(raw_levels, key)) is not None
-        }
         output.append({"code": code, "name": name, "status": "available",
                        "bars": bars, "levels": levels})
     return output

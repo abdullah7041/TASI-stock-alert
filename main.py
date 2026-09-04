@@ -50,6 +50,8 @@ SYMBOLS_FILE = HERE / "symbols.json"
 LEVELS_FILE = HERE / "levels.json"
 STATE_FILE = HERE / "state.json"
 BUDGET_FILE = HERE / "budget_state.json"
+# Fetched per run from the cockpit by the workflow, like top10_active.json.
+PORTFOLIO_FILE = HERE / "portfolio_active.json"
 HISTORY_FILE = HERE / "history.json"
 DASHBOARD_FILE = HERE / "dashboard.json"
 TOP10_FILE = HERE / "top10_draft.json"
@@ -98,12 +100,71 @@ def _month_key() -> str:
     return time.strftime("%Y-%m")
 
 
-def _budget_remaining() -> float:
-    """Monthly cap minus what has already been RECOMMENDED this calendar month.
-    Edit budget_state.json by hand if you skipped a recommended buy."""
+def _portfolio_ledger() -> dict | None:
+    """The confirmed portfolio, as recorded by you, or None when unavailable.
+
+    Written by the workflow from the cockpit's authenticated read, in the same
+    way top10_active.json already is. Shape:
+
+        {"view": {"cashSar": float, "holdings": [...], "contributionMonth": str},
+         "spentThisMonthSar": float, "month": "YYYY-MM"}
+
+    None means the fetch did not happen or the file is unusable -- never that
+    the portfolio is empty. Callers fall back to config.py, so a bad deploy
+    cannot make your holdings vanish from the morning digest.
+    """
+    value = _load(PORTFOLIO_FILE, None)
+    if not isinstance(value, dict) or not isinstance(value.get("view"), dict):
+        return None
+    return value
+
+
+def _holdings() -> list[dict]:
+    """What you own, ledger first, config.py as the backstop.
+
+    config.HOLDINGS was the only source and it is hand-edited: recording that
+    you bought 20 more shares meant editing Python and recomputing a weighted
+    average cost yourself. The ledger does that arithmetic; this is where it
+    takes over, without ever leaving the digest with nothing to report.
+    """
+    ledger = _portfolio_ledger()
+    holdings = ((ledger or {}).get("view") or {}).get("holdings") or []
+    if not holdings:
+        return list(cfg.HOLDINGS)
+    return [
+        {"code": str(item["code"]), "name": str(item.get("name") or item["code"]),
+         "shares": int(item.get("shares") or 0),
+         "avg_cost": float(item.get("avgCostSar") or 0.0)}
+        for item in holdings if int(item.get("shares") or 0) > 0
+    ]
+
+
+def _budget_spent_this_month() -> float:
+    """What you have actually SPENT this calendar month.
+
+    This used to be what the engine had *recommended*, read from
+    budget_state.json -- so a suggestion you ignored still consumed your budget,
+    and the documented remedy was editing that file by hand (README, "Monthly
+    buy budget"). Recommendations are not purchases. The ledger knows the
+    difference because you tell it.
+    """
+    ledger = _portfolio_ledger()
+    if ledger is not None and ledger.get("month") == _month_key():
+        return max(0.0, float(ledger.get("spentThisMonthSar") or 0.0))
+    # No ledger yet: fall back to the old recommendation ledger rather than
+    # reporting a full budget that may already be spent.
     state = _load(BUDGET_FILE, {})
-    spent = float(state.get(_month_key(), {}).get("spent", 0.0))
-    return max(0.0, cfg.BUDGET["monthly_budget_sar"] - spent)
+    return float(state.get(_month_key(), {}).get("spent", 0.0))
+
+
+def _budget_remaining() -> float:
+    """Monthly cap minus what you have actually spent this calendar month.
+
+    Fresh cap every month: unspent budget does not roll over. The ledger's cash
+    balance does carry forward, because that is a true statement about money --
+    but the CAP is a spending rule, and it resets.
+    """
+    return max(0.0, cfg.BUDGET["monthly_budget_sar"] - _budget_spent_this_month())
 
 
 # --- symbol verification ----------------------------------------------------
@@ -185,14 +246,19 @@ def _active_top10() -> dict | None:
 
 def _top10_review_due(active: dict | None, today: date) -> bool:
     """Initial draft immediately; later drafts only after their 3-month date."""
+    trading_day = today.weekday() in (6, 0, 1, 2, 3)  # Riyadh trading Sun-Thu
     if not active:
-        return today.weekday() in (6, 0, 1, 2, 3)  # Riyadh trading Sun-Thu
+        return trading_day
     due_text = str(active.get("nextReviewAt") or "")[:10]
     try:
         due = date.fromisoformat(due_text)
     except ValueError:
-        return False
-    return today >= due and today.weekday() in (6, 0, 1, 2, 3)
+        # nextReviewAt is only written by approvals made since it existed. An
+        # older approved list carries none, and treating that as "not due" would
+        # freeze it permanently -- no review, ever, without editing the database
+        # by hand. An unscheduled review is an overdue one.
+        return trading_day
+    return today >= due and trading_day
 
 
 def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) -> dict | None:
@@ -207,7 +273,7 @@ def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) 
         return None
     candidates = {item.get("code"): item for item in (scanner_result or {}).get("candidates", [])}
     reads = {item.get("code"): item for item in recs}
-    owned = {item["code"] for item in cfg.HOLDINGS}
+    owned = {item["code"] for item in _holdings()}
     scored = []
     for symbol, evidence in records.items():
         candidate = candidates.get(symbol, {})
@@ -281,12 +347,11 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     # Manual operations used the literal "manual" historically. Keep such
-    # source metadata honest but never emit an invalid timestamp into v3.
-    try:
-        parsed_schedule = datetime.fromisoformat(str(scheduled_for).replace("Z", "+00:00")) if scheduled_for else None
-        scheduled_for = scheduled_for if parsed_schedule and parsed_schedule.tzinfo else None
-    except ValueError:
-        scheduled_for = None
+    # source metadata honest but never emit an invalid timestamp into v3. The
+    # same rule has to hold for the artifact's own scheduledFor, so it lives in
+    # artifacts.py and both callers use it -- sanitising here alone is what let
+    # summaryV1.scheduledFor and artifact.scheduledFor disagree.
+    scheduled_for = artifacts.timestamp_or_none(scheduled_for)
     urgent = []
     unknown_cost = []
     for r in recs:
@@ -312,12 +377,28 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         {"code": c["code"], "name": names.get(c["code"], c["code"]), "relativeStrengthPct": round(float(c.get("rel_strength") or 0.0), 1), "squeeze": bool(c.get("squeeze_met")), "conditionsMet": 2}
         for c in candidates if c.get("conditions_met") == 2
     ]
+    # The 265-name scan runs every morning and almost none of it reached the
+    # reader: only conditions_met == 2 became `qualified`, which was zero names
+    # on every recent run, and the rest was reduced to a bare count. Carry the
+    # ranked candidates themselves so the digest can show the early movers it
+    # already paid to compute.
+    early_movers = [
+        {"code": c["code"], "name": names.get(c["code"], c["code"]),
+         "price": round(float(c.get("price") or 0.0), 2),
+         "conditionsMet": int(c.get("conditions_met") or 0),
+         "relativeStrengthPct": round(float(c.get("rel_strength") or 0.0), 1),
+         "relativeStrengthMet": bool(c.get("rel_strength_met")),
+         "squeeze": bool(c.get("squeeze_met"))}
+        for c in candidates[:EARLY_MOVER_COUNT]
+    ]
     warning = (scanner_result or {}).get("warning")
     warnings = [warning] if warning else []
     if _INDEX_WARNING:
         warnings.append(_INDEX_WARNING)
     if _DATA_WARNING:
         warnings.append(_DATA_WARNING)
+    if _LATE_WARNING:
+        warnings.append(_LATE_WARNING)
     if unknown_cost:
         warnings.append(
             f"No avg_cost in config.py for {', '.join(sorted(unknown_cost))} — "
@@ -328,14 +409,23 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
         warnings.append("Top 10 draft unavailable: no current primary-source evidence has been reviewed yet.")
     holdings = [
         {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
-        for item in cfg.HOLDINGS
+        for item in _holdings()
     ]
+    ledger_view = ((_portfolio_ledger() or {}).get("view") or {})
     snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
                 "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
                 "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
                 "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
+                "earlyMovers": early_movers,
+                "indexUnavailable": bool((scanner_result or {}).get("indexUnavailable")),
                 "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
-                "portfolio": {"confirmedAt": generated_at, "cashSar": 0.0, "contributionMonth": None, "holdings": holdings, "proposal": None},
+                # cashSar and contributionMonth were hardcoded 0.0/None, so the
+                # cockpit could only ever say "0.00 SAR cash" no matter what the
+                # ledger held. They come from the ledger now when there is one.
+                "portfolio": {"confirmedAt": (ledger_view.get("confirmedAt") or generated_at),
+                              "cashSar": float(ledger_view.get("cashSar") or 0.0),
+                              "contributionMonth": ledger_view.get("contributionMonth"),
+                              "holdings": holdings, "proposal": None},
                 "alerts": alerts or [], "forecast": _forecast(generated_at)}
     if top10_review is not None:
         snapshot["top10Review"] = top10_review
@@ -385,9 +475,9 @@ def mode_discord_smoke() -> int:
 
 
 def mode_suggest() -> int:
-    dat.get_histories([x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST],
+    dat.get_histories([x["code"] for x in _holdings() + cfg.WATCHLIST],
                       cfg.TECH["history_period"])  # one batch; loop reads cache.
-    for item in cfg.HOLDINGS + cfg.WATCHLIST:
+    for item in _holdings() + cfg.WATCHLIST:
         code = item["code"]
         df = _load_history(code)
         if df.empty:
@@ -403,9 +493,9 @@ def mode_suggest() -> int:
 
 def mode_autolevels() -> int:
     out = _load(LEVELS_FILE, {})
-    dat.get_histories([x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST],
+    dat.get_histories([x["code"] for x in _holdings() + cfg.WATCHLIST],
                       cfg.TECH["history_period"])  # one batch; loop reads cache.
-    for item in cfg.HOLDINGS + cfg.WATCHLIST:
+    for item in _holdings() + cfg.WATCHLIST:
         code = item["code"]
         df = _load_history(code)
         if df.empty or len(df) < cfg.TECH["min_history_bars"]:
@@ -420,6 +510,10 @@ def mode_autolevels() -> int:
 
 
 # Set by _collect_recs; read by _dashboard_snapshot. None means no index problem.
+# How many ranked scanner candidates travel to the reader. The scan itself is
+# capped at SCANNER["top_n"]; this is how much of that survives into the digest.
+EARLY_MOVER_COUNT = 5
+
 _INDEX_WARNING: str | None = None
 # Set by _collect_recs; read by _dashboard_snapshot. None means every name got
 # usable price history. data.get_histories absorbs a source outage and returns
@@ -427,6 +521,10 @@ _INDEX_WARNING: str | None = None
 # this, a total Yahoo failure ships a correctly-formatted digest containing no
 # names at all, and reads exactly like a quiet market.
 _DATA_WARNING: str | None = None
+# Set by main() when a scheduled digest lands after its intended window. A late
+# digest still ships -- it just has to say so, because its prices are the
+# previous close and the reader must not mistake them for this morning's.
+_LATE_WARNING: str | None = None
 
 
 def _collect_recs(include_news: bool, record_history: bool = False):
@@ -437,7 +535,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     requests), levels.json loaded once (was once per name).
     """
     index_code = cfg.REGIME["index_code"]
-    all_codes = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST] + [index_code]
+    all_codes = [x["code"] for x in _holdings() + cfg.WATCHLIST] + [index_code]
     hist = dat.get_histories(all_codes, cfg.TECH["history_period"])
 
     idx = hist.get(index_code)
@@ -479,7 +577,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
         print(_DATA_WARNING)
 
     stored_levels = _load(LEVELS_FILE, {})
-    verify = _verify_symbols(cfg.HOLDINGS + cfg.WATCHLIST)
+    verify = _verify_symbols(_holdings() + cfg.WATCHLIST)
 
     news_by_code = {}
     if include_news:
@@ -493,7 +591,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
                 return w["code"], newsmod.NewsResult(query="", ok=False)
 
         with ThreadPoolExecutor(max_workers=8) as ex:
-            news_by_code = dict(ex.map(_fetch, cfg.HOLDINGS + cfg.WATCHLIST))
+            news_by_code = dict(ex.map(_fetch, _holdings() + cfg.WATCHLIST))
 
         for code, result in news_by_code.items():
             newsmod.archive_headlines(code, result)
@@ -502,7 +600,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
 
     unverified = []
     recs = []
-    for h in cfg.HOLDINGS:
+    for h in _holdings():
         df = hist.get(h["code"])
         if df is None or df.empty:
             continue
@@ -549,7 +647,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     # them from what is left of this month's budget.
     buys = [r for r in recs if r["action"] == "BUY"]
     budget_summary = az.allocate_budget(buys, _budget_remaining(),
-                                        current_positions=len(cfg.HOLDINGS),
+                                        current_positions=len(_holdings()),
                                         max_positions=cfg.RISK["max_positions"])
     budget_summary["monthly_cap"] = cfg.BUDGET["monthly_budget_sar"]
     budget_summary["unverified"] = unverified
@@ -619,13 +717,16 @@ def _chart_bundle(recs: list) -> tuple[dict, dict, list[dict]]:
     history must cost you the picture, never the message.
     """
     codes = [r["code"] for r in recs]
+    # Read before the fetch: levels.json is local and has nothing to do with
+    # whether history arrives. Loading it inside the success path meant a failed
+    # fetch cost every name its stop and target as well as its picture.
+    stored_levels = _load(LEVELS_FILE, {})
     try:
         frames = dat.get_histories(codes, cfg.TECH["history_period"])
     except Exception as exc:
         print(f"charts: history fetch failed ({type(exc).__name__}) — sending text only")
-        return {}, {}, artifacts.chart_artifacts(recs, {}, {})
+        return {}, {}, artifacts.chart_artifacts(recs, {}, stored_levels)
 
-    stored_levels = _load(LEVELS_FILE, {})
     chart_data = artifacts.chart_artifacts(recs, frames, stored_levels)
     try:
         import charts as chartmod
@@ -729,6 +830,51 @@ def _persist_attached_leans(recs: list) -> None:
         _save(HISTORY_FILE, history)
 
 
+def _delivered_digest_today() -> dict | None:
+    """Today's digest artifact IF it actually reached Discord, else None.
+
+    `artifactKind` alone does not answer this: cockpit-refresh and top10-draft
+    build digest-shaped artifacts too, and neither sends anything. Only a
+    delivered digest records `deliveries.discord`, and that key is in
+    artifacts.IDENTITY_EXCLUDED_FIELDS, so writing it never re-identifies the
+    artifact whose delivery it is describing.
+    """
+    snapshot = _load(DASHBOARD_FILE, None) or {}
+    if snapshot.get("artifactKind") != "digest" or snapshot.get("tradeDate") != _today():
+        return None
+    discord = (snapshot.get("deliveries") or {}).get("discord") or {}
+    return snapshot if discord.get("status") == "success" else None
+
+
+def mode_digest_guard() -> int:
+    """Send the pre-open digest only if today's has not already gone out.
+
+    GitHub's scheduler drops triggers as well as delaying them: over the week to
+    2026-08-25 roughly half the every-15-minute session slots produced no run at
+    all. A dropped digest is the one that costs you the morning, so a second
+    trigger fires 40 minutes later and asks one question -- did today's digest
+    ship? -- before deciding whether to do anything.
+
+    The check is the committed artifact's own delivery receipt, because a
+    snapshot written by some other mode is not a digest anybody read. On a
+    normal day this exits without touching the network.
+    """
+    delivered = _delivered_digest_today()
+    today = _today()
+    if delivered is not None:
+        print(f"digest for {today} already shipped ({delivered.get('asOf')}); nothing to do.")
+        return 0
+    if not session_gate.is_pre_open_window():
+        # The backstop is allowed past the open, but the reader must be told:
+        # the same honesty rule a late scheduled digest already follows.
+        global _LATE_WARNING
+        _LATE_WARNING = (
+            "The scheduled pre-open digest did not run, so this backstop sent it "
+            "after the open. Prices are the previous session's close.")
+    print(f"no digest delivered for {today}; sending now.")
+    return mode_digest()
+
+
 def mode_digest() -> int:
     regime, recs, budget = _collect_recs(include_news=True, record_history=True)
     scanner_result = _scanner_result()
@@ -753,6 +899,14 @@ def mode_digest() -> int:
         artifact=artifact, charts_by_code=charts_by_code,
     )
     ok = nt.send_discord(embeds=embeds, files=chart_files)
+    # Record the outcome ON the artifact. "deliveries" is excluded from the
+    # identity hash, so this is the one fact about a digest that can be written
+    # after the fact without changing which digest it is -- which is what lets
+    # digest-guard and cockpit-refresh tell a delivered digest from a rebuilt one.
+    artifact["deliveries"] = {"discord": {
+        "status": "success" if ok else "failure",
+        "attemptedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}}
+    _save(DASHBOARD_FILE, artifact)
     if not ok:
         # No webhook configured (a local run), or Discord is down. Either way
         # the digest itself succeeded and its state is already on disk.
@@ -781,14 +935,20 @@ def mode_research_evidence() -> int:
     return 0
 
 
-def mode_top10_draft() -> int:
-    """Create a dated draft snapshot; user approval remains required on the site."""
+def mode_top10_draft(today: date | None = None) -> int:
+    """Create a dated draft snapshot; user approval remains required on the site.
+
+    `today` is injectable for the same reason session_gate's functions take an
+    explicit `now`: the review gate below is a calendar decision, and a test
+    that lets it read the wall clock passes Sun-Thu and fails Fri-Sat. MODES
+    dispatches this with no argument, so the default keeps production behaviour.
+    """
     active = _active_top10()
     pending = _load(TOP10_FILE, None)
     if not active and isinstance(pending, dict) and pending.get("status") == "draft" and pending.get("entries"):
         print("Initial Top 10 draft is awaiting approval; it remains unchanged.")
         return 0
-    if not _top10_review_due(active, date.today()):
+    if not _top10_review_due(active, today or date.today()):
         print("Top 10 review is not due; approved list remains unchanged.")
         return 0
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)
@@ -796,6 +956,13 @@ def mode_top10_draft() -> int:
     generated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     draft = _evidence_top10(scanner_result, recs, generated_at) or _unavailable_top10(generated_at)
     _save(TOP10_FILE, draft)
+    if _delivered_digest_today() is not None:
+        # Writing the draft is this mode's job; replacing the day's delivered
+        # digest is not. This run has no charts and no lean, so saving it would
+        # strip both from the cockpit and re-identify the artifact. The draft is
+        # on disk and tomorrow's digest publishes it as top10Review.
+        print("Top 10 evidence draft written; today's delivered digest kept as the artifact.")
+        return 0
     snapshot = _dashboard_snapshot(regime, recs, budget, scanner_result, as_of=generated_at,
                                    top10=active or draft, top10_review=draft,
                                    scheduled_for=os.environ.get("SCHEDULED_FOR"))
@@ -809,7 +976,19 @@ def mode_top10_draft() -> int:
 
 
 def mode_cockpit_refresh() -> int:
-    """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions."""
+    """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions.
+
+    Never over the digest that already went out today. Rebuilding here produces
+    a digest-shaped artifact with no charts and no lean, and saving it would
+    take the morning's charts and Gemini read off the cockpit AND re-identify
+    the day's artifact, orphaning the Discord delivery receipt keyed to the old
+    ID. The reconcile job runs this at 15:15 Riyadh, so that was every afternoon.
+    """
+    delivered = _delivered_digest_today()
+    if delivered is not None:
+        print(f"today's delivered digest ({delivered.get('asOf')}) is the canonical "
+              f"artifact; cockpit refresh left it unchanged.")
+        return 0
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)
     scanner_result = _scanner_result()
     snapshot = _dashboard_snapshot(
@@ -981,7 +1160,7 @@ def _backtest_codes() -> list:
         return codes
     print("universe.json missing — falling back to config names only. "
           "Run MODE=universe first for a tunable sample size.")
-    return [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST]
+    return [x["code"] for x in _holdings() + cfg.WATCHLIST]
 
 
 def mode_universe() -> int:
@@ -1087,7 +1266,7 @@ def mode_intraday_probe() -> int:
     """
     import yfinance as yf
 
-    codes = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST] + [cfg.REGIME["index_code"]]
+    codes = [x["code"] for x in _holdings() + cfg.WATCHLIST] + [cfg.REGIME["index_code"]]
     attempts = [("5m", "5d"), ("15m", "5d"), ("15m", "1mo"), ("60m", "1mo")]
     results = []
     for code in codes:
@@ -1158,6 +1337,7 @@ MODES = {
     "suggest": mode_suggest,
     "autolevels": mode_autolevels,
     "digest": mode_digest,
+    "digest-guard": mode_digest_guard,
     "research-evidence": mode_research_evidence,
     "top10-draft": mode_top10_draft,
     "cockpit-refresh": mode_cockpit_refresh,
@@ -1173,8 +1353,14 @@ MODES = {
 # Which live modes are bound to the Tadawul calendar, and under which of
 # session_gate's windows. Research and manual modes are deliberately absent:
 # you must be able to run a backtest or a smoke test on a Friday.
-GATED_MODES = {"digest": "digest", "run": "session", "reconcile": "reconcile"}
+GATED_MODES = {"digest": "digest", "digest-guard": "digest-backstop",
+               "run": "session", "reconcile": "reconcile"}
 MAX_SCHEDULE_LAG = {"digest": timedelta(minutes=60), "reconcile": timedelta(minutes=60)}
+# digest-guard is deliberately absent from both the lag table and the "digest"
+# window: it exists to run late. Gating it on the pre-open hour left it 50
+# minutes of headroom against the 35-59 minute drift it was built to absorb, so
+# on the worst day -- the 05:30 trigger dropped AND the 06:10 one delayed -- the
+# backstop declined silently and no digest shipped at all.
 
 
 def _scheduled_time(value: str | datetime | None) -> datetime | None:
@@ -1261,8 +1447,19 @@ def main() -> int:
         return 0
     late = schedule_lateness_reason(mode, now=now, scheduled_for=scheduled_for)
     if late:
-        print(f"failing '{mode}': {late}")
-        return 1
+        # A late digest used to exit 1 and send nothing. That is the worst of
+        # both worlds: the runner was already late, and the reader got silence
+        # instead of a note that says so. Ship it, labelled -- the prices are
+        # the previous close either way, and the label is what keeps that honest.
+        global _LATE_WARNING
+        # Mode-specific, because "the market may already be open" is true of a
+        # late pre-open digest and false of a reconcile, which by definition
+        # runs after the close. A warning the reader can check and find wrong
+        # is worse than no warning.
+        _LATE_WARNING = f"This {mode} ran late: {late}. Prices are the previous session's close."
+        if mode.startswith("digest"):
+            _LATE_WARNING += " The market may already be open."
+        print(f"degraded '{mode}': {late}")
     return fn()
 
 

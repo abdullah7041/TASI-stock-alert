@@ -25,6 +25,26 @@ Same three-way rule as `news._fmt_news` and `disclosures`: a failed call, a
 skipped call, and a real answer must never render identically. A model outage
 degrades the digest to facts-only with the reason named; it never produces a
 neutral-looking lean that reads as "the model considered this and shrugged".
+
+Why there is a provider chain
+-----------------------------
+On 2026-08-24 every lean read `model call failed (ClientError)` with httpStatus
+404. Nothing was down and no quota was spent: Google had retired
+`gemini-2.5-flash`, and this module named that model in a constant with no
+retry, no second model and no second provider. A single string going stale took
+the whole feature with it.
+
+Two rules came out of that, and both are enforced below:
+
+1. **No hardcoded model ID that can rot.** Gemini is addressed through the
+   `gemini-flash-latest` alias, which Google hot-swaps to the current release.
+   OpenRouter has no such alias, so its model is required from the environment
+   and the provider is skipped -- loudly -- when it is unset. A stale constant
+   is never allowed to be the thing that fails.
+2. **One provider is not a plan.** Providers are tried in order and a fatal
+   answer from one is a reason to ask the next, not a reason to give up. The
+   status records every attempt, so "why is there no lean today" is answerable
+   from the artifact alone.
 """
 
 from __future__ import annotations
@@ -37,13 +57,39 @@ from pathlib import Path
 HERE = Path(__file__).parent
 BUDGET_FILE = HERE / "llm_budget.json"
 
-# The digest runs in Python, independently from the Cloudflare research helper.
-# Gemini is therefore configured here with its own GitHub Actions secret. Every
-# provider-specific detail remains inside `_complete`.
-PROVIDER = "gemini"
-MODEL = os.environ.get("TASI_LLM_MODEL", "gemini-2.5-flash")
+# The digest runs in Python, independently from the Cloudflare research helper,
+# so it carries its own keys and its own provider order. Every provider-specific
+# detail stays inside that provider's `_complete_*` function.
+#
+# Order is deliberate and overridable: OpenRouter first when it is configured
+# (one API across many models, so a retirement is a string change rather than an
+# outage), Gemini second because its free tier costs nothing to fall back to.
+PROVIDER_ORDER = tuple(
+    name.strip().lower()
+    for name in os.environ.get("TASI_LLM_PROVIDERS", "openrouter,gemini").split(",")
+    if name.strip()
+)
+
+# `gemini-flash-latest` is an alias Google hot-swaps to the current flash
+# release. It is used instead of a pinned ID precisely because a pinned ID is
+# what broke: `gemini-2.5-flash` began returning 404 while still being listed.
+GEMINI_MODEL = os.environ.get("TASI_LLM_MODEL_GEMINI",
+                              os.environ.get("TASI_LLM_MODEL", "gemini-flash-latest"))
+
+# OpenRouter publishes no evergreen alias, so there is no safe default to hide
+# behind. Unset means the provider is skipped with that stated as the reason --
+# never a silent fallback to a name that may since have been retired.
+OPENROUTER_MODEL = os.environ.get("TASI_LLM_MODEL_OPENROUTER", "").strip()
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
 MAX_TOKENS = 2000
 MONTHLY_CALL_CAP = int(os.environ.get("TASI_LLM_MONTHLY_CALLS", "40"))
+
+# Retry only what a retry can fix. A 404 or a 401 means the request itself is
+# wrong -- repeating it just wastes the digest's time before the fallback runs.
+RETRYABLE_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
+MAX_ATTEMPTS = 2
+BACKOFF_SECONDS = 2.0
 
 LEANS = ("positive", "negative", "neutral")
 CONFIDENCES = ("low", "medium", "high")
@@ -218,7 +264,7 @@ def _complete(prompt: str, *, api_key: str, timeout: int = 60) -> str:
 
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model=MODEL,
+        model=GEMINI_MODEL,
         contents=prompt,
         config={
             "system_instruction": SYSTEM,
@@ -231,12 +277,103 @@ def _complete(prompt: str, *, api_key: str, timeout: int = 60) -> str:
     return str(response.text or "")
 
 
-def _failure_status(exc: Exception) -> dict:
+class ProviderHTTPError(Exception):
+    """A provider answered with an HTTP error. Carries the status for routing."""
+
+    def __init__(self, status: int, provider: str):
+        # Deliberately no provider body text: the message is rendered into the
+        # digest and an upstream error string is not ours to republish.
+        super().__init__(f"{provider} returned HTTP {status}")
+        self.code = status
+
+
+def _complete_openrouter(prompt: str, *, api_key: str, timeout: int = 60) -> str:
+    """Call OpenRouter's OpenAI-compatible endpoint and return the JSON text."""
+    import requests
+
+    response = requests.post(
+        OPENROUTER_URL,
+        timeout=timeout,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            # OpenRouter attributes traffic by these; harmless and polite.
+            "HTTP-Referer": "https://github.com/abdullah7041/TASI-stock-alert",
+            "X-Title": "TASI recommender",
+        },
+        json={
+            "model": OPENROUTER_MODEL,
+            "max_tokens": MAX_TOKENS,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": SYSTEM},
+                {"role": "user", "content": prompt},
+            ],
+        },
+    )
+    if not 200 <= response.status_code < 300:
+        raise ProviderHTTPError(response.status_code, "openrouter")
+    payload = response.json()
+    return str((payload["choices"][0]["message"].get("content") or ""))
+
+
+def _provider_plan(gemini_key: str | None) -> list[dict]:
+    """Which providers can actually be called, in order, and why not otherwise.
+
+    A provider that cannot run is not dropped silently -- it is carried with the
+    reason attached, so the digest can say "OpenRouter: no model configured"
+    instead of leaving the reader to guess why the fallback never happened.
+    """
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    available = {
+        "openrouter": {
+            "name": "openrouter",
+            "model": OPENROUTER_MODEL,
+            "call": _complete_openrouter,
+            "key": openrouter_key,
+            "skip": (
+                "no OPENROUTER_API_KEY configured" if not openrouter_key
+                else "no TASI_LLM_MODEL_OPENROUTER configured" if not OPENROUTER_MODEL
+                else None
+            ),
+        },
+        "gemini": {
+            "name": "gemini",
+            "model": GEMINI_MODEL,
+            "call": _complete,
+            "key": gemini_key,
+            "skip": None if gemini_key else "no GEMINI_API_KEY configured",
+        },
+    }
+    return [available[name] for name in PROVIDER_ORDER if name in available]
+
+
+def _call_with_retry(provider: dict, prompt: str) -> tuple[str | None, dict | None]:
+    """Return (text, None) on success or (None, failure_status).
+
+    Retries only statuses a retry can fix. A fatal answer returns immediately so
+    the caller can move to the next provider while the digest is still warm.
+    """
+    last: dict = {}
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            return provider["call"](prompt, api_key=provider["key"]), None
+        except Exception as exc:
+            last = _failure_status(exc, provider=provider["name"], model=provider["model"])
+            status = last.get("httpStatus")
+            retryable = status in RETRYABLE_STATUS or status is None
+            if not retryable or attempt == MAX_ATTEMPTS:
+                return None, last
+            time.sleep(BACKOFF_SECONDS * attempt)
+    return None, last
+
+
+def _failure_status(exc: Exception, *, provider: str, model: str) -> dict:
     """Return diagnostics that help operations without exposing provider text."""
     status = {
         "ok": False,
-        "provider": PROVIDER,
-        "model": MODEL,
+        "provider": provider,
+        "model": model,
         "reason": f"model call failed ({type(exc).__name__})",
         "errorType": type(exc).__name__,
         "errorCategory": "client_error",
@@ -262,30 +399,68 @@ def get_leans(recs: list, *, api_key: str | None = None,
     _fmt_news documents having already been made once with news.
     """
     key = api_key or os.environ.get("GEMINI_API_KEY")
-    if not key:
-        return {"_status": {"ok": False, "reason": "no GEMINI_API_KEY configured"}}
     if not recs:
         return {"_status": {"ok": False, "reason": "no names to read"}}
     remaining = budget_remaining(budget_path)
     if remaining <= 0:
         return {"_status": {"ok": False,
                             "reason": f"monthly cap of {MONTHLY_CALL_CAP} model calls reached"}}
-    try:
-        raw = _complete(build_prompt(recs), api_key=key)
-    except Exception as exc:
-        return {"_status": _failure_status(exc)}
-    _record_call(budget_path)
-    try:
-        leans = parse_response(raw)
-    except Exception as exc:
+
+    plan = _provider_plan(key)
+    if not plan:
         return {"_status": {"ok": False,
-                            "reason": f"model returned unparseable output ({type(exc).__name__})"}}
-    if not leans:
-        return {"_status": {"ok": False, "reason": "model returned no usable takes"}}
-    leans["_status"] = {
-        "ok": True,
-        "provider": PROVIDER,
-        "model": MODEL,
-        "calls_left": remaining - 1,
-    }
-    return leans
+                            "reason": f"no known provider in TASI_LLM_PROVIDERS "
+                                      f"({', '.join(PROVIDER_ORDER) or 'empty'})"}}
+
+    prompt = build_prompt(recs)
+    attempts: list[dict] = []
+    last_failure: dict | None = None
+
+    for provider in plan:
+        if provider["skip"]:
+            attempts.append({"provider": provider["name"], "reason": provider["skip"]})
+            continue
+
+        raw, failure = _call_with_retry(provider, prompt)
+        if failure is not None:
+            attempts.append({"provider": provider["name"], "reason": failure["reason"],
+                             **({"httpStatus": failure["httpStatus"]} if "httpStatus" in failure else {})})
+            last_failure = failure
+            continue
+
+        # The budget counts calls that reached a provider, answer usable or not.
+        _record_call(budget_path)
+        try:
+            leans = parse_response(raw)
+        except Exception as exc:
+            reason = f"model returned unparseable output ({type(exc).__name__})"
+            attempts.append({"provider": provider["name"], "reason": reason})
+            last_failure = {"ok": False, "provider": provider["name"],
+                            "model": provider["model"], "reason": reason}
+            continue
+        if not leans:
+            reason = "model returned no usable takes"
+            attempts.append({"provider": provider["name"], "reason": reason})
+            last_failure = {"ok": False, "provider": provider["name"],
+                            "model": provider["model"], "reason": reason}
+            continue
+
+        leans["_status"] = {
+            "ok": True,
+            "provider": provider["name"],
+            "model": provider["model"],
+            "calls_left": budget_remaining(budget_path),
+            **({"attempts": attempts} if attempts else {}),
+        }
+        return leans
+
+    # Every provider is exhausted. Report the last real failure when there was
+    # one; otherwise every provider was skipped and the reason is configuration.
+    if last_failure is not None:
+        return {"_status": {**last_failure, "attempts": attempts}}
+    return {"_status": {
+        "ok": False,
+        "reason": "; ".join(f"{a['provider']}: {a['reason']}" for a in attempts)
+                  or "no provider configured",
+        "attempts": attempts,
+    }}

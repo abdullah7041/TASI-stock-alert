@@ -331,8 +331,13 @@ def allocate_budget(buys: list, budget_sar: float,
                 }
 
     if not buys or budget_sar <= 0:
+        # The name still appears in the digest with its full reasoning and its
+        # trigger price -- it is simply not sized, the same pattern max_positions
+        # already uses. Hiding a qualifying setup because of an accounting rule
+        # means never seeing the one that was building all month.
         for r in buys:
-            r["sizing"] = {"shares": 0, "spend": 0.0, "skip": "monthly budget exhausted"}
+            r["sizing"] = {"shares": 0, "spend": 0.0,
+                           "skip": "no budget left this month"}
         return summary
 
     n = len(buys)

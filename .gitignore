@@ -9,9 +9,20 @@ node_modules/
 dist/
 .wrangler/
 .next/
+*.tsbuildinfo
 
 # Chart PNGs are rebuilt on every digest run; never committed.
 .charts/
 
 # Local scratch (sync tarballs, transient artifacts); never committed.
 .tmp/
+
+# Fetched fresh from the cockpit on every run and never authored here. Committing
+# it would mean a transient read failure lands as a deletion in the repo, and the
+# authoritative copy lives in the ledger either way.
+portfolio_active.json
+top10_active.json
+.portfolio-current.json
+.top10-current.json
+.ingest-response.json
+.discord-receipt.json

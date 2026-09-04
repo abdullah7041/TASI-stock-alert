@@ -14,6 +14,26 @@ export class PortfolioStore {
     return rows.results.map((row) => ({ operationId: row.operation_id, kind: row.event_kind, month: row.month_key ?? undefined, code: row.symbol ?? undefined, name: row.name ?? undefined, shares: row.shares ?? undefined, priceSar: row.price_sar ?? undefined, cashSar: row.cash_sar ?? undefined, feesSar: row.fees_sar ?? undefined, reason: row.reason ?? undefined, confirmedAt: row.confirmed_at }));
   }
   async view(ownerId: string) { return foldPortfolio(await this.events(ownerId)); }
+  /** The single recorded owner, for machine callers that have no session. */
+  async soleOwnerId() {
+    await this.ensureReady();
+    const rows = await this.db.prepare("SELECT DISTINCT owner_id FROM portfolio_events").all<{ owner_id: string }>();
+    if (rows.results.length > 1) throw new Error("More than one portfolio owner is recorded.");
+    return rows.results[0]?.owner_id ?? null;
+  }
+  /**
+   * The producer's contract: the folded view plus what was actually SPENT this
+   * calendar month. Sells do not reduce it -- the cap is on new-buy spend, and
+   * selling something does not un-spend the money.
+   */
+  async ledger(month: string) {
+    const ownerId = await this.soleOwnerId();
+    const events = ownerId ? await this.events(ownerId) : [];
+    const spent = events
+      .filter((event) => event.kind === "buy" && String(event.confirmedAt).slice(0, 7) === month)
+      .reduce((total, event) => total + (event.shares ?? 0) * (event.priceSar ?? 0) + (event.feesSar ?? 0), 0);
+    return { view: foldPortfolio(events), spentThisMonthSar: Math.round(spent * 100) / 100, month };
+  }
   async append(ownerId: string, event: PortfolioEvent) {
     await this.ensureReady();
     const existing = await this.db.prepare("SELECT operation_id FROM portfolio_events WHERE operation_id = ?").bind(event.operationId).first<{operation_id:string}>();

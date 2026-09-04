@@ -42,7 +42,7 @@ export function PriceVolumeChart({ chart }: { chart: MarketChart }) {
     {expanded && <div className={styles.chartPanel} id={panelId}>
       <svg aria-label={`${chart.name} 3-month price and volume chart`} className={styles.chartSvg} role="img" viewBox="0 0 590 232">
         <title>{chart.name} delayed daily price and volume chart</title>
-        {[0, 0.5, 1].map((ratio) => <line key={ratio} x1={left} x2={left + width} y1={priceBottom - ratio * (priceBottom - priceTop)} y2={priceBottom - ratio * (priceBottom - priceTop)} className={styles.chartGrid} />)}
+        {[0, 0.5, 1].map((ratio) => <line key={ratio} x1={left} x2={left + width} y1={priceBottom - ratio * (priceBottom - priceTop)} y2={priceBottom - ratio * (priceBottom - priceTop)} className={styles.chartGridLine} />)}
         {Object.entries(levels).map(([name, value]) => <g key={name}><line x1={left} x2={left + width} y1={y(value)} y2={y(value)} className={`${styles.chartLevel} ${styles[`chartLevel${name[0].toUpperCase()}${name.slice(1)}`] ?? ""}`} /><text x={left + width - 2} y={y(value) - 3} textAnchor="end" className={styles.chartLabel}>{name} {value.toFixed(2)}</text></g>)}
         <polyline fill="none" points={points} className={styles.chartLine} />
         {bars.map((bar, index) => <rect key={bar.date} x={x(index) - Math.max(1, 260 / bars.length)} y={volumeBottom - (bar.Volume / maxVolume) * (volumeBottom - volumeTop)} width={Math.max(2, 430 / bars.length)} height={(bar.Volume / maxVolume) * (volumeBottom - volumeTop)} className={bar.Close >= bar.Open ? styles.chartVolumeUp : styles.chartVolumeDown} />)}
