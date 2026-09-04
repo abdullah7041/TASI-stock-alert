@@ -12,7 +12,8 @@
     "test": "npm run build && node --test tests/*.test.mjs && npm run test:ui",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .worktrees --ignore-pattern .claude",
     "typecheck": "tsc --noEmit --incremental false",
-    "test:ui": "vitest run"
+    "test:ui": "vitest run",
+    "discord:register": "node discord-interactions/scripts/register-commands.mjs"
   },
   "dependencies": {
     "next": "16.2.11",

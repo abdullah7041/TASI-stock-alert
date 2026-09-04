@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tasi-discord-interactions",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "COCKPIT_ORIGIN": "https://tasi-action-cockpit.busaud7041.chatgpt.site",
+    "DISCORD_APP_PUBLIC_KEY": "f50c12a18c4975a33dd828f92343996a58b58d6ae5b73ebb06c138a8084e463d"
+  }
+}
