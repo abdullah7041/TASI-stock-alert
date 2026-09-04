@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "research": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/research/SKILL.md",
+      "computedHash": "0ce7d7a48175ab30c80240df350a73c216489f775324c8d27c8a10b1b38a49bf"
+    }
+  }
+}
