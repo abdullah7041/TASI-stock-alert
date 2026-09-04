@@ -43,22 +43,12 @@ jobs:
           test -n "$COCKPIT_INGEST_TOKEN"
           HEALTH=$(curl --fail-with-body --retry 3 --retry-delay 2 https://tasi-action-cockpit.busaud7041.chatgpt.site/api/health -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN")
           echo "$HEALTH"
-          echo "$HEALTH" | jq -e --arg sha "$EXPECTED_COMMIT_SHA" '.ok == true and .database == "ready" and .deployedCommit == $sha and (.acceptedSchemaVersions | index(2)) != null'
+          printf '%s\n' "$HEALTH" > health-response.json
           INGEST=$(curl --fail-with-body --retry 3 --retry-delay 2 -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" -H "Content-Type: application/json" --data-binary @dashboard.json)
           echo "$INGEST"
           curl --fail-with-body --retry 3 --retry-delay 2 \
             https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard \
             -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
             -o dashboard-response.json
-          python - <<'PY'
-          import json
-
-          payload = json.load(open("dashboard-response.json", encoding="utf-8"))
-          assert isinstance(payload.get("alerts"), list), "dashboard alerts collection missing"
-          assert payload.get("snapshot", {}).get("schemaVersion") == 2, "schema-v2 snapshot missing"
-          assert payload.get("snapshot", {}).get("dataStatus") == "delayed-daily", "delayed data label missing"
-          assert payload.get("snapshot", {}).get("tradeDate"), "dashboard trade date missing"
-          assert payload.get("freshness") in {"current", "stale"}, "dashboard freshness missing"
-          print("dashboard alert composition verified")
-          PY
-          printf 'Expected commit: `%s`\n\nHealth, schema-v2 safe refresh, and composed alerts verified.\n' "$EXPECTED_COMMIT_SHA" >> "$GITHUB_STEP_SUMMARY"
+          python scripts/verify_production_smoke.py health-response.json dashboard-response.json "$EXPECTED_COMMIT_SHA"
+          printf 'Expected commit: `%s`\n\nHealth, schema-compatible safe refresh, and composed alerts verified.\n' "$EXPECTED_COMMIT_SHA" >> "$GITHUB_STEP_SUMMARY"
