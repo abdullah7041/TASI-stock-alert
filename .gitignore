@@ -12,3 +12,6 @@ dist/
 
 # Chart PNGs are rebuilt on every digest run; never committed.
 .charts/
+
+# Local scratch (sync tarballs, transient artifacts); never committed.
+.tmp/
