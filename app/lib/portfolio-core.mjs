@@ -16,6 +16,9 @@ export function foldPortfolio(events) {
   const operations = new Set();
   const contributions = new Set();
   const holdings = new Map();
+  // Realised P/L per code, kept apart from `holdings` so a fully sold position
+  // does not take its own history with it when the holding is deleted.
+  const realised = new Map();
   let cashSar = 0;
   let confirmedAt = null;
   for (const event of events) {
@@ -53,7 +56,7 @@ export function foldPortfolio(events) {
     const feesSar = event.feesSar ?? 0;
     if (typeof feesSar !== "number" || !Number.isFinite(feesSar) || feesSar < 0) throw new Error("feesSar must not be negative.");
     const holding = holdings.get(event.code)
-      ?? { code: event.code, name: event.name, shares: 0, avgCostSar: 0, realisedSar: 0 };
+      ?? { code: event.code, name: event.name, shares: 0, avgCostSar: 0, realisedSar: realised.get(event.code) ?? 0 };
     if (event.kind === "buy") {
       const spend = shares * priceSar + feesSar;
       if (spend > cashSar + 1e-9) throw new Error("buy exceeds confirmed cash.");
@@ -71,15 +74,18 @@ export function foldPortfolio(events) {
       if (shares > holding.shares) throw new Error("sell exceeds confirmed holding.");
       const proceeds = shares * priceSar - feesSar;
       // Average cost is unchanged by a sale: selling part of a position does not
-      // alter what the remainder cost. The gain is booked separately so it stays
-      // visible after the shares are gone.
-      holding.realisedSar = round2(holding.realisedSar + proceeds - shares * holding.avgCostSar);
+      // alter what the remainder cost. The gain is booked in `realised`, which
+      // is keyed by code and OUTSIDE `holdings`, because a full exit deletes the
+      // holding -- and booking it on the holding meant the realised gain was
+      // dropped in exactly the case this comment claimed it survived.
+      realised.set(event.code, round2((realised.get(event.code) ?? 0) + proceeds - shares * holding.avgCostSar));
+      holding.realisedSar = realised.get(event.code);
       holding.shares -= shares;
       cashSar += proceeds;
       if (holding.shares === 0) holdings.delete(event.code); else holdings.set(event.code, holding);
     }
   }
-  return { cashSar: Math.round(cashSar * 100) / 100, holdings: [...holdings.values()].sort((a, b) => a.code.localeCompare(b.code)), contributionMonth: contributions.size ? [...contributions].sort().at(-1) : null, confirmedAt };
+  return { cashSar: Math.round(cashSar * 100) / 100, holdings: [...holdings.values()].sort((a, b) => a.code.localeCompare(b.code)), realisedSar: round2([...realised.values()].reduce((total, value) => total + value, 0)), realisedByCode: Object.fromEntries([...realised.entries()].sort(([a], [b]) => a.localeCompare(b))), contributionMonth: contributions.size ? [...contributions].sort().at(-1) : null, confirmedAt };
 }
 
 export function proposeMonthlyAction({ cashSar, holdings, approved, materialRisks, evidenceAsOf, priceAsOf }) {

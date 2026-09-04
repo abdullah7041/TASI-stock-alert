@@ -3536,7 +3536,32 @@ def test_chart_artifact_keeps_at_most_ninety_valid_daily_ohlcv_sessions():
 def test_chart_artifact_makes_missing_history_an_explicit_unavailable_state():
     charts = artifacts.chart_artifacts([_lean_rec()], {"1303": pd.DataFrame()}, {})
     assert charts == [{"code": "1303", "name": "EIC", "status": "unavailable",
-                       "reason": "No usable daily OHLCV history."}]
+                       "reason": "No usable daily OHLCV history.", "levels": {}}]
+
+
+def test_a_name_keeps_its_levels_even_when_its_chart_cannot_be_drawn():
+    """Whether there was enough history to plot says nothing about the stop.
+
+    Levels reach the Discord embed through this structure, so filtering them by
+    chart availability silently stripped stop/trim/target from every
+    thin-history name -- and dropped them for EVERY name when the history fetch
+    itself failed.
+    """
+    stored = {"1303": {"stop": 9.5, "trim": 11.5, "target": 12.5,
+                       "price_at_derivation": 10.0}}
+    charts = artifacts.chart_artifacts([_lean_rec()], {}, stored)
+
+    assert charts[0]["status"] == "unavailable"
+    assert charts[0]["levels"] == {"stop": 9.5, "trim": 11.5, "target": 12.5,
+                                   "price_at_derivation": 10.0}
+    # price_at_derivation is what _fmt_levels compares against to warn that the
+    # levels are stale. Without it that warning can never fire.
+    blob = json.dumps(nt.build_digest_embeds(artifact={
+        "digestRecords": [_lean_rec(price=13.0)], "regime": "neutral",
+        "tradeDate": "2026-08-25", "monthlyBudgetSar": 500, "warnings": [],
+        "charts": charts}), ensure_ascii=False)
+    assert "9.50" in blob
+    assert "re-run `autolevels`" in blob
 
 
 def test_chart_renders_a_png_with_levels(tmp_path):
@@ -3611,8 +3636,25 @@ def test_matplotlib_is_declared_as_a_runtime_dependency():
 # tests.
 
 def test_live_modes_are_bound_to_the_tadawul_calendar():
-    assert main.GATED_MODES == {"digest": "digest", "digest-guard": "digest",
+    assert main.GATED_MODES == {"digest": "digest", "digest-guard": "digest-backstop",
                                 "run": "session", "reconcile": "reconcile"}
+
+
+def test_the_backstop_is_not_refused_for_the_lateness_it_exists_to_absorb():
+    """Gating the backstop on the pre-open hour defeated the backstop.
+
+    It fires at 06:10 UTC and the pre-open window closes at 07:00 UTC, so 50
+    minutes of scheduler drift -- inside the 35-59 minute band the workflow
+    documents -- made it decline silently on the exact morning the 05:30 digest
+    had been dropped.
+    """
+    after_the_open = datetime(2026, 8, 25, 8, 30, tzinfo=timezone.utc)  # 11:30 Riyadh
+    assert session_gate.is_pre_open_window(after_the_open) is False
+    assert session_gate.gate_reason("digest", after_the_open, holidays=set()) is not None
+    assert session_gate.gate_reason("digest-backstop", after_the_open, holidays=set()) is None
+    # But a backstop is pointless once the session has closed.
+    after_the_close = datetime(2026, 8, 25, 12, 30, tzinfo=timezone.utc)  # 15:30 Riyadh
+    assert session_gate.gate_reason("digest-backstop", after_the_close, holidays=set()) is not None
 
 
 def test_research_and_manual_modes_are_never_calendar_gated():
@@ -3685,11 +3727,44 @@ def test_the_late_warning_reaches_the_reader_not_just_the_log(monkeypatch):
 
 
 def test_the_guard_does_nothing_when_todays_digest_already_shipped(monkeypatch):
-    monkeypatch.setattr(main, "_load",
-                        lambda *_a, **_k: {"tradeDate": main._today(), "artifactKind": "digest"})
+    monkeypatch.setattr(main, "_load", lambda *_a, **_k: {
+        "tradeDate": main._today(), "artifactKind": "digest",
+        "deliveries": {"discord": {"status": "success"}}})
     monkeypatch.setattr(main, "mode_digest",
                         lambda: (_ for _ in ()).throw(AssertionError("must not re-send")))
     assert main.mode_digest_guard() == 0
+
+
+def test_a_digest_shaped_artifact_nobody_received_does_not_satisfy_the_guard(monkeypatch):
+    """cockpit-refresh and top10-draft write artifactKind "digest" too.
+
+    Neither sends anything, so trusting the kind alone let a manual refresh on a
+    morning the 05:30 trigger was dropped convince the backstop that the digest
+    had shipped -- and no digest was ever sent, with every step green.
+    """
+    monkeypatch.setattr(main, "_load",
+                        lambda *_a, **_k: {"tradeDate": main._today(), "artifactKind": "digest"})
+    sent = []
+    monkeypatch.setattr(main, "mode_digest", lambda: sent.append(True) or 0)
+    assert main.mode_digest_guard() == 0
+    assert sent == [True]
+
+
+def test_a_refresh_never_replaces_the_digest_that_already_went_out(monkeypatch):
+    """Reconcile runs cockpit-refresh after the close, every trading day.
+
+    Rebuilding produces a digest-shaped artifact with no charts and no lean, so
+    saving it stripped both from the cockpit and re-identified the day's
+    artifact, orphaning the Discord receipt keyed to the old ID.
+    """
+    monkeypatch.setattr(main, "_load", lambda *_a, **_k: {
+        "tradeDate": main._today(), "artifactKind": "digest", "asOf": "2026-08-30T05:30:00Z",
+        "deliveries": {"discord": {"status": "success"}}})
+    monkeypatch.setattr(main, "_save",
+                        lambda *_a: (_ for _ in ()).throw(AssertionError("must not overwrite")))
+    monkeypatch.setattr(main, "_collect_recs",
+                        lambda **_: (_ for _ in ()).throw(AssertionError("must not refetch")))
+    assert main.mode_cockpit_refresh() == 0
 
 
 def test_the_guard_sends_when_the_scheduled_digest_was_dropped(monkeypatch):

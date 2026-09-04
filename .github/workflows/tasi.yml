@@ -55,7 +55,12 @@ concurrency:
   # One queue per trigger, not one queue for the whole workflow. A single shared
   # group made the pre-open digest wait behind the every-15-minute session runs,
   # which was a large part of why it kept landing after the open.
-  group: tasi-${{ github.event.schedule || github.event.inputs.mode || 'manual' }}
+  #
+  # The one exception is the digest and its backstop, which SHARE a queue. The
+  # backstop decides from the dashboard.json the digest commits in its last
+  # step, so letting them overlap means the backstop reads a stale trade date
+  # while the real digest is still running -- and sends the whole thing twice.
+  group: tasi-${{ (github.event.schedule == '30 5 * * 0,1,2,3,4' || github.event.schedule == '10 6 * * 0,1,2,3,4') && 'pre-open' || github.event.schedule || github.event.inputs.mode || 'manual' }}
   cancel-in-progress: false
 
 jobs:
@@ -286,7 +291,11 @@ jobs:
         run: |
           git config user.name "tasi-bot"
           git config user.email "tasi-bot@users.noreply.github.com"
-          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json top10_active.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
+          # top10_active.json is deliberately absent: it is fetched fresh from
+          # the cockpit each run and DELETED when that read fails, so committing
+          # it would land a transient outage in the repo as a deletion of the
+          # approved list. Same reasoning as portfolio_active.json in .gitignore.
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi

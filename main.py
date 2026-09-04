@@ -246,14 +246,19 @@ def _active_top10() -> dict | None:
 
 def _top10_review_due(active: dict | None, today: date) -> bool:
     """Initial draft immediately; later drafts only after their 3-month date."""
+    trading_day = today.weekday() in (6, 0, 1, 2, 3)  # Riyadh trading Sun-Thu
     if not active:
-        return today.weekday() in (6, 0, 1, 2, 3)  # Riyadh trading Sun-Thu
+        return trading_day
     due_text = str(active.get("nextReviewAt") or "")[:10]
     try:
         due = date.fromisoformat(due_text)
     except ValueError:
-        return False
-    return today >= due and today.weekday() in (6, 0, 1, 2, 3)
+        # nextReviewAt is only written by approvals made since it existed. An
+        # older approved list carries none, and treating that as "not due" would
+        # freeze it permanently -- no review, ever, without editing the database
+        # by hand. An unscheduled review is an overdue one.
+        return trading_day
+    return today >= due and trading_day
 
 
 def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) -> dict | None:
@@ -342,12 +347,11 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     """Serialize one delayed daily digest for the private cockpit."""
     generated_at = as_of or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     # Manual operations used the literal "manual" historically. Keep such
-    # source metadata honest but never emit an invalid timestamp into v3.
-    try:
-        parsed_schedule = datetime.fromisoformat(str(scheduled_for).replace("Z", "+00:00")) if scheduled_for else None
-        scheduled_for = scheduled_for if parsed_schedule and parsed_schedule.tzinfo else None
-    except ValueError:
-        scheduled_for = None
+    # source metadata honest but never emit an invalid timestamp into v3. The
+    # same rule has to hold for the artifact's own scheduledFor, so it lives in
+    # artifacts.py and both callers use it -- sanitising here alone is what let
+    # summaryV1.scheduledFor and artifact.scheduledFor disagree.
+    scheduled_for = artifacts.timestamp_or_none(scheduled_for)
     urgent = []
     unknown_cost = []
     for r in recs:
@@ -713,13 +717,16 @@ def _chart_bundle(recs: list) -> tuple[dict, dict, list[dict]]:
     history must cost you the picture, never the message.
     """
     codes = [r["code"] for r in recs]
+    # Read before the fetch: levels.json is local and has nothing to do with
+    # whether history arrives. Loading it inside the success path meant a failed
+    # fetch cost every name its stop and target as well as its picture.
+    stored_levels = _load(LEVELS_FILE, {})
     try:
         frames = dat.get_histories(codes, cfg.TECH["history_period"])
     except Exception as exc:
         print(f"charts: history fetch failed ({type(exc).__name__}) — sending text only")
-        return {}, {}, artifacts.chart_artifacts(recs, {}, {})
+        return {}, {}, artifacts.chart_artifacts(recs, {}, stored_levels)
 
-    stored_levels = _load(LEVELS_FILE, {})
     chart_data = artifacts.chart_artifacts(recs, frames, stored_levels)
     try:
         import charts as chartmod
@@ -823,6 +830,22 @@ def _persist_attached_leans(recs: list) -> None:
         _save(HISTORY_FILE, history)
 
 
+def _delivered_digest_today() -> dict | None:
+    """Today's digest artifact IF it actually reached Discord, else None.
+
+    `artifactKind` alone does not answer this: cockpit-refresh and top10-draft
+    build digest-shaped artifacts too, and neither sends anything. Only a
+    delivered digest records `deliveries.discord`, and that key is in
+    artifacts.IDENTITY_EXCLUDED_FIELDS, so writing it never re-identifies the
+    artifact whose delivery it is describing.
+    """
+    snapshot = _load(DASHBOARD_FILE, None) or {}
+    if snapshot.get("artifactKind") != "digest" or snapshot.get("tradeDate") != _today():
+        return None
+    discord = (snapshot.get("deliveries") or {}).get("discord") or {}
+    return snapshot if discord.get("status") == "success" else None
+
+
 def mode_digest_guard() -> int:
     """Send the pre-open digest only if today's has not already gone out.
 
@@ -832,16 +855,23 @@ def mode_digest_guard() -> int:
     trigger fires 40 minutes later and asks one question -- did today's digest
     ship? -- before deciding whether to do anything.
 
-    The check is the committed snapshot's own trade date, because that is what
-    the digest writes and the workflow commits back. On a normal day this exits
-    without touching the network.
+    The check is the committed artifact's own delivery receipt, because a
+    snapshot written by some other mode is not a digest anybody read. On a
+    normal day this exits without touching the network.
     """
-    snapshot = _load(DASHBOARD_FILE, None) or {}
+    delivered = _delivered_digest_today()
     today = _today()
-    if snapshot.get("tradeDate") == today and snapshot.get("artifactKind") == "digest":
-        print(f"digest for {today} already shipped ({snapshot.get('asOf')}); nothing to do.")
+    if delivered is not None:
+        print(f"digest for {today} already shipped ({delivered.get('asOf')}); nothing to do.")
         return 0
-    print(f"no digest recorded for {today} (last: {snapshot.get('tradeDate') or 'none'}); sending now.")
+    if not session_gate.is_pre_open_window():
+        # The backstop is allowed past the open, but the reader must be told:
+        # the same honesty rule a late scheduled digest already follows.
+        global _LATE_WARNING
+        _LATE_WARNING = (
+            "The scheduled pre-open digest did not run, so this backstop sent it "
+            "after the open. Prices are the previous session's close.")
+    print(f"no digest delivered for {today}; sending now.")
     return mode_digest()
 
 
@@ -869,6 +899,14 @@ def mode_digest() -> int:
         artifact=artifact, charts_by_code=charts_by_code,
     )
     ok = nt.send_discord(embeds=embeds, files=chart_files)
+    # Record the outcome ON the artifact. "deliveries" is excluded from the
+    # identity hash, so this is the one fact about a digest that can be written
+    # after the fact without changing which digest it is -- which is what lets
+    # digest-guard and cockpit-refresh tell a delivered digest from a rebuilt one.
+    artifact["deliveries"] = {"discord": {
+        "status": "success" if ok else "failure",
+        "attemptedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}}
+    _save(DASHBOARD_FILE, artifact)
     if not ok:
         # No webhook configured (a local run), or Discord is down. Either way
         # the digest itself succeeded and its state is already on disk.
@@ -912,6 +950,13 @@ def mode_top10_draft() -> int:
     generated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     draft = _evidence_top10(scanner_result, recs, generated_at) or _unavailable_top10(generated_at)
     _save(TOP10_FILE, draft)
+    if _delivered_digest_today() is not None:
+        # Writing the draft is this mode's job; replacing the day's delivered
+        # digest is not. This run has no charts and no lean, so saving it would
+        # strip both from the cockpit and re-identify the artifact. The draft is
+        # on disk and tomorrow's digest publishes it as top10Review.
+        print("Top 10 evidence draft written; today's delivered digest kept as the artifact.")
+        return 0
     snapshot = _dashboard_snapshot(regime, recs, budget, scanner_result, as_of=generated_at,
                                    top10=active or draft, top10_review=draft,
                                    scheduled_for=os.environ.get("SCHEDULED_FOR"))
@@ -925,7 +970,19 @@ def mode_top10_draft() -> int:
 
 
 def mode_cockpit_refresh() -> int:
-    """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions."""
+    """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions.
+
+    Never over the digest that already went out today. Rebuilding here produces
+    a digest-shaped artifact with no charts and no lean, and saving it would
+    take the morning's charts and Gemini read off the cockpit AND re-identify
+    the day's artifact, orphaning the Discord delivery receipt keyed to the old
+    ID. The reconcile job runs this at 15:15 Riyadh, so that was every afternoon.
+    """
+    delivered = _delivered_digest_today()
+    if delivered is not None:
+        print(f"today's delivered digest ({delivered.get('asOf')}) is the canonical "
+              f"artifact; cockpit refresh left it unchanged.")
+        return 0
     regime, recs, budget = _collect_recs(include_news=True, record_history=False)
     scanner_result = _scanner_result()
     snapshot = _dashboard_snapshot(
@@ -1290,10 +1347,14 @@ MODES = {
 # Which live modes are bound to the Tadawul calendar, and under which of
 # session_gate's windows. Research and manual modes are deliberately absent:
 # you must be able to run a backtest or a smoke test on a Friday.
-GATED_MODES = {"digest": "digest", "digest-guard": "digest",
+GATED_MODES = {"digest": "digest", "digest-guard": "digest-backstop",
                "run": "session", "reconcile": "reconcile"}
 MAX_SCHEDULE_LAG = {"digest": timedelta(minutes=60), "reconcile": timedelta(minutes=60)}
-# digest-guard is deliberately absent: it exists to run late.
+# digest-guard is deliberately absent from both the lag table and the "digest"
+# window: it exists to run late. Gating it on the pre-open hour left it 50
+# minutes of headroom against the 35-59 minute drift it was built to absorb, so
+# on the worst day -- the 05:30 trigger dropped AND the 06:10 one delayed -- the
+# backstop declined silently and no digest shipped at all.
 
 
 def _scheduled_time(value: str | datetime | None) -> datetime | None:
@@ -1385,9 +1446,13 @@ def main() -> int:
         # instead of a note that says so. Ship it, labelled -- the prices are
         # the previous close either way, and the label is what keeps that honest.
         global _LATE_WARNING
-        _LATE_WARNING = (
-            f"This {mode} ran late: {late}. Prices are the previous session's "
-            f"close, and the market may already be open.")
+        # Mode-specific, because "the market may already be open" is true of a
+        # late pre-open digest and false of a reconcile, which by definition
+        # runs after the close. A warning the reader can check and find wrong
+        # is worse than no warning.
+        _LATE_WARNING = f"This {mode} ran late: {late}. Prices are the previous session's close."
+        if mode.startswith("digest"):
+            _LATE_WARNING += " The market may already be open."
         print(f"degraded '{mode}': {late}")
     return fn()
 

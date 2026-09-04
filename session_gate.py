@@ -69,6 +69,12 @@ def gate_reason(mode: str, now: datetime | None = None, holidays: set[str] | Non
         return f"market closed on {local.date().isoformat()} (weekend or recorded holiday)"
     if mode == "digest" and not is_pre_open_window(now, holidays):
         return f"pre-open digest window is {PRE_OPEN_EARLIEST:%H:%M}-{SESSION_OPEN:%H:%M} Riyadh, not {local:%H:%M}"
+    # The backstop exists because the scheduled digest was dropped or delayed,
+    # so refusing it for being late is refusing it for the reason it was called.
+    # It runs any time before the close; after that, tomorrow's digest is nearer
+    # than today's and a stale one would be worse than none.
+    if mode == "digest-backstop" and local.time() >= SESSION_CLOSE:
+        return f"the pre-open backstop is pointless after the {SESSION_CLOSE:%H:%M} Riyadh close, not {local:%H:%M}"
     if mode == "session" and not is_session_open(now, holidays):
         return f"session window is {SESSION_OPEN:%H:%M}-{SESSION_CLOSE:%H:%M} Riyadh, not {local:%H:%M}"
     if mode == "reconcile" and local.time() < SESSION_CLOSE:

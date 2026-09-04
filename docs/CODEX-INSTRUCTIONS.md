@@ -49,8 +49,9 @@ this repository.** Treat that as the finding, not as a theory to test.
 
 **The producer now reads the confirmed portfolio each run.** The workflow step
 *Load the confirmed portfolio for producer* calls this route; on any failure it
-writes no file and `main.py` falls back to `config.HOLDINGS`. **The route does
-not exist yet.** Until it does, the fallback is silently doing all the work.
+writes no file and `main.py` falls back to `config.HOLDINGS`. **This route now
+exists** (`app/api/portfolio/current/route.ts`, backed by
+`PortfolioStore.ledger`); the notes below are kept as the contract it must keep.
 
 **Auth:** same pair as `/api/top10/current` — the `OAI-Sites-Authorization`
 bypass header plus `Authorization: Bearer <DASHBOARD_INGEST_TOKEN>`. This is

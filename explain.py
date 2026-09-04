@@ -275,7 +275,16 @@ def early_mover_line(entry: dict) -> str:
         bits.append(f"{entry['relativeStrengthPct']:+.0f}% vs the market over three months")
     if entry.get("squeeze"):
         bits.append("unusually quiet lately, which sometimes precedes a move")
-    detail = "; ".join(bits) or "met one screening condition"
+    detail = "; ".join(bits)
+    if not detail:
+        # The list is the top of a ranking, not a list of names that passed
+        # something: it is filled to EARLY_MOVER_COUNT even when nothing
+        # qualified, and when the index is missing NO name can be scored for
+        # relative strength. Claiming a condition was met is the one thing this
+        # line must not do.
+        detail = ("met one screening condition" if entry.get("conditionsMet")
+                  else "met no screening condition — it is here only as the top "
+                       "of this morning's ranking")
     return (f"**{entry['code']} {entry['name']}** — {entry['price']:.2f} SAR\n"
             f"{detail[0].upper()}{detail[1:]}.")
 
@@ -295,4 +304,7 @@ def next_budget_reset(today: date | None = None) -> str:
     """
     current = today or date.today()
     year, month = (current.year + 1, 1) if current.month == 12 else (current.year, current.month + 1)
-    return date(year, month, 1).strftime("%-d %b")
+    # Not strftime("%-d"): the no-pad flag is a glibc extension and raises
+    # ValueError on Windows, which took the whole embed down on a local run.
+    reset = date(year, month, 1)
+    return f"{reset.day} {reset:%b}"

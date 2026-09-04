@@ -298,7 +298,7 @@
 .chartMeta, .chartCaption, .chartUnavailable span { margin: 8px 0 0; color: #9eb0cd; font-size: .82rem; line-height: 1.45; }
 .chartPanel { margin-top: 12px; padding-top: 12px; border-top: 1px solid #263653; }
 .chartSvg { display: block; width: 100%; max-width: 590px; border-radius: 8px; background: #0d1524; }
-.chartGrid { stroke: #2a3a56; stroke-width: 1; }
+.chartGridLine { stroke: #2a3a56; stroke-width: 1; }
 .chartLine { stroke: #83c6ff; stroke-width: 2.5; }
 .chartLevel { stroke: #f3c879; stroke-dasharray: 4 3; stroke-width: 1; }
 .chartLevelStop { stroke: #ff9faa; } .chartLevelTrim { stroke: #f3c879; } .chartLevelTarget { stroke: #79d5be; }

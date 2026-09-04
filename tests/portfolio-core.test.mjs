@@ -79,3 +79,28 @@ test("the same trade recorded twice is rejected, not counted twice", () => {
   const contribution = { operationId: "c1", kind: "contribution", month: "2026-08", cashSar: 500, confirmedAt: "2026-08-01T08:00:00Z" };
   assert.throws(() => foldPortfolio([contribution, event, event]), /duplicate operation/i);
 });
+
+test("realised profit survives selling the whole position", () => {
+  // The gain was booked onto the holding and the holding was then deleted at
+  // zero shares, so a full exit reported cash going up with no record of where
+  // it came from -- in exactly the case the code's own comment said it was
+  // preserved. Re-buying the code afterwards restarted realised at 0.
+  const events = [
+    { operationId: "c1", kind: "contribution", month: "2026-08", cashSar: 500, confirmedAt: "2026-08-01T08:00:00Z" },
+    { operationId: "b1", kind: "buy", code: "1303", name: "EIC", shares: 10, priceSar: 12, feesSar: 0, confirmedAt: "2026-08-02T08:00:00Z" },
+    { operationId: "s1", kind: "sell", code: "1303", name: "EIC", shares: 10, priceSar: 15, feesSar: 0, confirmedAt: "2026-08-20T08:00:00Z" },
+  ];
+  const exited = foldPortfolio(events);
+  assert.deepEqual(exited.holdings, []);
+  assert.equal(exited.realisedSar, 30);
+  assert.deepEqual(exited.realisedByCode, { "1303": 30 });
+
+  // And a later re-entry does not erase the earlier gain.
+  const reentered = foldPortfolio([...events,
+    { operationId: "b2", kind: "buy", code: "1303", name: "EIC", shares: 5, priceSar: 14, feesSar: 0, confirmedAt: "2026-08-25T08:00:00Z" },
+  ]);
+  assert.equal(reentered.realisedSar, 30);
+  assert.deepEqual(reentered.holdings, [
+    { code: "1303", name: "EIC", shares: 5, avgCostSar: 14, realisedSar: 30 },
+  ]);
+});

@@ -621,10 +621,13 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
         warnings = artifact.get("warnings") or []
         early_movers = artifact.get("earlyMovers") or []
         index_unavailable = bool(artifact.get("indexUnavailable"))
+        # Every charts entry, not only the drawable ones. Whether there was
+        # enough history to plot a name says nothing about whether it has a
+        # stop, and filtering on it silently stripped the levels -- the most
+        # actionable numbers in the embed -- from every thin-history name.
         levels_by_code = {
             item["code"]: item.get("levels") or {}
             for item in artifact.get("charts") or []
-            if item.get("status") == "available"
         }
     if recs is None or regime is None or trade_date is None:
         raise ValueError("Digest embeds require records, regime, and trade date.")
