@@ -127,6 +127,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 15.32,
+      "rsi": 51.4,
+      "trend": "up",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "2320": [
@@ -257,6 +267,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 60.15,
+      "rsi": 50.1,
+      "trend": "down",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "8313": [
@@ -382,6 +402,16 @@
       "date": "2026-08-26",
       "price": 143.3,
       "rsi": 59.6,
+      "trend": "down",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 136.0,
+      "rsi": 48.8,
       "trend": "down",
       "rules_met": null,
       "blocking": null,
@@ -540,6 +570,18 @@
       "date": "2026-08-26",
       "price": 140.8,
       "rsi": 46.1,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 137.3,
+      "rsi": 42.3,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -721,6 +763,18 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 67.35,
+      "rsi": 71.2,
+      "trend": "up",
+      "rules_met": 2,
+      "blocking": [
+        "rsi_band"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4164": [
@@ -884,6 +938,19 @@
       "trend": "flat",
       "rules_met": 2,
       "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 92.5,
+      "rsi": 41.8,
+      "trend": "flat",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
         "trend"
       ],
       "lean": null,
@@ -1069,6 +1136,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 27.94,
+      "rsi": 42.7,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4017": [
@@ -1227,6 +1307,18 @@
       "blocking": [
         "rsi_band",
         "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 38.56,
+      "rsi": 73.7,
+      "trend": "up",
+      "rules_met": 2,
+      "blocking": [
+        "rsi_band"
       ],
       "lean": null,
       "lean_confidence": null
@@ -1407,6 +1499,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 12.96,
+      "rsi": 62.5,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "rsi_band",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4263": [
@@ -1561,6 +1666,18 @@
       "date": "2026-08-26",
       "price": 169.2,
       "rsi": 45.0,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 171.0,
+      "rsi": 52.1,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -1736,6 +1853,19 @@
       "price": 120.3,
       "rsi": 58.5,
       "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-06",
+      "price": 119.4,
+      "rsi": 51.1,
+      "trend": "flat",
       "rules_met": 1,
       "blocking": [
         "momentum_floor",
