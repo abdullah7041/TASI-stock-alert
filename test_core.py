@@ -123,6 +123,7 @@ def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypat
     fail Fri-Sat -- it was observed failing on a Friday -- so CI was red every
     weekend for a reason that had nothing to do with the code under test.
     """
+    monkeypatch.setattr(main, "_delivered_digest_today", lambda: None)
     saved = {}
     draft = {"proposalId": "top10-2026-08-12", "status": "draft", "researchedAt": "2026-08-12T12:00:00Z", "entries": []}
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
@@ -157,6 +158,7 @@ def test_pending_initial_top10_draft_is_not_replaced_before_approval(monkeypatch
 
 
 def test_cockpit_refresh_never_calls_discord(monkeypatch):
+    monkeypatch.setattr(main, "_delivered_digest_today", lambda: None)
     saved = {}
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
@@ -974,7 +976,7 @@ def test_news_summary_shapes_result():
     result = news.NewsResult(query="q", headlines=[{"title": "T", "link": "", "published": ""}],
                              score=0.3, label="positive", matches=[{"positive": [], "negative": []}], ok=True)
     summary = az.news_summary(result)
-    assert summary == {"ok": True, "label": "positive", "score": 0.3,
+    assert summary == {"ok": True, "label": "positive", "score": 0.3, "status": "available", "errors": [],
                        "headlines": [{"title": "T", "link": "", "published": ""}]}
 
 def test_evaluate_holding_attaches_news():
@@ -3109,6 +3111,7 @@ def test_lean_reports_a_missing_key_rather_than_an_empty_result():
 
 
 def test_lean_reports_gemini_provider_metadata_for_structured_takes(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     """A successful lean must identify the provider that produced it."""
     monkeypatch.setattr(
         llm,
@@ -3159,6 +3162,7 @@ def test_gemini_completion_requests_a_structured_json_schema(monkeypatch):
 
 
 def test_a_dead_provider_falls_through_to_the_next_one(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     """The whole point of the chain: one provider dying is not an outage.
 
     This is the 2026-08-24 failure replayed. Back then a 404 from the only
@@ -3212,6 +3216,7 @@ def test_a_rate_limit_is_retried_before_the_chain_moves_on(monkeypatch, tmp_path
 
 
 def test_openrouter_is_skipped_loudly_when_it_has_no_model(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     """OpenRouter publishes no evergreen alias, so an unset model is a real state.
 
     It must never fall back to a hardcoded name -- that is the exact class of bug
@@ -3233,6 +3238,7 @@ def test_openrouter_is_skipped_loudly_when_it_has_no_model(monkeypatch, tmp_path
 
 
 def test_every_provider_failing_still_names_each_one(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
     monkeypatch.setattr(llm, "OPENROUTER_MODEL", "vendor/some-model")
     monkeypatch.setattr(llm, "BACKOFF_SECONDS", 0)
@@ -3264,6 +3270,7 @@ def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
 
 
 def test_lean_reports_safe_gemini_http_diagnostics(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     class ClientError(Exception):
         code = 404
 

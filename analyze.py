@@ -180,6 +180,8 @@ def news_summary(news) -> dict | None:
         "label": news.label,
         "score": news.score,
         "headlines": news.headlines,
+        "status": news.status,
+        "errors": news.errors,
     }
 
 

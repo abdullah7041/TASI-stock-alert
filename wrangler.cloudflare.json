@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tasi-action-cockpit",
+  "account_id": "08a88686149b48264ce72d14678e9f00",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "tasi-action-cockpit",
+    "database_id": "f0a9722e-ed78-4c3a-ba7f-e28a21377440"
+  }],
+  "vars": {
+    "AUTH_MODE": "cloudflare",
+    "ACCESS_ISSUER": "https://solitary-sun-c2a1.cloudflareaccess.com",
+    "ACCESS_AUD": "e6dcbc30fc163c2164f181dc03f9d0d3e6abf5608e59c91df902a0127ce7926e",
+    "AGENT_OWNER_EMAIL": "ronaldinho1415@gmail.com",
+    "PORTFOLIO_OWNER_ID": "Gz2pavbAqhcgHPkX27Wt7RhMO7xJ4nhVkrBopvX8eVELmVtnmeLU7p"
+  }
+}

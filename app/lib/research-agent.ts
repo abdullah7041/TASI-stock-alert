@@ -1,5 +1,6 @@
 import { buildDeterministicSections, estimateOperationCostSar, extractAnnotatedCitations, extractResponseText, reportResponseFormat } from "@/app/lib/research-core.mjs";
 import { ResearchStore } from "@/app/lib/research-store";
+import { getOwnerContext } from "@/app/lib/owner-context";
 
 const allowedDomains = ["saudiexchange.sa", "cma.org.sa", "argaam.com", "reuters.com", "bloomberg.com"];
 
@@ -15,15 +16,7 @@ type PrivateResearchContext = {
 
 export async function getPrivateResearchContext(request: Request): Promise<PrivateResearchContext> {
   const { env } = await import("cloudflare:workers");
-  // Sites authenticates private visitors before dispatch and supplies these
-  // identity headers. Authorization remains server-side through the owner
-  // allowlist below; machine ingestion uses its separate bearer token.
-  const ownerId = request.headers.get("oai-authenticated-user-id");
-  const ownerEmail = request.headers.get("oai-authenticated-user-email");
-  if (!ownerId || !ownerEmail) throw new Response("Sign in is required.", { status: 401 });
-  if (!env.AGENT_OWNER_EMAIL || ownerEmail.toLowerCase() !== env.AGENT_OWNER_EMAIL.toLowerCase()) {
-    throw new Response("This private agent is unavailable for this account.", { status: 403 });
-  }
+  const { ownerId } = await getOwnerContext(request);
   if (!env.DB || !env.OPENAI_API_KEY) throw new Response("The research agent is not configured yet.", { status: 503 });
   return {
     ownerId,

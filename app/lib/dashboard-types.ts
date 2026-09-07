@@ -46,6 +46,20 @@ export type LeanStatus = {
 };
 
 export type ChartBar = { date: string; Open: number; High: number; Low: number; Close: number; Volume: number };
+export type Availability = 'available' | 'partial' | 'empty' | 'failed';
+export type DigestRecord = {
+  code:string; name:string; kind?:string; action?:string; price?:number; priceDate?:string; verified?:boolean;
+  unrealized_pct?:number; reason?:string|string[];
+  delta?:{price_pct?:number;rsi_delta?:number;trend_flipped?:boolean;rules_met_delta?:number;flipped?:string[]};
+  rules_met?:number; rules_total?:number;
+  rules?:Array<{rule:string;passed:boolean;actual?:unknown;plain?:string}>;
+  triggers?:Array<{rule?:string;plain?:string;reachable?:boolean;trigger_price?:number;pct_away?:number}>;
+  news?:{ok:boolean;status?:Availability;headlines?:Array<{title:string;link?:string;published?:string}>;errors?:string[]};
+  disclosures?:{ok:boolean;items?:Array<{title?:string;url?:string;link?:string;published?:string}>};
+  lean?:Record<string,unknown>;
+  decision?:{label:string;reason:string};
+  [key:string]:unknown;
+};
 export type MarketChart =
   | { code: string; name: string; status: "unavailable"; reason: string }
   | { code: string; name: string; status: "available"; bars: ChartBar[]; levels: Partial<Record<"stop" | "trim" | "target", number>> };
@@ -57,7 +71,7 @@ export type DashboardSnapshotV3 = Omit<DashboardSnapshotV2, "schemaVersion"> & {
   artifactId: `sha256:${string}`;
   scheduledFor: string | null;
   producer: { generatedAt: string };
-  digestRecords: Array<{ code: string; name: string; lean?: Record<string, unknown>; [key: string]: unknown }>;
+  digestRecords: DigestRecord[];
   leanStatus: LeanStatus;
   charts: MarketChart[];
   top10Review?: Top10Proposal | null;

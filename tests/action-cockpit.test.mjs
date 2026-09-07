@@ -45,7 +45,8 @@ test("keeps dated evidence and the broker boundary visible for version-2 cockpit
 });
 
 test("uses separate Sites and app credentials for private ingestion", () => {
-  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
+  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8")
+    + readFileSync(new URL('../.github/cockpit-auth.sh', import.meta.url), 'utf8');
 
   assert.match(workflow, /COCKPIT_SIWC_BYPASS_TOKEN/);
   assert.match(workflow, /OAI-Sites-Authorization: Bearer/);
@@ -78,17 +79,17 @@ test("composes independently ingested alerts into the dashboard response", () =>
   assert.match(route, /AlertStore/);
   assert.match(route, /latest\(20\)/);
   assert.match(route, /freshness: dashboardFreshness\(snapshot\), alerts/);
-  assert.match(cockpit, /summaryV1\?\.cards/);
-  assert.match(cockpit, /payload\.alerts/);
+  assert.match(cockpit, /alerts=\{data\.alerts\}/);
 });
 
 test("connects explicit approval and trade confirmation controls to their APIs", () => {
   const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /fetch\("\/api\/top10\/approve"/);
-  assert.match(source, /fetch\("\/api\/portfolio\/events"/);
-  assert.match(source, /Confirm trade/);
-  assert.match(source, /window\.confirm/);
+  const details = readFileSync(new URL('../app/components/CockpitDetails.tsx', import.meta.url), 'utf8');
+  assert.match(source, /fetch\(['"]\/api\/top10\/approve['"]/);
+  assert.match(details, /fetch\(['"]\/api\/portfolio\/events['"]/);
+  assert.match(details, /Executed shares/);
+  assert.match(details, /Execution price \(SAR\)/);
 });
 
 test("lint ignores local worktrees and their generated output", () => {

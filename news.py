@@ -56,6 +56,8 @@ class NewsResult:
     label: str = "neutral"    # 'positive' / 'neutral' / 'negative'
     matches: list = field(default_factory=list)  # per-headline {"positive": [...], "negative": [...]}
     ok: bool = True            # False if the fetch failed
+    status: str = "available"  # available / partial / empty / failed
+    errors: list = field(default_factory=list)
 
 
 def _rss_url(query: str, lang: str = "en", country: str = "SA") -> str:
@@ -65,8 +67,17 @@ def _rss_url(query: str, lang: str = "en", country: str = "SA") -> str:
 
 def _fetch_rss(url: str, limit: int) -> list:
     import requests
-    r = requests.get(url, timeout=15, headers={"User-Agent": "tasi-recommender/1.0"})
-    r.raise_for_status()
+    for attempt in range(2):
+        try:
+            r = requests.get(url, timeout=8, headers={"User-Agent": "tasi-recommender/1.0"})
+            r.raise_for_status()
+            break
+        except requests.RequestException as error:
+            status = getattr(error.response, "status_code", None)
+            transient = isinstance(error, (requests.Timeout, requests.ConnectionError)) or status in {408, 429, 500, 502, 503, 504}
+            if attempt or not transient:
+                raise
+            time.sleep(0.5)
     root = ET.fromstring(r.content)
     items = []
     for item in root.iter("item"):
@@ -137,22 +148,30 @@ def _headline_matches(title: str) -> dict:
 def get_news(company_name: str, code: str, limit: int = 8) -> NewsResult:
     """Fetch recent headlines for a name and score them. Never raises."""
     query = f'"{company_name}" OR {code} Tadawul'
-    try:
-        headlines = _fetch_rss(_rss_url(query, "en"), limit)
-        # Add a few Arabic-language hits.
+    collected, errors = [], []
+    for language, search in (("en", query), ("ar", company_name)):
         try:
-            headlines += _fetch_rss(_rss_url(company_name, "ar"), max(2, limit // 2))
-        except Exception:
-            pass
-        headlines = headlines[:limit]
-        titles = [h["title"] for h in headlines]
-        score, label = score_headlines(titles)
-        matches = [_headline_matches(t) for t in titles]
-        return NewsResult(query=query, headlines=headlines, score=score,
-                          label=label, matches=matches, ok=True)
-    except Exception:
-        return NewsResult(query=query, headlines=[], score=0.0, label="neutral",
-                          matches=[], ok=False)
+            collected.append(_fetch_rss(_rss_url(search, language), limit))
+        except Exception as error:
+            errors.append(f"{language}: {type(error).__name__}")
+            collected.append([])
+    # Interleave so a full English result cannot silently discard Arabic news.
+    headlines, seen = [], set()
+    for index in range(limit):
+        for group in collected:
+            if index < len(group):
+                item = group[index]
+                key = item.get("link") or item["title"]
+                if key not in seen:
+                    seen.add(key)
+                    headlines.append(item)
+    headlines = headlines[:limit]
+    titles = [h["title"] for h in headlines]
+    score, label = score_headlines(titles)
+    status = "failed" if len(errors) == 2 else "partial" if errors else "available" if headlines else "empty"
+    return NewsResult(query=query, headlines=headlines, score=score, label=label,
+                      matches=[_headline_matches(t) for t in titles],
+                      ok=len(errors) < 2, status=status, errors=errors)
 
 
 def archive_headlines(code: str, result: NewsResult,

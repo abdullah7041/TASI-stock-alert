@@ -22,7 +22,9 @@ export async function handleDiscordInteraction(request, env, fetchImpl = fetch) 
   if (request.method !== "POST") return unavailable("Method not allowed.", 405);
 
   const target = upstreamUrl(env?.COCKPIT_ORIGIN);
-  if (!env?.DISCORD_APP_PUBLIC_KEY || !target || !env?.COCKPIT_SITE_AUTHORIZATION) return unavailable("Discord interactions are unavailable.", 503);
+  const accessConfigured = env?.COCKPIT_ACCESS_CLIENT_ID && env?.COCKPIT_ACCESS_CLIENT_SECRET;
+  const usingCloudflare = target && new URL(target).hostname.endsWith('.workers.dev');
+  if (!env?.DISCORD_APP_PUBLIC_KEY || !target || (usingCloudflare ? !accessConfigured : !env?.COCKPIT_SITE_AUTHORIZATION)) return unavailable("Discord interactions are unavailable.", 503);
 
   const raw = await request.text();
   const signature = request.headers.get("x-signature-ed25519") ?? "";
@@ -39,7 +41,10 @@ export async function handleDiscordInteraction(request, env, fetchImpl = fetch) 
         "content-type": request.headers.get("content-type") ?? "application/json",
         "x-signature-ed25519": signature,
         "x-signature-timestamp": timestamp,
-        "oai-sites-authorization": env.COCKPIT_SITE_AUTHORIZATION,
+        ...(usingCloudflare ? {
+          'CF-Access-Client-Id': env.COCKPIT_ACCESS_CLIENT_ID,
+          'CF-Access-Client-Secret': env.COCKPIT_ACCESS_CLIENT_SECRET,
+        } : { 'oai-sites-authorization': env.COCKPIT_SITE_AUTHORIZATION }),
       },
       signal: controller.signal,
     });

@@ -87,11 +87,33 @@ def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict
         "artifactKind": "digest",
         "scheduledFor": timestamp_or_none(scheduled_for),
         "producer": {"generatedAt": snapshot["asOf"]},
-        "digestRecords": recs,
+        "digestRecords": [decision_record(rec, charts) for rec in recs],
         "leanStatus": lean_status,
         "charts": charts,
     }
     return _with_id(artifact)
+
+
+def decision_record(rec: dict, charts: list[dict]) -> dict:
+    """One plain-language decision for both dashboard and Discord readers."""
+    import explain
+    price = _finite_number(rec, "price")
+    action = str(rec.get("action") or "").upper()
+    known = action in {"HOLD", "WATCH", "BUY", "SELL (STOP)", "SELL (TARGET)", "TRIM"}
+    if price is None or price <= 0 or rec.get("verified") is False or not known:
+        label, reason = "Insufficient data", "A verified price or complete rule check is unavailable."
+    elif action == "SELL (STOP)":
+        label, reason = "Review stop", "Your protective level was reached in the daily snapshot. Check your broker."
+    elif action in {"SELL (TARGET)", "TRIM"}:
+        label, reason = "Review profit level", "Your profit-taking level was reached in the daily snapshot. Review it in your broker."
+    elif rec.get("kind") == "holding":
+        label, reason = "Hold", "No decision level crossed in this daily snapshot."
+    else:
+        label, reason = "Watching", explain.situation(rec) + " This remains a research opportunity."
+    chart = next((c for c in charts if c.get("code") == rec.get("code")), {})
+    bars = chart.get("bars") or []
+    price_date = rec.get("priceDate") or (bars[-1].get("date") if bars else None)
+    return {**rec, "priceDate": price_date, "decision": {"label": label, "reason": reason}}
 
 
 def build_movement_artifact(alerts: list[dict], *, as_of: str) -> dict:
