@@ -22,9 +22,9 @@ declare module "cloudflare:workers" {
     MIGRATION_EXPORT_TOKEN?: string;
     MIGRATION_EXPORT_UNTIL?: string;
     MIGRATION_READ_ONLY?: string;
+    MACHINE_RELAY_SECRET?: string;
     ACCESS_ISSUER?: string;
     ACCESS_AUD?: string;
-    ACCESS_SERVICE_CLIENT_IDS?: string;
     DB?: D1Database;
     OPENAI_API_KEY?: string;
     AGENT_OWNER_EMAIL?: string;
@@ -46,6 +46,7 @@ interface Fetcher {
 }
 
 interface ExecutionContext {
+  access?: { aud?: string; getIdentity(): Promise<unknown> };
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
 }

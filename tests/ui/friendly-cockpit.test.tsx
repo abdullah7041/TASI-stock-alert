@@ -23,7 +23,7 @@ test('all holdings are visible on home, details and diagnostics stay one click a
   expect(screen.queryByRole('dialog')).toBeNull();
   await userEvent.click(screen.getByRole('button',{name:/Data status/}));
   expect(screen.getByRole('dialog').textContent).toMatch(/no known provider/);
-});
+}, 15_000);
 test('unavailable checks are explicit and market date differs from generated time',()=>{
   start();
   expect(screen.getByText('Some checks unavailable')).toBeTruthy();

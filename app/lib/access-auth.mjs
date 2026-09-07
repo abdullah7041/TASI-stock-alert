@@ -3,11 +3,6 @@ const encoder = new TextEncoder();
 const forbidden = () => new Response('Sign in with the authorized cockpit account.', {status:403});
 const decode = value => Uint8Array.from(atob(value.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));
 const json = value => JSON.parse(new TextDecoder().decode(decode(value)));
-const machineRoutes = new Set([
-  'GET /api/health','GET /api/portfolio/current','GET /api/top10/current',
-  'POST /api/dashboard/ingest','POST /api/alerts/ingest','POST /api/deliveries/ingest',
-  'POST /api/discord/interactions',
-]);
 
 /** Verify signature and registered claims; never trust identity headers alone. */
 export async function authorizeAccess(request, env, {fetchImpl=fetch,now=Date.now()}={}) {
@@ -17,7 +12,8 @@ export async function authorizeAccess(request, env, {fetchImpl=fetch,now=Date.no
     const issuer=env.ACCESS_ISSUER.replace(/\/$/,'');
     if(!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(issuer))throw forbidden();
     const raw=request.headers.get('Cf-Access-Jwt-Assertion');
-    if(!raw||raw.length>16384)throw forbidden();
+    if(!raw)throw forbidden();
+    if(raw.length>16384)throw forbidden();
     const pieces=raw.split('.');if(pieces.length!==3)throw forbidden();
     const [header64,payload64,signature]=pieces,header=json(header64),claims=json(payload64);
     if(header.alg!=='RS256'||typeof header.kid!=='string')throw forbidden();
@@ -34,11 +30,7 @@ export async function authorizeAccess(request, env, {fetchImpl=fetch,now=Date.no
     const jwk=entry.keys.find(k=>k.kid===header.kid&&k.kty==='RSA');if(!jwk)throw forbidden();
     const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
     if(!await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,decode(signature),encoder.encode(`${header64}.${payload64}`)))throw forbidden();
-    if(claims.common_name){
-      const allowed=(env.ACCESS_SERVICE_CLIENT_IDS??'').split(',').map(s=>s.trim()).filter(Boolean);
-      if(!allowed.includes(claims.common_name)||!machineRoutes.has(`${request.method} ${new URL(request.url).pathname}`))throw forbidden();
-      return {kind:'service',clientId:claims.common_name};
-    }
+    if(claims.common_name)throw forbidden();
     if(!claims.sub||typeof claims.email!=='string'||claims.email.toLowerCase()!==env.AGENT_OWNER_EMAIL.toLowerCase())throw forbidden();
     if(!['GET','HEAD','OPTIONS'].includes(request.method)&&request.headers.get('origin')!==new URL(request.url).origin)throw forbidden();
     return {kind:'owner',ownerId:env.PORTFOLIO_OWNER_ID,email:claims.email.toLowerCase()};

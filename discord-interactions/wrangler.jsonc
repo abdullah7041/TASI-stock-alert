@@ -5,7 +5,8 @@
   "compatibility_date": "2026-08-27",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "COCKPIT_ORIGIN": "https://tasi-action-cockpit.busaud7041.chatgpt.site",
+    "COCKPIT_ORIGIN": "https://tasi-machine-gateway.ronaldinho1415.workers.dev",
+    "COCKPIT_ACCESS_CLIENT_ID": "eb652d878fc01f08146eb0a81a5a566e.access",
     "DISCORD_APP_PUBLIC_KEY": "f50c12a18c4975a33dd828f92343996a58b58d6ae5b73ebb06c138a8084e463d"
   }
 }
