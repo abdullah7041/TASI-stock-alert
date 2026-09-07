@@ -45,11 +45,13 @@ test("keeps dated evidence and the broker boundary visible for version-2 cockpit
 });
 
 test("uses separate Sites and app credentials for private ingestion", () => {
-  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8")
-    + readFileSync(new URL('../.github/cockpit-auth.sh', import.meta.url), 'utf8');
+  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
+  const authHelper = readFileSync(new URL('../.github/cockpit-auth.sh', import.meta.url), 'utf8');
 
-  assert.match(workflow, /COCKPIT_SIWC_BYPASS_TOKEN/);
-  assert.match(workflow, /OAI-Sites-Authorization: Bearer/);
+  assert.match(workflow + authHelper, /COCKPIT_SIWC_BYPASS_TOKEN/);
+  assert.match(authHelper, /OAI-Sites-Authorization: Bearer/);
+  assert.match(authHelper, /Authorization: Bearer \$\{COCKPIT_INGEST_TOKEN:-\}/);
+  assert.doesNotMatch(workflow, /Authorization: Bearer \$\{COCKPIT_INGEST_TOKEN/);
 });
 
 test("ingestion stores a version-2 draft and alert history without approving it", () => {
