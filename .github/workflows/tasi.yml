@@ -159,6 +159,7 @@ jobs:
           fi
           if ! curl --fail --silent --show-error \
               "${COCKPIT_AUTH_HEADERS[@]}" \
+              -H "Authorization: Bearer ${COCKPIT_INGEST_TOKEN}" \
               "$COCKPIT_ORIGIN/api/portfolio/current" \
               > .portfolio-current.json; then
             echo "portfolio read failed; using config.py holdings"
