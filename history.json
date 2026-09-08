@@ -147,6 +147,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 15.59,
+      "rsi": 56.9,
+      "trend": "up",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "2320": [
@@ -297,6 +307,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 60.65,
+      "rsi": 52.8,
+      "trend": "down",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "8313": [
@@ -442,6 +462,16 @@
       "date": "2026-09-07",
       "price": 138.8,
       "rsi": 53.5,
+      "trend": "down",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 139.5,
+      "rsi": 54.6,
       "trend": "down",
       "rules_met": null,
       "blocking": null,
@@ -624,6 +654,18 @@
       "date": "2026-09-07",
       "price": 137.2,
       "rsi": 42.0,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 137.3,
+      "rsi": 42.3,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -829,6 +871,18 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 67.25,
+      "rsi": 69.7,
+      "trend": "up",
+      "rules_met": 2,
+      "blocking": [
+        "rsi_band"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4164": [
@@ -1014,6 +1068,19 @@
       "date": "2026-09-07",
       "price": 92.35,
       "rsi": 41.0,
+      "trend": "flat",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 92.3,
+      "rsi": 40.5,
       "trend": "flat",
       "rules_met": 1,
       "blocking": [
@@ -1229,6 +1296,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 27.3,
+      "rsi": 34.6,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4017": [
@@ -1407,6 +1487,18 @@
       "date": "2026-09-07",
       "price": 38.96,
       "rsi": 76.0,
+      "trend": "up",
+      "rules_met": 2,
+      "blocking": [
+        "rsi_band"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 39.3,
+      "rsi": 77.8,
       "trend": "up",
       "rules_met": 2,
       "blocking": [
@@ -1616,6 +1708,18 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 12.87,
+      "rsi": 59.8,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4263": [
@@ -1794,6 +1898,18 @@
       "date": "2026-09-07",
       "price": 170.6,
       "rsi": 51.3,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 168.9,
+      "rsi": 47.2,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -1998,6 +2114,19 @@
       "rules_met": 2,
       "blocking": [
         "momentum_floor"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-08",
+      "price": 118.5,
+      "rsi": 47.6,
+      "trend": "flat",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
       ],
       "lean": null,
       "lean_confidence": null
