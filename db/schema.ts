@@ -31,6 +31,7 @@ export const researchSchemaStatements = [
     cash_sar REAL, fees_sar REAL NOT NULL DEFAULT 0, reason TEXT, confirmed_at TEXT NOT NULL
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS one_contribution_per_owner_month ON portfolio_events(owner_id, month_key) WHERE event_kind = 'contribution'`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS one_opening_balance_per_owner ON portfolio_events(owner_id) WHERE event_kind = 'opening_balance'`,
   `CREATE TABLE IF NOT EXISTS top10_proposals (
     proposal_id TEXT PRIMARY KEY, trade_date TEXT NOT NULL, researched_at TEXT NOT NULL,
     proposal_json TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('draft','approved','rejected')), decided_at TEXT

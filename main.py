@@ -129,7 +129,8 @@ def _holdings() -> list[dict]:
     """
     ledger = _portfolio_ledger()
     holdings = ((ledger or {}).get("view") or {}).get("holdings") or []
-    if not holdings:
+    event_count = (ledger or {}).get("eventCount", 0)
+    if not holdings and not event_count:
         return list(cfg.HOLDINGS)
     return [
         {"code": str(item["code"]), "name": str(item.get("name") or item["code"]),
@@ -527,7 +528,15 @@ _DATA_WARNING: str | None = None
 _LATE_WARNING: str | None = None
 
 
-def _collect_recs(include_news: bool, record_history: bool = False):
+def _completed_history(frame, before_date: str):
+    """Keep only fully completed daily bars before the snapshot trade date."""
+    if frame is None or frame.empty:
+        return frame
+    return frame.loc[[str(index)[:10] < before_date for index in frame.index]]
+
+
+def _collect_recs(include_news: bool, record_history: bool = False,
+                  completed_before: str | None = None):
     """Returns (regime, recs, budget_summary).
 
     Speed: one batched Yahoo download for every name PLUS the index (was 14
@@ -537,10 +546,15 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     index_code = cfg.REGIME["index_code"]
     all_codes = [x["code"] for x in _holdings() + cfg.WATCHLIST] + [index_code]
     hist = dat.get_histories(all_codes, cfg.TECH["history_period"])
+    if completed_before:
+        hist = {code: _completed_history(frame, completed_before)
+                for code, frame in hist.items()}
 
     idx = hist.get(index_code)
     if idx is None or idx.empty:
         idx = dat.get_index_history(index_code)  # SAHMK fallback path.
+        if completed_before:
+            idx = _completed_history(idx, completed_before)
     regime = az.market_regime(idx, cfg.REGIME["index_ma"])
     # market_regime returns 'unknown' only when the index frame is empty or
     # too short. Left unsaid, that reads identically to a genuinely
@@ -608,6 +622,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
         disc = discl.match_company(all_disclosures, disclosures_ok, discl.aliases_for(h))
         rec = az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
                                   cfg.HORIZON, cfg.TECH, news_by_code.get(h["code"]), disc)
+        rec["priceDate"] = str(df.index[-1])[:10]
         v = verify.get(h["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:
@@ -623,6 +638,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
         rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
                                     cfg.HORIZON, cfg.TECH,
                                     news_by_code.get(w["code"]), cfg.BUY_CRITERIA, disc)
+        rec["priceDate"] = str(df.index[-1])[:10]
         v = verify.get(w["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:
@@ -705,7 +721,7 @@ def _scanner_block(result: dict | None = None) -> str:
 CHART_DIR = HERE / ".charts"
 
 
-def _chart_bundle(recs: list) -> tuple[dict, dict, list[dict]]:
+def _chart_bundle(recs: list, completed_before: str | None = None) -> tuple[dict, dict, list[dict]]:
     """Render one candlestick+volume chart per name for the pre-open digest.
 
     Returns ({code: filename}, {filename: Path}) -- the first for the embeds,
@@ -723,6 +739,9 @@ def _chart_bundle(recs: list) -> tuple[dict, dict, list[dict]]:
     stored_levels = _load(LEVELS_FILE, {})
     try:
         frames = dat.get_histories(codes, cfg.TECH["history_period"])
+        if completed_before:
+            frames = {code: _completed_history(frame, completed_before)
+                      for code, frame in frames.items()}
     except Exception as exc:
         print(f"charts: history fetch failed ({type(exc).__name__}) — sending text only")
         return {}, {}, artifacts.chart_artifacts(recs, {}, stored_levels)
@@ -859,6 +878,9 @@ def mode_digest_guard() -> int:
     snapshot written by some other mode is not a digest anybody read. On a
     normal day this exits without touching the network.
     """
+    if os.environ.get("TASI_PRODUCTION_DELIVERED", "").strip().lower() == "true":
+        print(f"production confirms today's artifact reached Cockpit and Discord; nothing to do.")
+        return 0
     delivered = _delivered_digest_today()
     today = _today()
     if delivered is not None:
@@ -876,7 +898,12 @@ def mode_digest_guard() -> int:
 
 
 def mode_digest() -> int:
-    regime, recs, budget = _collect_recs(include_news=True, record_history=True)
+    scheduled = artifacts.timestamp_or_none(os.environ.get("SCHEDULED_FOR"))
+    regime, recs, budget = _collect_recs(
+        include_news=True,
+        record_history=True,
+        completed_before=(scheduled or _today())[:10],
+    )
     scanner_result = _scanner_result()
     snapshot = _dashboard_snapshot(
         regime, recs, budget, scanner_result,
@@ -889,7 +916,8 @@ def mode_digest() -> int:
     lean_status = _attach_leans(recs)
     _persist_attached_leans(recs)
 
-    charts_by_code, chart_files, chart_data = _chart_bundle(recs)
+    charts_by_code, chart_files, chart_data = _chart_bundle(
+        recs, completed_before=(scheduled or _today())[:10])
     artifact = artifacts.build_digest_artifact(
         snapshot, recs=recs, lean_status=lean_status, charts=chart_data,
         scheduled_for=os.environ.get("SCHEDULED_FOR"),
@@ -976,32 +1004,16 @@ def mode_top10_draft(today: date | None = None) -> int:
 
 
 def mode_cockpit_refresh() -> int:
-    """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions.
+    """Validate the canonical artifact for an idempotent workflow replay.
 
-    Never over the digest that already went out today. Rebuilding here produces
-    a digest-shaped artifact with no charts and no lean, and saving it would
-    take the morning's charts and Gemini read off the cockpit AND re-identify
-    the day's artifact, orphaning the Discord delivery receipt keyed to the old
-    ID. The reconcile job runs this at 15:15 Riyadh, so that was every afternoon.
+    The workflow performs the authenticated D1 replay. This mode deliberately
+    does not collect market data, invoke AI, send Discord, or rewrite identity.
     """
-    delivered = _delivered_digest_today()
-    if delivered is not None:
-        print(f"today's delivered digest ({delivered.get('asOf')}) is the canonical "
-              f"artifact; cockpit refresh left it unchanged.")
-        return 0
-    regime, recs, budget = _collect_recs(include_news=True, record_history=False)
-    scanner_result = _scanner_result()
-    snapshot = _dashboard_snapshot(
-        regime, recs, budget, scanner_result,
-        top10=_active_top10() or _load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))),
-        top10_review=_load(TOP10_FILE, None), scheduled_for=os.environ.get("SCHEDULED_FOR"),
-    )
-    _save(DASHBOARD_FILE, artifacts.build_digest_artifact(
-        snapshot, recs=recs,
-        lean_status={"ok": False, "provider": "gemini", "reason": "Gemini is only generated for the pre-open digest."},
-        charts=[], scheduled_for=os.environ.get("SCHEDULED_FOR"),
-    ))
-    print("cockpit refresh written; no Discord message or order was sent.")
+    artifact = _load(DASHBOARD_FILE, None)
+    if not isinstance(artifact, dict) or artifact.get("schemaVersion") != 3 or not artifact.get("artifactId"):
+        print("cockpit refresh unavailable: no canonical schema-v3 artifact exists.")
+        return 1
+    print(f"cockpit refresh will replay {artifact['artifactId']}; no data was regenerated or sent to Discord.")
     return 0
 
 

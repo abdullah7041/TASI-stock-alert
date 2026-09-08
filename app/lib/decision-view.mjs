@@ -23,7 +23,9 @@ export function buildDecisionView(snapshot, freshness) {
     const price = finite(record.price);
     const action = String(record.action ?? '').toUpperCase();
     const known = ['HOLD','WATCH','BUY','SELL','SELL (STOP)','SELL (TARGET)','STOP','STOP_LOSS','EXIT','TRIM','TAKE_PROFIT','TARGET'].includes(action);
-    const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known;
+    const decisionChecksReady = !owned || (Array.isArray(record.rules) && record.rules.length > 0
+      && record.rules.every((rule) => rule?.available !== false));
+    const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady;
     const stop = ['SELL','SELL (STOP)','STOP','STOP_LOSS','EXIT'].includes(action);
     const profit = ['SELL (TARGET)','TRIM','TAKE_PROFIT','TARGET'].includes(action);
     const label = unavailable ? 'Insufficient data' : stop ? 'Review stop' : profit ? 'Review profit level' : owned ? 'Hold' : 'Watching';
@@ -46,10 +48,11 @@ export function buildDecisionView(snapshot, freshness) {
   const holdingViews = holdings.map((h) => stock(h, true)).sort((a,b) => Number(b.needsAttention)-Number(a.needsAttention));
   const holdingCodes = new Set(holdings.map((h) => h.code));
   const watchlist = records.filter((r) => r.kind === 'watchlist' && !holdingCodes.has(r.code)).map((r) => stock(r));
-  const dates = holdingViews.map((h) => h.priceDate).filter(Boolean).sort();
+  const dates = [...new Set(holdingViews.map((h) => h.priceDate).filter(Boolean))].sort();
   return { holdings:holdingViews, watchlist, candidates:snapshot.qualified ?? [],
     attention:holdingViews.filter((h) => h.needsAttention).length,
-    incomplete:freshness === 'stale' || holdingViews.some((h) => h.unavailable) || records.some((r) => r.news?.ok === false || r.news?.status === 'partial' || r.disclosures?.ok === false) || snapshot.leanStatus?.ok === false || Boolean(snapshot.warnings?.length),
-    priceDate:dates[0] ?? null,
+    incomplete:freshness === 'stale' || holdingViews.some((h) => h.unavailable)
+      || (snapshot.warnings ?? []).some((warning) => /late|price|market|stale|data source/i.test(warning)),
+    priceDate:dates[0] ?? null, priceDates:dates,
   };
 }

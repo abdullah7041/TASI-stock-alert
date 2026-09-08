@@ -7,5 +7,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
-  "services": [{ "binding": "COCKPIT", "service": "tasi-action-cockpit" }]
+  "services": [{ "binding": "COCKPIT", "service": "tasi-action-cockpit" }],
+  "triggers": { "crons": ["20 5 * * 0-4"] }
 }

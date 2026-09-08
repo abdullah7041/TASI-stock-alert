@@ -27,6 +27,159 @@ test('all holdings are visible on home, details and diagnostics stay one click a
 test('unavailable checks are explicit and market date differs from generated time',()=>{
   start();
   expect(screen.getByText('Some checks unavailable')).toBeTruthy();
-  expect(screen.getByText(/Prices through/)).toBeTruthy();
+  expect(screen.getByText(/Daily snapshot for/)).toBeTruthy();
+  expect(screen.getByText(/Prices from previous close/)).toBeTruthy();
   expect(screen.queryByText(/Market observed/)).toBeNull();
+});
+
+test('labels the snapshot date, previous-close price date, and action count separately',()=>{
+  const dated = structuredClone(saved) as typeof saved;
+  dated.tradeDate = '2026-09-07';
+  dated.digestRecords = dated.digestRecords.map((record) => ({ ...record, priceDate: '2026-09-06' }));
+  const datedPayload = { snapshot: dated, freshness:'current', alerts:[] } as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(datedPayload)));
+  render(<ActionCockpit dashboard={datedPayload}/>);
+
+  expect(screen.getByText('Daily snapshot for 2026-09-07')).toBeTruthy();
+  expect(screen.getByText(/Prices from previous close 2026-09-06/)).toBeTruthy();
+  const summary=screen.getByText('holdings need action').parentElement!;
+  expect(summary.textContent).toContain('0holdings need action');
+  expect(screen.getByText('3 holdings tracked')).toBeTruthy();
+});
+
+test('labels mixed holding quote dates as a range instead of one false previous close',()=>{
+  const base=structuredClone(saved);
+  const mixed={...base,tradeDate:'2026-09-08',digestRecords:base.digestRecords.map((record,index)=>({
+    ...record,priceDate:index===0?'2026-09-06':'2026-09-07',
+  }))};
+  const mixedPayload={snapshot:mixed,freshness:'current',alerts:[]} as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(mixedPayload)));
+  render(<ActionCockpit dashboard={mixedPayload}/>);
+
+  expect(screen.getByText(/Latest available prices dated 2026-09-06 to 2026-09-07/)).toBeTruthy();
+});
+
+test('manual refresh reports that the saved artifact is unchanged',async()=>{
+  start();
+  await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
+  expect(await screen.findByText('Already showing the latest saved daily snapshot.')).toBeTruthy();
+});
+
+test('manual refresh reports an updated artifact',async()=>{
+  const updated = structuredClone(saved) as typeof saved;
+  updated.artifactId = 'sha256:updated-artifact';
+  updated.tradeDate = '2026-09-07';
+  const updatedPayload = { snapshot:updated, freshness:'current', alerts:[] } as unknown as DashboardPayload;
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(Response.json(payload))
+    .mockResolvedValueOnce(Response.json(updatedPayload));
+  vi.stubGlobal('fetch',fetchMock);
+  render(<ActionCockpit dashboard={payload}/>);
+
+  await screen.findByRole('button',{name:'Refresh cockpit'});
+  await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
+  expect(await screen.findByText('Updated to daily snapshot for 2026-09-07.')).toBeTruthy();
+});
+
+test('manual refresh reports when the latest saved artifact is stale',async()=>{
+  const stalePayload = { snapshot:saved, freshness:'stale', alerts:[] } as unknown as DashboardPayload;
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(Response.json(payload))
+    .mockResolvedValueOnce(Response.json(stalePayload));
+  vi.stubGlobal('fetch',fetchMock);
+  render(<ActionCockpit dashboard={payload}/>);
+
+  await screen.findByRole('button',{name:'Refresh cockpit'});
+  await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
+  expect(await screen.findByText(`Latest saved snapshot is still stale (${saved.tradeDate}).`)).toBeTruthy();
+});
+
+test('stock details disclose the safe AI provider failure reason',async()=>{
+  start();
+  await userEvent.click(screen.getByRole('button',{name:/View EIC details/}));
+  expect(screen.getByRole('dialog').textContent).toContain('AI interpretation unavailable: no known provider in TASI_LLM_PROVIDERS (empty)');
+});
+
+test('optional AI unavailability does not downgrade complete deterministic holding checks',()=>{
+  const base=structuredClone(saved);
+  const complete={...base,warnings:[],digestRecords:base.digestRecords.map((record)=>record.kind==='holding'?{
+      ...record,
+      rules:[
+        {rule:'stop_level',available:true,passed:false,plain:'Protective stop not crossed.'},
+        {rule:'trim_level',available:true,passed:false,plain:'Trim level not crossed.'},
+        {rule:'target_level',available:true,passed:false,plain:'Profit target not crossed.'},
+      ],
+    }:record)};
+  const completePayload={snapshot:complete,freshness:'current',alerts:[]} as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(completePayload)));
+  render(<ActionCockpit dashboard={completePayload}/>);
+
+  expect(screen.getByText('No holding needs a rule-based action.')).toBeTruthy();
+  expect(screen.queryByText('Some checks unavailable')).toBeNull();
+});
+
+test('home, watchlist, and view-all controls expose every navigation state',async()=>{
+  const expanded=structuredClone(saved) as typeof saved;
+  expanded.qualified=[...expanded.qualified,
+    {code:'9998',name:'Candidate Four',relativeStrengthPct:7.1,squeeze:true,conditionsMet:2},
+    {code:'9999',name:'Candidate Five',relativeStrengthPct:6.8,squeeze:false,conditionsMet:2},
+  ];
+  const expandedPayload={snapshot:expanded,freshness:'current',alerts:[]} as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(expandedPayload)));
+  render(<ActionCockpit dashboard={expandedPayload}/>);
+
+  expect(screen.getByRole('link',{name:'TASI home'}).getAttribute('href')).toBe('/');
+  await userEvent.click(screen.getByRole('button',{name:'View all (5)'}));
+  expect(screen.getAllByRole('button',{name:/Explore company/})).toHaveLength(5);
+  await userEvent.click(screen.getByRole('button',{name:'Show less'}));
+  expect(screen.getAllByRole('button',{name:/Explore company/})).toHaveLength(3);
+
+  await userEvent.click(screen.getByRole('button',{name:/Your watchlist/}));
+  expect(screen.getByRole('dialog').textContent).toContain('Entry conditions for the companies you follow');
+  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:/View Avalon Pharma details/}));
+  expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Avalon Pharma');
+});
+
+test('Data status closes by button and Escape, traps focus, and restores its trigger',async()=>{
+  start();
+  const trigger=screen.getByRole('button',{name:/Data status/});
+  trigger.focus();
+  await userEvent.click(trigger);
+  const close=screen.getByRole('button',{name:'Close details'});
+  expect(document.activeElement).toBe(close);
+  await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+  expect(document.activeElement).toBe(close);
+  await userEvent.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+
+  await userEvent.click(trigger);
+  await userEvent.click(screen.getByRole('button',{name:'Close details'}));
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test.each(['EIC','Al-Babtain','Rasan'])('opens %s holding details with a quote date',async(name)=>{
+  start();
+  await userEvent.click(screen.getByRole('button',{name:new RegExp(`View ${name} details`)}));
+  const dialog=screen.getByRole('dialog',{name});
+  expect(dialog.textContent).toContain('Price date:');
+  await userEvent.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('holding details expose only safe HTTPS source links',async()=>{
+  const base=structuredClone(saved);
+  const sourced={...base,digestRecords:base.digestRecords.map((record,index)=>index===0?{
+    ...record,news:{...record.news,headlines:[
+      {title:'Official disclosure',link:'https://www.saudiexchange.sa/example',published:'2026-09-06'},
+      {title:'Unsafe source',link:'http://example.test/unsafe',published:'2026-09-06'},
+    ]},
+  }:record)};
+  const sourcedPayload={snapshot:sourced,freshness:'current',alerts:[]} as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(sourcedPayload)));
+  render(<ActionCockpit dashboard={sourcedPayload}/>);
+
+  await userEvent.click(screen.getByRole('button',{name:/View EIC details/}));
+  expect(screen.getByRole('link',{name:/Official disclosure/}).getAttribute('href')).toBe('https://www.saudiexchange.sa/example');
+  expect(screen.queryByRole('link',{name:/Unsafe source/})).toBeNull();
 });

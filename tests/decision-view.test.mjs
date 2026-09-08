@@ -5,7 +5,11 @@ import { buildDecisionView } from '../app/lib/decision-view.mjs';
 const snapshot = {
   schemaVersion: 3, tradeDate: '2026-09-06', asOf: '2026-09-06T09:37:00Z', warnings: [], urgent: [], changed: [], qualified: [],
   portfolio: { holdings: [{code:'1303',name:'EIC',shares:4,avgCostSar:10},{code:'2320',name:'Al-Babtain',shares:2}], cashSar:0 },
-  digestRecords: [{code:'1303',name:'EIC',kind:'holding',action:'HOLD',verified:true,price:12,unrealized_pct:20,delta:{price_pct:2},news:{ok:false}}],
+  digestRecords: [{code:'1303',name:'EIC',kind:'holding',action:'HOLD',verified:true,price:12,unrealized_pct:20,delta:{price_pct:2},news:{ok:false},rules:[
+    {rule:'stop_level',available:true,passed:false,plain:'Protective stop not crossed.'},
+    {rule:'trim_level',available:true,passed:false,plain:'Trim level not crossed.'},
+    {rule:'target_level',available:true,passed:false,plain:'Profit target not crossed.'},
+  ]}],
   charts: [{code:'1303',status:'available',bars:[{date:'2026-09-03',Close:12}],levels:{stop:9}}],
   leanStatus:{ok:false},
 };

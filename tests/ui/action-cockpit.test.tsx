@@ -225,6 +225,26 @@ test("a researched Top 10 draft does offer approval controls", async () => {
   expect(screen.getByRole("button", { name: "Reject Top 10" })).toBeTruthy();
 });
 
+test.each(['approved','rejected'] as const)("Top 10 %s control submits the explicit owner decision",async(decision)=>{
+  const entries=[{
+    code:'4164',name:'Nahdi Medical',sector:'healthcare',owned:false,totalScore:8.2,reasons:['Evidence reviewed.'],
+    evidence:{source:'tadawul',observedAt:'2026-08-18T06:00:00Z',receivedAt:'2026-08-18T06:05:00Z',latency:'official-filing' as const,freshness:'current' as const},
+  }];
+  const dashboard=payload({snapshot:{...snapshot,top10:{...snapshot.top10,entries}}});
+  const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+    void init;
+    return String(input)==='/api/top10/approve'?Response.json({ok:true}):Response.json(dashboard);
+  });
+  vi.stubGlobal('fetch',fetcher);
+  render(<ActionCockpit dashboard={dashboard}/>);
+
+  await userEvent.click(screen.getByRole('button',{name:/Data status/}));
+  await userEvent.click(screen.getByRole('button',{name:decision==='approved'?'Approve Top 10':'Reject Top 10'}));
+  expect(await screen.findByText(`Top 10 ${decision}.`)).toBeTruthy();
+  const request=fetcher.mock.calls.find(([input])=>String(input)==='/api/top10/approve');
+  expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({proposalId:'p1',decision});
+});
+
 test("diagnostics are behind Data status and retain withheld forecast explanations", async () => {
   renderCockpit(payload());
   expect(screen.queryByRole('heading', { name: 'Forecast' })).toBeNull();
@@ -274,6 +294,6 @@ test("a failed manual refresh retains the last-good cockpit view", async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh cockpit' }).hasAttribute('disabled')).toBe(false));
   await userEvent.click(screen.getByRole("button", { name: "Refresh cockpit" }));
 
-  expect((await screen.findByRole("status")).textContent).toMatch(/Refresh failed/i);
+  expect(await screen.findByText("Refresh failed; the last good snapshot remains visible.")).toBeTruthy();
   expect(screen.getByRole('heading', { name: /A little clarity/ })).toBeTruthy();
 });

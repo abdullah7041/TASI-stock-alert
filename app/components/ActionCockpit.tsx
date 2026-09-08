@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Candidate, DashboardPayload } from '@/app/lib/dashboard-types';
 import { buildDecisionView } from '@/app/lib/decision-view.mjs';
 import type { StockDecision } from '@/app/lib/decision-view.mjs';
@@ -34,20 +34,36 @@ function StockCard({stock,onOpen}:{stock:StockDecision;onOpen:()=>void}) {
 
 export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
   const [data,setData]=useState(dashboard),[error,setError]=useState<string|null>(null),[busy,setBusy]=useState(false);
+  const [refreshStatus,setRefreshStatus]=useState('');
+  const dataRef=useRef(dashboard);
   const [selected,setSelected]=useState<StockDecision|null>(null),[panel,setPanel]=useState<'status'|'trade'|'watchlist'|null>(null);
   const [candidate,setCandidate]=useState<Candidate|null>(null),[all,setAll]=useState(false);
   const [actionStatus,setActionStatus]=useState(''),[actionBusy,setActionBusy]=useState(false);
-  const refresh=useCallback(async()=>{
-    setBusy(true);const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15_000);
-    try{const r=await fetch('/api/dashboard',{cache:'no-store',signal:controller.signal});const next=await r.json();if(!r.ok||!next.snapshot)throw new Error(next.error??'Snapshot unavailable');setData(next);setError(null);}
-    catch{setError('Refresh failed. Showing the last good view. Try again shortly.');}
+  const refresh=useCallback(async(announce=false)=>{
+    setBusy(true);if(announce)setRefreshStatus('Checking for the latest saved snapshot…');
+    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15_000);
+    try{
+      const r=await fetch('/api/dashboard',{cache:'no-store',signal:controller.signal});const next=await r.json();
+      if(!r.ok||!next.snapshot)throw new Error(next.error??'Snapshot unavailable');
+      const previous=dataRef.current?.snapshot;
+      const priorKey=previous?.schemaVersion===3?previous.artifactId:previous?`${previous.schemaVersion}:${previous.tradeDate}:${previous.asOf}`:null;
+      const nextKey=next.snapshot.schemaVersion===3?next.snapshot.artifactId:`${next.snapshot.schemaVersion}:${next.snapshot.tradeDate}:${next.snapshot.asOf}`;
+      dataRef.current=next;setData(next);setError(null);
+      if(announce)setRefreshStatus(next.freshness==='stale'
+        ?`Latest saved snapshot is still stale (${next.snapshot.tradeDate}).`
+        :priorKey===nextKey?'Already showing the latest saved daily snapshot.':`Updated to daily snapshot for ${next.snapshot.tradeDate}.`);
+    }
+    catch{setError('Refresh failed. Showing the last good view. Try again shortly.');if(announce)setRefreshStatus('Refresh failed; the last good snapshot remains visible.');}
     finally{clearTimeout(timeout);setBusy(false);}
   },[]);
   useEffect(()=>{const initial=setTimeout(()=>void refresh(),0);const visible=()=>{if(document.visibilityState==='visible')void refresh();};const interval=setInterval(visible,60_000);document.addEventListener('visibilitychange',visible);return()=>{clearTimeout(initial);clearInterval(interval);document.removeEventListener('visibilitychange',visible);};},[refresh]);
   if(candidate)return <ResearchWorkspace candidate={candidate} onClose={()=>setCandidate(null)}/>;
-  if(!data)return <main className={styles.page}><p className={styles.brand}>TASI Action Cockpit</p><h1>{error?'No verified daily snapshot is available.':'Loading the latest saved daily digest…'}</h1>{error&&<button onClick={()=>void refresh()}>Try again</button>}</main>;
+  if(!data)return <main className={styles.page}><p className={styles.brand}>TASI Action Cockpit</p><h1>{error?'No verified daily snapshot is available.':'Loading the latest saved daily digest…'}</h1>{error&&<button onClick={()=>void refresh(true)}>Try again</button>}</main>;
   const {snapshot,freshness}=data,v2=snapshot.schemaVersion===1?null:snapshot,v3=snapshot.schemaVersion===3?snapshot:null;
   const view=buildDecisionView(snapshot,freshness),candidates=all?view.candidates:view.candidates.slice(0,3);
+  const priceDateLabel=view.priceDates.length===0?'Prices unavailable'
+    :view.priceDates.length===1?`Prices from previous close ${view.priceDates[0]}`
+    :`Latest available prices dated ${view.priceDates[0]} to ${view.priceDates.at(-1)}`;
   const researchEnabled=freshness==='current'&&import.meta.env.VITE_AGENT_ENABLED!=='false';
   const delivery=data.delivery,review=v3?.top10Review??(v2?.top10.status==='draft'?v2.top10:null);
   const close=()=>{setSelected(null);setPanel(null);};
@@ -58,9 +74,10 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
     catch(e){setActionStatus(e instanceof Error?e.message:'Could not save decision');}finally{setActionBusy(false);}
   }
   return <main className={styles.page}>
-    <header className={styles.header}><Link className={styles.brand} href="/" aria-label="TASI home"><span className={styles.logo} aria-hidden="true">↗</span>TASI <span>daily cockpit</span></Link><div className={styles.toolbar}><span className={styles.liveDot}>Delayed/daily data</span><button className={styles.secondaryButton} onClick={()=>setPanel('status')}>Data status <span aria-hidden="true">◉</span></button><button className={styles.iconButton} aria-label="Refresh cockpit" disabled={busy} onClick={()=>void refresh()}>{busy?'…':'↻'}</button></div></header>
+    <header className={styles.header}><Link className={styles.brand} href="/" aria-label="TASI home"><span className={styles.logo} aria-hidden="true">↗</span>TASI <span>daily cockpit</span></Link><div className={styles.toolbar}><span className={styles.liveDot}>Delayed/daily data</span><button className={styles.secondaryButton} onClick={()=>setPanel('status')}>Data status <span aria-hidden="true">◉</span></button><button className={styles.iconButton} aria-label="Refresh cockpit" disabled={busy} onClick={()=>void refresh(true)}>{busy?'…':'↻'}</button></div></header>
     {error&&<p className={styles.notice} role="status">{error}</p>}
-    <section className={styles.today} aria-labelledby="today-heading"><div className={styles.briefing}><p className={styles.eyebrow}>YOUR DAILY CHECK-IN</p><h1 id="today-heading">A little clarity.<br/><span>A better next step.</span></h1><p className={styles.takeaway}>{view.attention?`${view.attention} holding${view.attention===1?' needs':'s need'} your review.`:view.incomplete?'Some checks unavailable':'No holding needs a rule-based action.'}</p><p className={styles.muted}>{view.attention?'Review the highlighted holdings below.':view.incomplete?'Your saved holdings are here. Check the data notes before making a decision.':'Your holdings are below, with the next levels to watch.'}</p><p className={styles.date}>Prices through {view.priceDate??'an unknown date'} <span>· Updated {formatCockpitTimestamp(snapshot.asOf)}</span></p></div><div className={styles.attention}><span className={styles.orbit} aria-hidden="true">{view.attention?'!':'↗'}</span><strong>{view.attention}</strong><span>holdings to review</span><small>{view.incomplete?'Check data availability':'Based on your saved daily rules'}</small></div></section>
+    {refreshStatus&&<p className={styles.refreshStatus} role="status" aria-live="polite">{refreshStatus}</p>}
+    <section className={styles.today} aria-labelledby="today-heading"><div className={styles.briefing}><p className={styles.eyebrow}>YOUR DAILY CHECK-IN</p><h1 id="today-heading">A little clarity.<br/><span>A better next step.</span></h1><p className={styles.takeaway}>{view.attention?`${view.attention} holding${view.attention===1?' needs':'s need'} your review.`:view.incomplete?'Some checks unavailable':'No holding needs a rule-based action.'}</p><p className={styles.muted}>{view.attention?'Review the highlighted holdings below.':view.incomplete?'Your saved holdings are here. Check the data notes before making a decision.':'Your holdings are below, with the next levels to watch.'}</p><p className={styles.date}>Daily snapshot for {snapshot.tradeDate}</p><p className={styles.date}>{priceDateLabel} <span>· Saved {formatCockpitTimestamp(snapshot.asOf)}</span></p></div><div className={styles.attention}><span className={styles.orbit} aria-hidden="true">{view.attention?'!':'↗'}</span><strong>{view.attention}</strong><span>{view.attention===1?'holding needs':'holdings need'} action</span><small>{view.holdings.length} holdings tracked</small></div></section>
     {freshness==='stale'?<p className={styles.notice} aria-label="Stale data warning">The expected pre-open refresh did not arrive. This is the last successful daily snapshot; research is disabled.</p>:warning&&<p className={styles.notice} aria-label="Data quality warning">{warning}</p>}
     <section className={styles.section} aria-label="My holdings"><div className={styles.sectionHead}><div><p className={styles.eyebrow}>YOUR PORTFOLIO</p><h2>My holdings <span>{view.holdings.length}</span></h2></div><div className={styles.toolbar}>{v2&&<span className={styles.cash}>{price(v2.portfolio.cashSar)} SAR cash</span>}{v2&&<button className={styles.textButton} onClick={()=>setPanel('trade')}>Record a trade ↗</button>}</div></div>{view.holdings.length?<div className={styles.grid}>{view.holdings.map(stock=><StockCard key={stock.code} stock={stock} onOpen={()=>setSelected(stock)}/>)}</div>:<div className={styles.empty}><span aria-hidden="true">◎</span><h3>Your portfolio starts here</h3><p>No confirmed holdings are available. Record an executed trade to start your ledger.</p></div>}</section>
     <section className={styles.section} aria-label="Worth watching"><div className={styles.sectionHead}><div><p className={styles.eyebrow}>ROOM FOR RESEARCH</p><h2>Worth watching</h2></div><div className={styles.toolbar}>{view.watchlist.length>0&&<button className={styles.textButton} onClick={()=>setPanel('watchlist')}>Your watchlist ({view.watchlist.length})</button>}{view.candidates.length>3&&<button className={styles.textButton} aria-expanded={all} onClick={()=>setAll(!all)}>{all?'Show less':`View all (${view.candidates.length})`}</button>}</div></div><p className={styles.sectionNote}>Screening ideas, not buy instructions. Get to know a company before deciding.</p>{candidates.length?<div className={styles.grid}>{candidates.map((c,i)=><article className={styles.ideaCard} key={c.code}><span className={styles.ideaNumber}>0{i+1}</span><span className={styles.pill} data-tone="blue">Research candidate</span><h3>{c.name}</h3><p className={styles.code}>{c.code}</p><p>Relative strength <strong>+{c.relativeStrengthPct.toFixed(1)}%</strong></p><p className={styles.cardReason}>{c.squeeze?'Relative strength and quiet trading met the scanner conditions.':'Two research conditions met.'} Entry, valuation and risk still need review.</p><div className={styles.conditions}><progress value={2} max={2}/>2 of 2 screening conditions</div><button className={styles.secondaryButton} disabled={!researchEnabled} onClick={()=>setCandidate(c)}>{researchEnabled?'Explore company ↗':'Waiting for fresh data'}</button></article>)}</div>:<div className={styles.empty}><span aria-hidden="true">⌕</span><h3>Nothing new on the shortlist</h3><p>No scanner candidates met both research conditions in this daily snapshot.</p></div>}</section>

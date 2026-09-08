@@ -1,5 +1,5 @@
 const machineRoutes = new Set([
-  'GET /api/health', 'GET /api/portfolio/current', 'GET /api/top10/current',
+  'GET /api/health', 'GET /api/dashboard', 'GET /api/portfolio/current', 'GET /api/top10/current',
   'POST /api/dashboard/ingest', 'POST /api/alerts/ingest', 'POST /api/deliveries/ingest',
   'POST /api/discord/interactions',
 ]);

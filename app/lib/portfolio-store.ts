@@ -1,6 +1,6 @@
 import type { D1Database } from "cloudflare:workers";
 import { researchSchemaStatements } from "@/db/schema";
-import { foldPortfolio, type PortfolioEvent } from "@/app/lib/portfolio-core.mjs";
+import { expandPortfolioEvent, foldPortfolio, type PortfolioEvent } from "@/app/lib/portfolio-core.mjs";
 
 type Row = { operation_id: string; event_kind: PortfolioEvent["kind"]; month_key: string | null; symbol: string | null; name: string | null; shares: number | null; price_sar: number | null; cash_sar: number | null; fees_sar: number | null; reason: string | null; confirmed_at: string };
 
@@ -32,15 +32,17 @@ export class PortfolioStore {
     const spent = events
       .filter((event) => event.kind === "buy" && String(event.confirmedAt).slice(0, 7) === month)
       .reduce((total, event) => total + (event.shares ?? 0) * (event.priceSar ?? 0) + (event.feesSar ?? 0), 0);
-    return { view: foldPortfolio(events), spentThisMonthSar: Math.round(spent * 100) / 100, month };
+    return { view: foldPortfolio(events), eventCount: events.length, spentThisMonthSar: Math.round(spent * 100) / 100, month };
   }
   async append(ownerId: string, event: PortfolioEvent) {
     await this.ensureReady();
     const existing = await this.db.prepare("SELECT operation_id FROM portfolio_events WHERE operation_id = ?").bind(event.operationId).first<{operation_id:string}>();
     if (existing) return this.view(ownerId);
-    const projected = [...await this.events(ownerId), event];
+    const current = await this.events(ownerId);
+    const appended = expandPortfolioEvent(current, event);
+    const projected = [...current, ...appended];
     foldPortfolio(projected);
-    await this.db.prepare("INSERT INTO portfolio_events (operation_id,owner_id,event_kind,month_key,symbol,name,shares,price_sar,cash_sar,fees_sar,reason,confirmed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(event.operationId, ownerId, event.kind, event.month ?? null, event.code ?? null, event.name ?? null, event.shares ?? null, event.priceSar ?? null, event.cashSar ?? null, event.feesSar ?? 0, event.reason ?? null, event.confirmedAt).run();
+    await this.db.batch(appended.map((item) => this.db.prepare("INSERT INTO portfolio_events (operation_id,owner_id,event_kind,month_key,symbol,name,shares,price_sar,cash_sar,fees_sar,reason,confirmed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(item.operationId, ownerId, item.kind, item.month ?? null, item.code ?? null, item.name ?? null, item.shares ?? null, item.priceSar ?? null, item.cashSar ?? null, item.feesSar ?? 0, item.reason ?? null, item.confirmedAt)));
     return this.view(ownerId);
   }
 }

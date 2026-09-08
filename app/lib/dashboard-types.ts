@@ -52,7 +52,7 @@ export type DigestRecord = {
   unrealized_pct?:number; reason?:string|string[];
   delta?:{price_pct?:number;rsi_delta?:number;trend_flipped?:boolean;rules_met_delta?:number;flipped?:string[]};
   rules_met?:number; rules_total?:number;
-  rules?:Array<{rule:string;passed:boolean;actual?:unknown;plain?:string}>;
+  rules?:Array<{rule:string;passed:boolean;available?:boolean;actual?:unknown;plain?:string}>;
   triggers?:Array<{rule?:string;plain?:string;reachable?:boolean;trigger_price?:number;pct_away?:number}>;
   news?:{ok:boolean;status?:Availability;headlines?:Array<{title:string;link?:string;published?:string}>;errors?:string[]};
   disclosures?:{ok:boolean;items?:Array<{title?:string;url?:string;link?:string;published?:string}>};
