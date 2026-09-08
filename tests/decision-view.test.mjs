@@ -5,8 +5,12 @@ import { buildDecisionView } from '../app/lib/decision-view.mjs';
 const snapshot = {
   schemaVersion: 3, tradeDate: '2026-09-06', asOf: '2026-09-06T09:37:00Z', warnings: [], urgent: [], changed: [], qualified: [],
   portfolio: { holdings: [{code:'1303',name:'EIC',shares:4,avgCostSar:10},{code:'2320',name:'Al-Babtain',shares:2}], cashSar:0 },
-  digestRecords: [{code:'1303',name:'EIC',kind:'holding',action:'HOLD',verified:true,price:12,unrealized_pct:20,delta:{price_pct:2},news:{ok:false}}],
-  charts: [{code:'1303',status:'available',bars:[{date:'2026-09-03',Close:12}],levels:{stop:9}}],
+  digestRecords: [{code:'1303',name:'EIC',kind:'holding',action:'HOLD',verified:true,price:12,unrealized_pct:20,delta:{price_pct:2},news:{ok:false},rules:[
+    {rule:'stop_level',available:true,passed:false,plain:'Protective stop not crossed.'},
+    {rule:'trim_level',available:true,passed:false,plain:'Trim level not crossed.'},
+    {rule:'target_level',available:true,passed:false,plain:'Profit target not crossed.'},
+  ]}],
+  charts: [{code:'1303',status:'available',bars:Array.from({length:5},()=>({date:'2026-09-03',Close:12})),levels:{stop:9}}],
   leanStatus:{ok:false},
 };
 test('every holding is visible and absent market data cannot imply Hold', () => {
@@ -36,6 +40,23 @@ test('attention counts holdings crossing levels, not ordinary changed records', 
 test('unknown action cannot imply a reassuring Hold',()=>{
   const view=buildDecisionView({...snapshot,digestRecords:[{...snapshot.digestRecords[0],action:'UNKNOWN'}]},'current');
   assert.equal(view.holdings[0].label,'Insufficient data');
+});
+test('a holding quote older than the expected previous session is unavailable',()=>{
+  const old={...snapshot,tradeDate:'2026-09-08',digestRecords:[{
+    ...snapshot.digestRecords[0],priceDate:'2026-09-06',
+  }],charts:[{...snapshot.charts[0],bars:[{date:'2026-09-06',Close:12}]}]};
+  const view=buildDecisionView(old,'current');
+  assert.equal(view.holdings[0].label,'Insufficient data');
+  assert.match(view.holdings[0].reason,/older than the expected previous session/i);
+  assert.equal(view.incomplete,true);
+});
+
+test('a holding without sufficient chart history is unavailable',()=>{
+  const input=structuredClone(snapshot);
+  input.charts[0]={code:'1303',status:'unavailable',reason:'history failed',levels:{stop:9}};
+  const view=buildDecisionView(input,'current');
+  assert.equal(view.holdings[0].label,'Insufficient data');
+  assert.equal(view.incomplete,true);
 });
 test('watchlist condition failure explains overbought accurately and keeps all candidates', () => {
   const current={...snapshot,digestRecords:[...snapshot.digestRecords,{code:'4016',name:'Avalon',kind:'watchlist',action:'WATCH',verified:true,price:67,rules:[{rule:'rsi_band',passed:false,actual:71,required:'25-60'}],rules_met:2,rules_total:3}],qualified:Array.from({length:5},(_,i)=>({code:String(i),name:`Candidate ${i}`,conditionsMet:2,relativeStrengthPct:15,squeeze:true}))};

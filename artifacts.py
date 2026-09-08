@@ -81,26 +81,99 @@ def timestamp_or_none(value: Any) -> str | None:
 def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict,
                           charts: list[dict], scheduled_for: str | None) -> dict:
     """Create DigestArtifactV3 from deterministic facts plus fail-soft extras."""
+    complete_recs = list(recs)
+    recorded_codes = {str(rec.get("code")) for rec in complete_recs}
+    for holding in (snapshot.get("portfolio") or {}).get("holdings") or []:
+        code = str(holding.get("code"))
+        if code in recorded_codes:
+            continue
+        complete_recs.append({
+            "kind": "holding", "code": code, "name": str(holding.get("name") or code),
+            "shares": holding.get("shares"), "avg_cost": holding.get("avgCostSar"),
+            "action": "UNKNOWN", "price": None, "verified": True, "rules": [],
+            "reason": ["No usable daily price history returned for this holding."],
+            "unrealized_pct": None,
+        })
+    records = [decision_record(rec, charts, trade_date=snapshot.get("tradeDate"))
+               for rec in complete_recs]
+    unavailable_codes = {
+        str(record.get("code")) for record in records
+        if record.get("kind") == "holding"
+        and (record.get("decision") or {}).get("label") == "Insufficient data"
+    }
+    urgent = [item for item in (snapshot.get("urgent") or [])
+              if str(item.get("code")) not in unavailable_codes]
+    warnings = list(snapshot.get("warnings") or [])
+    if unavailable_codes:
+        count = len(unavailable_codes)
+        warnings.append(
+            f"{count} holding check{'s are' if count != 1 else ' is'} unavailable; "
+            "verify the current price in your broker."
+        )
+    summary_v1 = {**(snapshot.get("summaryV1") or {})}
+    cards = [dict(card) for card in summary_v1.get("cards") or []]
+    if unavailable_codes:
+        for card in cards:
+            if card.get("kind") == "portfolio":
+                unavailable_text = (
+                    f"{len(unavailable_codes)} holding check"
+                    f"{'s are' if len(unavailable_codes) != 1 else ' is'} unavailable."
+                )
+                card["state"] = "action" if urgent else "unavailable"
+                card["text"] = (
+                    f"{len(urgent)} confirmed holding action(s) require review; {unavailable_text}"
+                    if urgent else unavailable_text
+                )
+                break
+    summary_v1["cards"] = cards
     artifact = {
         **snapshot,
         "schemaVersion": 3,
         "artifactKind": "digest",
         "scheduledFor": timestamp_or_none(scheduled_for),
         "producer": {"generatedAt": snapshot["asOf"]},
-        "digestRecords": [decision_record(rec, charts) for rec in recs],
+        "urgent": urgent,
+        "warnings": warnings,
+        "summaryV1": summary_v1,
+        "summary": [str(card["text"]) for card in cards],
+        "digestRecords": records,
         "leanStatus": lean_status,
         "charts": charts,
     }
     return _with_id(artifact)
 
 
-def decision_record(rec: dict, charts: list[dict]) -> dict:
+def _previous_trading_date(value: str) -> str:
+    cursor = datetime.fromisoformat(value).date()
+    while True:
+        cursor = date.fromordinal(cursor.toordinal() - 1)
+        if cursor.weekday() not in (4, 5):
+            return cursor.isoformat()
+
+
+def decision_record(rec: dict, charts: list[dict], *, trade_date: str | None = None) -> dict:
     """One plain-language decision for both dashboard and Discord readers."""
     import explain
     price = _finite_number(rec, "price")
     action = str(rec.get("action") or "").upper()
     known = action in {"HOLD", "WATCH", "BUY", "SELL (STOP)", "SELL (TARGET)", "TRIM"}
-    if price is None or price <= 0 or rec.get("verified") is False or not known:
+    chart = next((c for c in charts if c.get("code") == rec.get("code")), {})
+    bars = chart.get("bars") or []
+    price_date = rec.get("priceDate") or (bars[-1].get("date") if bars else None)
+    holding = rec.get("kind") == "holding"
+    chart_ready = not holding or (chart.get("status") == "available" and len(bars) >= 5)
+    rules = rec.get("rules")
+    rules_ready = not holding or (isinstance(rules, list) and bool(rules)
+                                  and all(rule.get("available") is not False for rule in rules))
+    quote_stale = bool(holding and trade_date and price_date
+                       and price_date < _previous_trading_date(trade_date))
+    if quote_stale:
+        label = "Insufficient data"
+        reason = (f"This quote ({price_date}) is older than the expected previous session. "
+                  "Check your broker before reviewing a decision.")
+    elif not chart_ready:
+        label, reason = "Insufficient data", "Required chart history is unavailable."
+    elif price is None or price <= 0 or rec.get("verified") is False or not known or not rules_ready:
         label, reason = "Insufficient data", "A verified price or complete rule check is unavailable."
     elif action == "SELL (STOP)":
         label, reason = "Review stop", "Your protective level was reached in the daily snapshot. Check your broker."
@@ -110,9 +183,6 @@ def decision_record(rec: dict, charts: list[dict]) -> dict:
         label, reason = "Hold", "No decision level crossed in this daily snapshot."
     else:
         label, reason = "Watching", explain.situation(rec) + " This remains a research opportunity."
-    chart = next((c for c in charts if c.get("code") == rec.get("code")), {})
-    bars = chart.get("bars") or []
-    price_date = rec.get("priceDate") or (bars[-1].get("date") if bars else None)
     return {**rec, "priceDate": price_date, "decision": {"label": label, "reason": reason}}
 
 

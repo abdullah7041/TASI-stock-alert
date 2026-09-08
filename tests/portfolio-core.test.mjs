@@ -1,6 +1,80 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { foldPortfolio, proposeMonthlyAction } from "../app/lib/portfolio-core.mjs";
+import { expandPortfolioEvent, foldPortfolio, proposeMonthlyAction } from "../app/lib/portfolio-core.mjs";
+
+test("imports an opening balance without inventing cash contributions or buys", () => {
+  const opening = {
+    operationId: "opening-config-2026-09-07",
+    kind: "opening_balance",
+    confirmedAt: "2026-09-07T00:00:00Z",
+    cashSar: 0,
+    reason: "Confirmed migration from config",
+    holdings: [
+      { code: "1303", name: "EIC", shares: 104, avgCostSar: 12.41 },
+      { code: "2320", name: "Al-Babtain", shares: 12, avgCostSar: 64.26 },
+      { code: "8313", name: "Rasan", shares: 11, avgCostSar: 107.45 },
+    ],
+  };
+
+  const persisted = expandPortfolioEvent([], opening);
+  const state = foldPortfolio(persisted);
+
+  assert.equal(state.cashSar, 0);
+  assert.equal(state.contributionMonth, null);
+  assert.deepEqual(state.holdings, [
+    { code: "1303", name: "EIC", shares: 104, avgCostSar: 12.41, realisedSar: 0 },
+    { code: "2320", name: "Al-Babtain", shares: 12, avgCostSar: 64.26, realisedSar: 0 },
+    { code: "8313", name: "Rasan", shares: 11, avgCostSar: 107.45, realisedSar: 0 },
+  ]);
+  assert.deepEqual(persisted.map((event) => event.kind), ["opening_balance", "opening_position", "opening_position", "opening_position"]);
+});
+
+test("opening balance is first-event-only, unique, and validates every position", () => {
+  const valid = {
+    operationId: "opening-config-2026-09-07",
+    kind: "opening_balance",
+    confirmedAt: "2026-09-07T00:00:00Z",
+    cashSar: 0,
+    holdings: [{ code: "1303", name: "EIC", shares: 104, avgCostSar: 12.41 }],
+  };
+  const contribution = { operationId: "c1", kind: "contribution", month: "2026-09", cashSar: 500, confirmedAt: "2026-09-01T00:00:00Z" };
+
+  assert.throws(() => expandPortfolioEvent([contribution], valid), /empty ledger/i);
+  assert.throws(() => expandPortfolioEvent([], { ...valid, holdings: [...valid.holdings, valid.holdings[0]] }), /duplicate holding/i);
+  assert.throws(() => expandPortfolioEvent([], { ...valid, holdings: [{ ...valid.holdings[0], shares: 0 }] }), /shares/i);
+  assert.throws(() => expandPortfolioEvent([], {
+    operationId: "forged-position", kind: "opening_position", code: "1303", name: "EIC",
+    shares: 104, priceSar: 12.41, confirmedAt: "2026-09-07T00:00:00Z",
+  }), /internal/i);
+  assert.throws(() => foldPortfolio([...expandPortfolioEvent([], valid), { ...valid, operationId: "opening-second" }]), /opening balance/i);
+});
+
+test("later ledger events cannot be backdated before the persisted sequence", () => {
+  const opening = {
+    operationId: "opening-config-2026-09-07", kind: "opening_balance",
+    confirmedAt: "2026-09-07T00:00:00Z", cashSar: 0,
+    holdings: [{ code: "1303", name: "EIC", shares: 104, avgCostSar: 12.41 }],
+  };
+  const persisted = expandPortfolioEvent([], opening);
+  assert.throws(() => expandPortfolioEvent(persisted, {
+    operationId: "backdated-buy", kind: "buy", code: "1303", name: "EIC",
+    shares: 1, priceSar: 10, confirmedAt: "2026-09-06T23:59:59Z",
+  }), /later than the previous event/i);
+});
+
+test("event ordering compares normalized instants rather than timestamp strings", () => {
+  const existing = [{ operationId: "open", kind: "opening_balance", cashSar: 100,
+    confirmedAt: "2026-09-08T03:00:00+03:00" }];
+  const later = expandPortfolioEvent(existing, { operationId: "later", kind: "contribution",
+    month: "2026-09", cashSar: 50, confirmedAt: "2026-09-08T00:30:00Z" });
+  assert.equal(later[0].confirmedAt, "2026-09-08T00:30:00.000Z");
+
+  assert.throws(() => expandPortfolioEvent(
+    [{ ...existing[0], confirmedAt: "2026-09-08T00:30:00Z" }],
+    { operationId: "earlier", kind: "contribution", month: "2026-09", cashSar: 50,
+      confirmedAt: "2026-09-08T03:00:00+03:00" },
+  ), /later than the previous event/i);
+});
 
 test("one monthly contribution and confirmed sale proceeds carry forward", () => {
   const events = [

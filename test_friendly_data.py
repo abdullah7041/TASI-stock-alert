@@ -63,8 +63,16 @@ def test_overbought_missing_condition_is_not_called_failure_to_recover():
 def test_shared_decision_records_are_used_by_discord():
     import artifacts
     import notify
-    rec = {"code": "1234", "name": "Example", "kind": "holding", "action": "SELL (STOP)", "price": 90}
-    artifact = artifacts.build_digest_artifact({"asOf": "2026-09-06T06:00:00Z"}, recs=[rec], lean_status={}, charts=[], scheduled_for=None)
+    rec = {"code": "1234", "name": "Example", "kind": "holding", "action": "SELL (STOP)",
+           "price": 90, "priceDate": "2026-09-03", "verified": True,
+           "rules": [{"rule": "stop_level", "available": True, "passed": True}]}
+    bars = [{"date": "2026-09-03", "Open": 91, "High": 92, "Low": 89,
+             "Close": 90, "Volume": 1000} for _ in range(5)]
+    artifact = artifacts.build_digest_artifact(
+        {"asOf": "2026-09-06T06:00:00Z", "tradeDate": "2026-09-06"},
+        recs=[rec], lean_status={},
+        charts=[{"code": "1234", "status": "available", "bars": bars, "levels": {}}],
+        scheduled_for=None)
     enriched = artifact["digestRecords"][0]
     assert enriched["decision"]["label"] == "Review stop"
     embed = notify.build_name_embed(enriched)

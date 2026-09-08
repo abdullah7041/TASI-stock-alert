@@ -8,6 +8,7 @@ and the two evaluators. Data is synthetic so these are deterministic.
 
 import io
 import json
+import pytest
 import sys
 import time
 import types
@@ -77,6 +78,44 @@ def test_a_total_price_outage_says_so_instead_of_shipping_an_empty_digest(monkey
     assert recs == [], "sanity: a total outage really does drop every name"
     assert main._DATA_WARNING is not None
     assert "not because nothing happened" in main._DATA_WARNING
+
+
+def test_collected_price_carries_the_actual_market_session_date(monkeypatch):
+    frame = _ohlcv()
+    holding = {"code": "1303", "name": "EIC", "shares": 104, "avg_cost": 12.41}
+    monkeypatch.setattr(main.cfg, "HOLDINGS", [holding])
+    monkeypatch.setattr(main.cfg, "WATCHLIST", [])
+    monkeypatch.setattr(main, "_holdings", lambda: [holding])
+    monkeypatch.setattr(main.dat, "get_histories", lambda codes, period: {code: frame for code in codes})
+    monkeypatch.setattr(main, "_verify_symbols", lambda names: {"1303": {"verified": True}})
+    monkeypatch.setattr(main.discl, "fetch_all", lambda: ([], False))
+    monkeypatch.setattr(main, "_load", lambda path, default: {})
+    monkeypatch.setattr(main, "_budget_remaining", lambda: 0)
+    monkeypatch.setattr(main, "_budget_record", lambda buys: None)
+
+    _regime, recs, _budget = main._collect_recs(include_news=False, record_history=False)
+
+    assert recs[0]["priceDate"] == frame.index[-1].date().isoformat()
+
+
+def test_daily_digest_excludes_an_in_progress_same_day_bar(monkeypatch):
+    frame = _ohlcv()
+    cutoff = frame.index[-1].date().isoformat()
+    holding = {"code": "1303", "name": "EIC", "shares": 104, "avg_cost": 12.41}
+    monkeypatch.setattr(main.cfg, "HOLDINGS", [holding])
+    monkeypatch.setattr(main.cfg, "WATCHLIST", [])
+    monkeypatch.setattr(main, "_holdings", lambda: [holding])
+    monkeypatch.setattr(main.dat, "get_histories", lambda codes, period: {code: frame for code in codes})
+    monkeypatch.setattr(main, "_verify_symbols", lambda names: {"1303": {"verified": True}})
+    monkeypatch.setattr(main.discl, "fetch_all", lambda: ([], False))
+    monkeypatch.setattr(main, "_load", lambda path, default: {})
+    monkeypatch.setattr(main, "_budget_remaining", lambda: 0)
+    monkeypatch.setattr(main, "_budget_record", lambda buys: None)
+
+    _regime, recs, _budget = main._collect_recs(
+        include_news=False, record_history=False, completed_before=cutoff)
+
+    assert recs[0]["priceDate"] == frame.index[-2].date().isoformat()
 
 
 def test_the_price_outage_warning_reaches_the_snapshot_not_just_the_log(monkeypatch):
@@ -157,16 +196,19 @@ def test_pending_initial_top10_draft_is_not_replaced_before_approval(monkeypatch
     assert main.mode_top10_draft() == 0
 
 
-def test_cockpit_refresh_never_calls_discord(monkeypatch):
-    monkeypatch.setattr(main, "_delivered_digest_today", lambda: None)
-    saved = {}
-    monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
-    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
-    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+def test_cockpit_refresh_only_replays_the_canonical_artifact(monkeypatch):
+    canonical = {"schemaVersion": 3, "artifactId": "sha256:" + "a" * 64,
+                 "tradeDate": "2026-09-07"}
+    monkeypatch.setattr(main, "_load", lambda path, default: canonical if path == main.DASHBOARD_FILE else default)
+    monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: (_ for _ in ()).throw(AssertionError("refresh must not collect market data")))
+    monkeypatch.setattr(main, "_save", lambda *_: (_ for _ in ()).throw(AssertionError("refresh must not rewrite the artifact")))
     monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("refresh must not send Discord")))
     assert main.mode_cockpit_refresh() == 0
-    assert main.DASHBOARD_FILE in saved
-    assert saved[main.DASHBOARD_FILE]["schemaVersion"] == 3
+
+
+def test_cockpit_refresh_fails_when_no_canonical_artifact_exists(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda *_: None)
+    assert main.mode_cockpit_refresh() == 1
 
 
 def test_discord_smoke_sends_one_labelled_delivery_only_message(monkeypatch):
@@ -967,6 +1009,14 @@ def test_holding_stop_triggers_sell():
                                   "short_ma": 20, "long_ma": 50},
                               tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
     assert rec["action"].startswith("SELL")
+    checks = {item["rule"]: item for item in rec["rules"]}
+    assert checks["stop_level"] == {
+        "rule": "stop_level", "available": True, "passed": True,
+        "actual": 110.0, "required": "<= 115.00",
+        "plain": "Protective stop 115.00 crossed at 110.00.",
+    }
+    assert checks["trim_level"]["available"] is False
+    assert checks["target_level"]["available"] is False
 
 
 def test_news_summary_none_when_no_news():
@@ -1760,20 +1810,24 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
     import main as m
 
     calls = []
+    monkeypatch.setenv("SCHEDULED_FOR", "2026-09-07T05:30:00Z")
     monkeypatch.setattr(
         m, "_collect_recs",
-        lambda include_news, record_history: (
-            calls.append((include_news, record_history)) or ("ok", [], {
+        lambda include_news, record_history, completed_before: (
+            calls.append((include_news, record_history, completed_before)) or ("ok", [], {
                 "budget": 0.0, "allocated": 0.0, "leftover": 0.0,
             })
         ),
     )
+    chart_calls = []
+    monkeypatch.setattr(m, "_chart_bundle", lambda _recs, completed_before=None: chart_calls.append(completed_before) or ({}, {}, []))
     monkeypatch.setattr(m.nt, "send_discord", lambda *_a, **_kw: True)
     monkeypatch.setattr(m, "_scanner_result", lambda: {"candidates": [], "names": {}, "indexUnavailable": False, "warning": "scanner unavailable: test"})
     monkeypatch.setattr(m, "_save", lambda *_: None)
 
     assert m.mode_digest() == 0
-    assert calls == [(True, True)]
+    assert calls == [(True, True, "2026-09-07")]
+    assert chart_calls == ["2026-09-07"]
 
 
 def test_mode_digest_saves_the_same_real_scanner_result_used_for_its_message(monkeypatch):
@@ -2756,6 +2810,33 @@ def test_holdings_fall_back_to_config_when_the_ledger_is_unreachable(monkeypatch
     assert [h["code"] for h in main._holdings()] == [h["code"] for h in cfg.HOLDINGS]
 
 
+def test_required_portfolio_ledger_never_falls_back_to_config(monkeypatch):
+    """Decision-producing workflows must fail closed if D1 cannot be read."""
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda _p, default=None: default)
+    with pytest.raises(RuntimeError, match="Confirmed portfolio ledger is required"):
+        main._holdings()
+
+
+def test_required_empty_portfolio_ledger_must_be_initialized(monkeypatch):
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0}, "eventCount": 0,
+         "spentThisMonthSar": 0.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    with pytest.raises(RuntimeError, match="opening balance"):
+        main._holdings()
+
+
+def test_boolean_event_count_is_not_an_initialized_ledger(monkeypatch):
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0}, "eventCount": True}
+        if str(path).endswith("portfolio_active.json") else default))
+    with pytest.raises(RuntimeError, match="opening balance"):
+        main._holdings()
+
+
 def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
     monkeypatch.setattr(main, "_load", lambda path, default=None: (
         {"view": {"holdings": [{"code": "1303", "name": "EIC", "shares": 124,
@@ -2764,6 +2845,14 @@ def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
         if str(path).endswith("portfolio_active.json") else default))
     holdings = main._holdings()
     assert holdings == [{"code": "1303", "name": "EIC", "shares": 124, "avg_cost": 12.84}]
+
+
+def test_an_authoritative_empty_ledger_never_resurrects_config_holdings(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 500.0}, "eventCount": 4,
+         "spentThisMonthSar": 0.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    assert main._holdings() == []
 
 
 def test_early_movers_reach_the_reader_at_all():
@@ -3379,7 +3468,7 @@ def test_digest_persists_the_lean_attached_after_daily_snapshot(monkeypatch):
     monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
         "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
                         or {"ok": True, "provider": "gemini", "model": "test"})
-    monkeypatch.setattr(main, "_chart_bundle", lambda _recs: ({}, {}, []))
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None: ({}, {}, []))
     monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
 
     assert main.mode_digest() == 0
@@ -3399,7 +3488,7 @@ def test_digest_sends_embeds_from_the_saved_v3_artifact(monkeypatch):
     monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
         "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
                         or {"ok": True, "provider": "gemini", "model": "test"})
-    monkeypatch.setattr(main, "_chart_bundle", lambda _recs: ({}, {}, [{
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None: ({}, {}, [{
         "code": "1303", "name": "EIC", "status": "unavailable", "reason": "history failed"}]))
     monkeypatch.setattr(main.nt, "build_digest_embeds", lambda **kwargs: rendered.append(kwargs["artifact"]) or [])
     monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
@@ -3522,6 +3611,70 @@ def test_digest_artifact_v3_has_a_stable_identity_without_delivery_receipts():
     assert first["artifactId"].startswith("sha256:")
     assert first["artifactId"] == second["artifactId"]
     assert artifacts.artifact_id({**first, "deliveries": {"discord": {"ok": True}}}) == first["artifactId"]
+
+
+def test_stale_holding_quote_is_unavailable_in_artifact_summary_and_discord():
+    snapshot = main._dashboard_snapshot(
+        "ok", [], {"monthly_cap": 500.0}, {"candidates": [], "names": {}},
+        as_of="2026-09-08T05:30:00Z",
+    )
+    snapshot["urgent"] = [{"code": "1303", "action": "SELL (STOP)"}]
+    artifact = artifacts.build_digest_artifact(
+        snapshot,
+        recs=[_lean_rec(priceDate="2026-09-06", verified=True, rules=[
+            {"rule": "stop_level", "available": True, "passed": False},
+        ])],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[{"code": "1303", "status": "available", "bars": [
+            {"date": "2026-09-06", "Open": 15, "High": 16, "Low": 14,
+             "Close": 15.09, "Volume": 1000}
+            for _ in range(5)
+        ], "levels": {}}],
+        scheduled_for="2026-09-08T05:30:00Z",
+    )
+
+    record = artifact["digestRecords"][0]
+    assert record["decision"]["label"] == "Insufficient data"
+    assert "older than the expected previous session" in record["decision"]["reason"]
+    assert artifact["urgent"] == []
+    assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
+    assert "holding check" in artifact["summary"][0]
+    embeds = nt.build_digest_embeds(artifact=artifact)
+    assert any("Insufficient data" in (embed.get("title") or "") for embed in embeds)
+
+
+def test_missing_holding_chart_is_an_unavailable_shared_decision():
+    record = artifacts.decision_record(
+        _lean_rec(priceDate="2026-09-07", verified=True, rules=[
+            {"rule": "stop_level", "available": True, "passed": False},
+        ]),
+        [{"code": "1303", "status": "unavailable", "reason": "history failed"}],
+        trade_date="2026-09-08",
+    )
+    assert record["decision"]["label"] == "Insufficient data"
+    assert "chart history" in record["decision"]["reason"]
+
+
+def test_missing_producer_record_still_reaches_artifact_summary_and_discord():
+    snapshot = main._dashboard_snapshot(
+        "unknown", [], {"monthly_cap": 500.0}, {"candidates": [], "names": {}},
+        as_of="2026-09-08T05:30:00Z",
+    )
+    snapshot["portfolio"]["holdings"] = [
+        {"code": "8313", "name": "Rasan", "shares": 11, "avgCostSar": 107.45},
+    ]
+    artifact = artifacts.build_digest_artifact(
+        snapshot, recs=[],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[], scheduled_for="2026-09-08T05:30:00Z",
+    )
+
+    assert [(record["code"], record["decision"]["label"])
+            for record in artifact["digestRecords"]] == [("8313", "Insufficient data")]
+    assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
+    embeds = nt.build_digest_embeds(artifact=artifact)
+    assert any("Insufficient data" in (embed.get("title") or "")
+               and "8313 Rasan" in embed["title"] for embed in embeds)
 
 
 def test_movement_artifact_v1_names_alerts_and_has_its_own_identity():
@@ -3750,6 +3903,15 @@ def test_the_guard_does_nothing_when_todays_digest_already_shipped(monkeypatch):
     assert main.mode_digest_guard() == 0
 
 
+def test_the_guard_trusts_same_artifact_destination_receipts_from_production(monkeypatch):
+    monkeypatch.setenv("TASI_PRODUCTION_DELIVERED", "true")
+    monkeypatch.setattr(main, "_delivered_digest_today",
+                        lambda: (_ for _ in ()).throw(AssertionError("local checkout may be stale")))
+    monkeypatch.setattr(main, "mode_digest",
+                        lambda: (_ for _ in ()).throw(AssertionError("must not re-send")))
+    assert main.mode_digest_guard() == 0
+
+
 def test_a_digest_shaped_artifact_nobody_received_does_not_satisfy_the_guard(monkeypatch):
     """cockpit-refresh and top10-draft write artifactKind "digest" too.
 
@@ -3773,6 +3935,7 @@ def test_a_refresh_never_replaces_the_digest_that_already_went_out(monkeypatch):
     artifact, orphaning the Discord receipt keyed to the old ID.
     """
     monkeypatch.setattr(main, "_load", lambda *_a, **_k: {
+        "schemaVersion": 3, "artifactId": "sha256:" + "a" * 64,
         "tradeDate": main._today(), "artifactKind": "digest", "asOf": "2026-08-30T05:30:00Z",
         "deliveries": {"discord": {"status": "success"}}})
     monkeypatch.setattr(main, "_save",

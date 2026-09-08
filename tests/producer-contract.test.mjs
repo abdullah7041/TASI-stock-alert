@@ -25,6 +25,19 @@ test("the committed dashboard artifact is readable by the site's own parser", ()
   assert.ok(parsed.asOf, "a parsed snapshot must carry its observation time");
 });
 
+test("the committed artifact never calls a stale holding quote reassuring", () => {
+  const raw = JSON.parse(readFileSync(snapshotPath, "utf8"));
+  const cursor = new Date(`${raw.tradeDate}T00:00:00Z`);
+  do cursor.setUTCDate(cursor.getUTCDate() - 1); while (![0, 1, 2, 3, 4].includes(cursor.getUTCDay()));
+  const expectedPreviousSession = cursor.toISOString().slice(0, 10);
+  const staleHoldings = raw.digestRecords.filter((record) =>
+    record.kind === "holding" && record.priceDate < expectedPreviousSession);
+  for (const record of staleHoldings) assert.equal(record.decision.label, "Insufficient data");
+  if (staleHoldings.length) {
+    assert.notEqual(raw.summaryV1.cards.find((card) => card.kind === "portfolio")?.state, "clear");
+  }
+});
+
 test("the producer's own artifact version is one the parser accepts", () => {
   const raw = JSON.parse(readFileSync(snapshotPath, "utf8"));
   assert.ok([1, 2, 3].includes(raw.schemaVersion),

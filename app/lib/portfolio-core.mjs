@@ -12,6 +12,54 @@ function wholeShares(value) {
   return value;
 }
 
+function canonicalTimestamp(value) {
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) throw new Error("confirmedAt is required.");
+  return new Date(value).toISOString();
+}
+
+export function expandPortfolioEvent(existing, event) {
+  if (event?.kind === "opening_position") throw new Error("Opening positions are internal to the opening balance.");
+  const normalizedEvent = { ...event, confirmedAt: canonicalTimestamp(event?.confirmedAt) };
+  if (event?.kind !== "opening_balance") {
+    const latest = existing.reduce((value, item) => Math.max(value, Date.parse(item.confirmedAt)), -Infinity);
+    if (Number.isFinite(latest) && Date.parse(normalizedEvent.confirmedAt) <= latest) {
+      throw new Error("confirmedAt must be later than the previous event.");
+    }
+    return [normalizedEvent];
+  }
+  if (existing.length) throw new Error("Opening balance requires an empty ledger.");
+  if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) {
+    throw new Error("Opening cash must not be negative.");
+  }
+  if (!Array.isArray(event.holdings) || !event.holdings.length) throw new Error("Opening holdings are required.");
+  const codes = new Set();
+  const positions = event.holdings.map((holding) => {
+    if (!holding || typeof holding !== "object" || typeof holding.code !== "string" || !holding.code || typeof holding.name !== "string" || !holding.name) {
+      throw new Error("Opening holding identity is required.");
+    }
+    if (codes.has(holding.code)) throw new Error("Duplicate holding in opening balance.");
+    codes.add(holding.code);
+    return {
+      operationId: `${event.operationId}:position:${holding.code}`,
+      kind: "opening_position",
+      code: holding.code,
+      name: holding.name,
+      shares: wholeShares(holding.shares),
+      priceSar: finitePositive(holding.avgCostSar, "avgCostSar"),
+      confirmedAt: normalizedEvent.confirmedAt,
+    };
+  });
+  const expanded = [{
+    operationId: event.operationId,
+    kind: "opening_balance",
+    cashSar: event.cashSar,
+    reason: event.reason,
+    confirmedAt: normalizedEvent.confirmedAt,
+  }, ...positions];
+  foldPortfolio(expanded);
+  return expanded;
+}
+
 export function foldPortfolio(events) {
   const operations = new Set();
   const contributions = new Set();
@@ -21,12 +69,35 @@ export function foldPortfolio(events) {
   const realised = new Map();
   let cashSar = 0;
   let confirmedAt = null;
-  for (const event of events) {
+  let openingSeen = false;
+  let regularEventSeen = false;
+  for (const [index, event] of events.entries()) {
     if (!event || typeof event !== "object" || typeof event.operationId !== "string" || !event.operationId) throw new Error("operationId is required.");
     if (operations.has(event.operationId)) throw new Error("duplicate operation.");
     operations.add(event.operationId);
-    if (typeof event.confirmedAt !== "string" || !Number.isFinite(Date.parse(event.confirmedAt))) throw new Error("confirmedAt is required.");
-    confirmedAt = !confirmedAt || event.confirmedAt > confirmedAt ? event.confirmedAt : confirmedAt;
+    const eventConfirmedAt = canonicalTimestamp(event.confirmedAt);
+    confirmedAt = !confirmedAt || eventConfirmedAt > confirmedAt ? eventConfirmedAt : confirmedAt;
+    if (event.kind === "opening_balance") {
+      if (index !== 0 || openingSeen) throw new Error("Opening balance must be the first and only opening balance.");
+      if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) throw new Error("Opening cash must not be negative.");
+      cashSar = event.cashSar;
+      openingSeen = true;
+      continue;
+    }
+    if (event.kind === "opening_position") {
+      if (!openingSeen || regularEventSeen) throw new Error("Opening positions must immediately follow the opening balance.");
+      if (typeof event.code !== "string" || !event.code || typeof event.name !== "string" || !event.name) throw new Error("symbol identity is required.");
+      if (holdings.has(event.code)) throw new Error("Duplicate holding in opening balance.");
+      holdings.set(event.code, {
+        code: event.code,
+        name: event.name,
+        shares: wholeShares(event.shares),
+        avgCostSar: finitePositive(event.priceSar, "avgCostSar"),
+        realisedSar: 0,
+      });
+      continue;
+    }
+    regularEventSeen = true;
     if (event.kind === "contribution") {
       if (!/^\d{4}-\d{2}$/.test(event.month ?? "")) throw new Error("contribution month is required.");
       if (contributions.has(event.month)) throw new Error("duplicate monthly contribution.");

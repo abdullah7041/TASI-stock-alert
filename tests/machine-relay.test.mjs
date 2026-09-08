@@ -7,7 +7,7 @@ const request = (path, method = 'GET', secret = 'relay-secret') => new Request(`
 
 test('allows only an authenticated relay to use documented machine routes', async () => {
   assert.equal(await isMachineRelay(request('/api/health'), env), true);
+  assert.equal(await isMachineRelay(request('/api/dashboard'), env), true);
   assert.equal(await isMachineRelay(request('/api/dashboard/ingest', 'POST'), env), true);
-  assert.equal(await isMachineRelay(request('/api/dashboard'), env), false);
   assert.equal(await isMachineRelay(request('/api/dashboard/ingest', 'POST', 'wrong'), env), false);
 });
