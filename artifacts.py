@@ -81,8 +81,21 @@ def timestamp_or_none(value: Any) -> str | None:
 def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict,
                           charts: list[dict], scheduled_for: str | None) -> dict:
     """Create DigestArtifactV3 from deterministic facts plus fail-soft extras."""
+    complete_recs = list(recs)
+    recorded_codes = {str(rec.get("code")) for rec in complete_recs}
+    for holding in (snapshot.get("portfolio") or {}).get("holdings") or []:
+        code = str(holding.get("code"))
+        if code in recorded_codes:
+            continue
+        complete_recs.append({
+            "kind": "holding", "code": code, "name": str(holding.get("name") or code),
+            "shares": holding.get("shares"), "avg_cost": holding.get("avgCostSar"),
+            "action": "UNKNOWN", "price": None, "verified": True, "rules": [],
+            "reason": ["No usable daily price history returned for this holding."],
+            "unrealized_pct": None,
+        })
     records = [decision_record(rec, charts, trade_date=snapshot.get("tradeDate"))
-               for rec in recs]
+               for rec in complete_recs]
     unavailable_codes = {
         str(record.get("code")) for record in records
         if record.get("kind") == "holding"

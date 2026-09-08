@@ -507,8 +507,9 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
 
     move = explain.move_phrase(rec)
     title_move = f"  ({move})" if move else ""
+    price_text = f"{price:.2f} SAR" if price > 0 else "price unavailable"
     embed = {
-        "title": _clip(f"{label} · {rec['code']} {rec['name']} — {price:.2f} SAR{title_move}",
+        "title": _clip(f"{label} · {rec['code']} {rec['name']} — {price_text}{title_move}",
                        EMBED_TITLE_LIMIT),
         "color": color,
         "fields": [],

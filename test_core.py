@@ -2828,6 +2828,15 @@ def test_required_empty_portfolio_ledger_must_be_initialized(monkeypatch):
         main._holdings()
 
 
+def test_boolean_event_count_is_not_an_initialized_ledger(monkeypatch):
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0}, "eventCount": True}
+        if str(path).endswith("portfolio_active.json") else default))
+    with pytest.raises(RuntimeError, match="opening balance"):
+        main._holdings()
+
+
 def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
     monkeypatch.setattr(main, "_load", lambda path, default=None: (
         {"view": {"holdings": [{"code": "1303", "name": "EIC", "shares": 124,
@@ -3644,6 +3653,28 @@ def test_missing_holding_chart_is_an_unavailable_shared_decision():
     )
     assert record["decision"]["label"] == "Insufficient data"
     assert "chart history" in record["decision"]["reason"]
+
+
+def test_missing_producer_record_still_reaches_artifact_summary_and_discord():
+    snapshot = main._dashboard_snapshot(
+        "unknown", [], {"monthly_cap": 500.0}, {"candidates": [], "names": {}},
+        as_of="2026-09-08T05:30:00Z",
+    )
+    snapshot["portfolio"]["holdings"] = [
+        {"code": "8313", "name": "Rasan", "shares": 11, "avgCostSar": 107.45},
+    ]
+    artifact = artifacts.build_digest_artifact(
+        snapshot, recs=[],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[], scheduled_for="2026-09-08T05:30:00Z",
+    )
+
+    assert [(record["code"], record["decision"]["label"])
+            for record in artifact["digestRecords"]] == [("8313", "Insufficient data")]
+    assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
+    embeds = nt.build_digest_embeds(artifact=artifact)
+    assert any("Insufficient data" in (embed.get("title") or "")
+               and "8313 Rasan" in embed["title"] for embed in embeds)
 
 
 def test_movement_artifact_v1_names_alerts_and_has_its_own_identity():

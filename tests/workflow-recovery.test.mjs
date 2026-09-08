@@ -23,6 +23,7 @@ test("every workflow mode that reads holdings requires the confirmed ledger", ()
   assert.match(workflow, /contains\('run,digest,digest-guard,suggest,autolevels,top10-draft,intraday-probe'/);
   assert.match(workflow, /TASI_REQUIRE_PORTFOLIO_LEDGER:.*contains\('run,digest,digest-guard,suggest,autolevels,top10-draft,intraday-probe'/);
   assert.match(workflow, /eventCount[\s\S]*opening balance/i);
+  assert.match(workflow, /isinstance\(payload\.get\("eventCount"\), bool\)/);
 });
 
 test("recovery can record Discord independently without resending it", () => {

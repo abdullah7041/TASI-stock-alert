@@ -119,7 +119,7 @@ def _portfolio_ledger() -> dict | None:
             raise RuntimeError("Confirmed portfolio ledger is required but unavailable.")
         return None
     if (os.getenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "").lower() == "true"
-            and (not isinstance(value.get("eventCount"), int) or value["eventCount"] <= 0)):
+            and (type(value.get("eventCount")) is not int or value["eventCount"] <= 0)):
         raise RuntimeError("Confirmed portfolio ledger requires an imported opening balance.")
     return value
 
