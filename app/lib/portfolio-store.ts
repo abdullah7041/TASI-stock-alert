@@ -36,13 +36,23 @@ export class PortfolioStore {
   }
   async append(ownerId: string, event: PortfolioEvent) {
     await this.ensureReady();
-    const existing = await this.db.prepare("SELECT operation_id FROM portfolio_events WHERE operation_id = ?").bind(event.operationId).first<{operation_id:string}>();
-    if (existing) return this.view(ownerId);
+    const existing = await this.db.prepare("SELECT owner_id FROM portfolio_events WHERE operation_id = ?").bind(event.operationId).first<{owner_id:string}>();
+    if (existing?.owner_id === ownerId) return this.view(ownerId);
+    if (existing) throw new Error("operationId belongs to another owner.");
     const current = await this.events(ownerId);
     const appended = expandPortfolioEvent(current, event);
     const projected = [...current, ...appended];
     foldPortfolio(projected);
-    await this.db.batch(appended.map((item) => this.db.prepare("INSERT INTO portfolio_events (operation_id,owner_id,event_kind,month_key,symbol,name,shares,price_sar,cash_sar,fees_sar,reason,confirmed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(item.operationId, ownerId, item.kind, item.month ?? null, item.code ?? null, item.name ?? null, item.shares ?? null, item.priceSar ?? null, item.cashSar ?? null, item.feesSar ?? 0, item.reason ?? null, item.confirmedAt)));
+    try {
+      await this.db.batch(appended.map((item) => this.db.prepare("INSERT INTO portfolio_events (operation_id,owner_id,event_kind,month_key,symbol,name,shares,price_sar,cash_sar,fees_sar,reason,confirmed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(item.operationId, ownerId, item.kind, item.month ?? null, item.code ?? null, item.name ?? null, item.shares ?? null, item.priceSar ?? null, item.cashSar ?? null, item.feesSar ?? 0, item.reason ?? null, item.confirmedAt)));
+    } catch (error) {
+      // Two identical requests may both pass the optimistic lookup. The unique
+      // operation id makes the database the arbiter; only the same owner's
+      // completed request is an idempotent success.
+      const raced = await this.db.prepare("SELECT owner_id FROM portfolio_events WHERE operation_id = ?").bind(event.operationId).first<{owner_id:string}>();
+      if (raced?.owner_id === ownerId) return this.view(ownerId);
+      throw error;
+    }
     return this.view(ownerId);
   }
 }

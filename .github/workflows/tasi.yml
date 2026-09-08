@@ -124,15 +124,23 @@ jobs:
           COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
         run: |
           source .github/cockpit-auth.sh
-          printf '%s\n' '{}' > .guard-dashboard.json
-          if cockpit_auth_ready; then
-            curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
-              "${COCKPIT_AUTH_HEADERS[@]}" "$COCKPIT_ORIGIN/api/dashboard" \
-              > .guard-dashboard.json || printf '%s\n' '{}' > .guard-dashboard.json
+          cockpit_auth_ready
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            -o .guard-dashboard.json -w '%{http_code}' \
+            "${COCKPIT_AUTH_HEADERS[@]}" "$COCKPIT_ORIGIN/api/dashboard")
+          case "$STATUS" in
+            2??) ;;
+            *) echo "::error::production delivery authority returned HTTP $STATUS"; exit 1;;
+          esac
+          GUARD_STATE=$(node scripts/delivery-guard.mjs .guard-dashboard.json "$(date -u +%F)")
+          if [ "$GUARD_STATE" = "unknown" ]; then
+            echo "::error::production delivery authority returned an invalid response"
+            exit 1
           fi
-          DELIVERED=$(node scripts/delivery-guard.mjs .guard-dashboard.json "$(date -u +%F)")
+          DELIVERED=false
+          if [ "$GUARD_STATE" = "delivered" ]; then DELIVERED=true; fi
           echo "delivered=$DELIVERED" >> "$GITHUB_OUTPUT"
-          echo "production_delivery_guard=$DELIVERED" >> "$GITHUB_STEP_SUMMARY"
+          echo "production_delivery_guard_state=$GUARD_STATE" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Load approved Top 10 for producer
         if: contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
@@ -167,10 +175,9 @@ jobs:
 
       - name: Load the confirmed portfolio for producer
         # What you own and what you have spent are recorded by you, in the
-        # cockpit ledger. Fetched the same fail-soft way as the Top 10: a failed
-        # read leaves no file, and main.py falls back to config.py rather than
-        # reporting that you own nothing.
-        if: contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        # cockpit ledger. Decision-producing workflows fail closed when that
+        # authority cannot be read; stale config holdings must not drive advice.
+        if: contains('run,digest,digest-guard,suggest,autolevels,top10-draft,intraday-probe', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
@@ -180,24 +187,19 @@ jobs:
         run: |
           source .github/cockpit-auth.sh
           rm -f portfolio_active.json
-          if ! cockpit_auth_ready; then
-            echo "cockpit tokens absent; using config.py holdings"
-            exit 0
-          fi
-          if ! curl --fail --silent --show-error \
-              "${COCKPIT_AUTH_HEADERS[@]}" \
-              "$COCKPIT_ORIGIN/api/portfolio/current" \
-              > .portfolio-current.json; then
-            echo "portfolio read failed; using config.py holdings"
-            exit 0
-          fi
+          cockpit_auth_ready
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            "${COCKPIT_AUTH_HEADERS[@]}" \
+            "$COCKPIT_ORIGIN/api/portfolio/current" \
+            > .portfolio-current.json
           python - <<'PY'
           import json
           from pathlib import Path
           payload = json.loads(Path(".portfolio-current.json").read_text(encoding="utf-8"))
-          if isinstance(payload, dict) and isinstance(payload.get("view"), dict):
-              Path("portfolio_active.json").write_text(
-                  json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+          if not isinstance(payload, dict) or not isinstance(payload.get("view"), dict):
+              raise RuntimeError("Confirmed portfolio ledger response is invalid.")
+          Path("portfolio_active.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
           PY
 
       - name: Run
@@ -219,6 +221,7 @@ jobs:
           TASI_LLM_MODEL_OPENROUTER: ${{ vars.TASI_LLM_MODEL_OPENROUTER }}
           TASI_LLM_MODEL_GEMINI: ${{ vars.TASI_LLM_MODEL_GEMINI }}
           TASI_PRODUCTION_DELIVERED: ${{ steps.delivery_guard.outputs.delivered }}
+          TASI_REQUIRE_PORTFOLIO_LEDGER: ${{ contains('run,digest,digest-guard,suggest,autolevels,top10-draft,intraday-probe', steps.mode.outputs.mode) && 'true' || 'false' }}
         run: python main.py
 
       - name: Record job telemetry
@@ -278,6 +281,7 @@ jobs:
       - name: Update private cockpit
         if: steps.dashboard.outputs.needed == 'true'
         env:
+          MODE: ${{ steps.mode.outputs.mode }}
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
           COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
@@ -286,6 +290,10 @@ jobs:
         run: |
           source .github/cockpit-auth.sh
           cockpit_auth_ready
+          REPLAY_HEADERS=()
+          if [ "$MODE" = "cockpit-refresh" ]; then
+            REPLAY_HEADERS=(-H "x-tasi-replay-only: true")
+          fi
           # --fail-with-body captured the reason into a variable and then aborted
           # under `set -e` before anything echoed it, so every 4xx read as a bare
           # "exit code 22". Capture the status separately and always print the body.
@@ -293,6 +301,7 @@ jobs:
             -o .ingest-response.json -w '%{http_code}' \
             -X POST "$COCKPIT_ORIGIN/api/dashboard/ingest" \
             "${COCKPIT_AUTH_HEADERS[@]}" \
+            "${REPLAY_HEADERS[@]}" \
             -H "Content-Type: application/json" \
             --data-binary @dashboard.json)
           BODY=$(cat .ingest-response.json)

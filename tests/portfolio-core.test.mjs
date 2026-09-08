@@ -49,6 +49,19 @@ test("opening balance is first-event-only, unique, and validates every position"
   assert.throws(() => foldPortfolio([...expandPortfolioEvent([], valid), { ...valid, operationId: "opening-second" }]), /opening balance/i);
 });
 
+test("later ledger events cannot be backdated before the persisted sequence", () => {
+  const opening = {
+    operationId: "opening-config-2026-09-07", kind: "opening_balance",
+    confirmedAt: "2026-09-07T00:00:00Z", cashSar: 0,
+    holdings: [{ code: "1303", name: "EIC", shares: 104, avgCostSar: 12.41 }],
+  };
+  const persisted = expandPortfolioEvent([], opening);
+  assert.throws(() => expandPortfolioEvent(persisted, {
+    operationId: "backdated-buy", kind: "buy", code: "1303", name: "EIC",
+    shares: 1, priceSar: 10, confirmedAt: "2026-09-06T23:59:59Z",
+  }), /later than the previous event/i);
+});
+
 test("one monthly contribution and confirmed sale proceeds carry forward", () => {
   const events = [
     { operationId: "c-2026-08", kind: "contribution", month: "2026-08", cashSar: 500, confirmedAt: "2026-08-01T08:00:00Z" },

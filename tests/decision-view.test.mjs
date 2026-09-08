@@ -41,6 +41,15 @@ test('unknown action cannot imply a reassuring Hold',()=>{
   const view=buildDecisionView({...snapshot,digestRecords:[{...snapshot.digestRecords[0],action:'UNKNOWN'}]},'current');
   assert.equal(view.holdings[0].label,'Insufficient data');
 });
+test('a holding quote older than the expected previous session is unavailable',()=>{
+  const old={...snapshot,tradeDate:'2026-09-08',digestRecords:[{
+    ...snapshot.digestRecords[0],priceDate:'2026-09-06',
+  }],charts:[{...snapshot.charts[0],bars:[{date:'2026-09-06',Close:12}]}]};
+  const view=buildDecisionView(old,'current');
+  assert.equal(view.holdings[0].label,'Insufficient data');
+  assert.match(view.holdings[0].reason,/older than the expected previous session/i);
+  assert.equal(view.incomplete,true);
+});
 test('watchlist condition failure explains overbought accurately and keeps all candidates', () => {
   const current={...snapshot,digestRecords:[...snapshot.digestRecords,{code:'4016',name:'Avalon',kind:'watchlist',action:'WATCH',verified:true,price:67,rules:[{rule:'rsi_band',passed:false,actual:71,required:'25-60'}],rules_met:2,rules_total:3}],qualified:Array.from({length:5},(_,i)=>({code:String(i),name:`Candidate ${i}`,conditionsMet:2,relativeStrengthPct:15,squeeze:true}))};
   const view=buildDecisionView(current,'current');

@@ -12,9 +12,11 @@ export function dashboardReplayNeeded({ mode, local, remote }) {
   if (!local || typeof local !== "object") throw new Error("Local dashboard artifact is unavailable.");
   if (mode === "cockpit-refresh") return true;
   const deployed = remote?.snapshot;
+  const cockpitReceipt = remote?.delivery?.cockpit?.status;
   return !deployed
     || deployed.tradeDate !== local.tradeDate
-    || identity(deployed) !== identity(local);
+    || identity(deployed) !== identity(local)
+    || !["success", "confirmed"].includes(cockpitReceipt);
 }
 
 function readJson(path) {

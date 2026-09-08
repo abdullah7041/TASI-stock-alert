@@ -8,6 +8,7 @@ and the two evaluators. Data is synthetic so these are deterministic.
 
 import io
 import json
+import pytest
 import sys
 import time
 import types
@@ -2807,6 +2808,14 @@ def test_holdings_fall_back_to_config_when_the_ledger_is_unreachable(monkeypatch
     """A failed fetch must never read as "you own nothing"."""
     monkeypatch.setattr(main, "_load", lambda _p, default=None: default)
     assert [h["code"] for h in main._holdings()] == [h["code"] for h in cfg.HOLDINGS]
+
+
+def test_required_portfolio_ledger_never_falls_back_to_config(monkeypatch):
+    """Decision-producing workflows must fail closed if D1 cannot be read."""
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda _p, default=None: default)
+    with pytest.raises(RuntimeError, match="Confirmed portfolio ledger is required"):
+        main._holdings()
 
 
 def test_the_ledger_overrides_config_once_it_exists(monkeypatch):

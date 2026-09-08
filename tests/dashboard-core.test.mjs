@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { dashboardFreshness, parseDashboardSnapshot } from "../app/lib/dashboard-core.mjs";
 import { dashboardSnapshotKey, dashboardSnapshotReadKeys } from "../app/lib/dashboard-storage-core.mjs";
@@ -162,6 +163,14 @@ test("rejects a priced v3 decision record without its actual market date", () =>
     alerts: [],
     forecast: { status: "unavailable", asOf: "2026-08-09", reason: "Validation gates not passed." },
   }), /priceDate/i);
+});
+
+test("rejects a price date that disagrees with the chart's final bar", () => {
+  const malformed=JSON.parse(readFileSync(new URL("../dashboard.json",import.meta.url),"utf8"));
+  const chart=malformed.charts.find((item)=>item.status==="available");
+  const record=malformed.digestRecords.find((item)=>item.code===chart.code);
+  record.priceDate="1999-01-01";
+  assert.throws(()=>parseDashboardSnapshot(malformed),/priceDate.*chart/i);
 });
 
 test("rejects a dashboard snapshot that exposes a one-condition candidate", () => {

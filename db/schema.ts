@@ -32,6 +32,42 @@ export const researchSchemaStatements = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS one_contribution_per_owner_month ON portfolio_events(owner_id, month_key) WHERE event_kind = 'contribution'`,
   `CREATE UNIQUE INDEX IF NOT EXISTS one_opening_balance_per_owner ON portfolio_events(owner_id) WHERE event_kind = 'opening_balance'`,
+  `CREATE TRIGGER IF NOT EXISTS portfolio_prevent_overspend
+    BEFORE INSERT ON portfolio_events
+    WHEN NEW.event_kind = 'buy'
+    BEGIN
+      SELECT CASE WHEN COALESCE((
+        SELECT SUM(CASE
+          WHEN event_kind IN ('opening_balance', 'contribution', 'cash_adjustment') THEN COALESCE(cash_sar, 0)
+          WHEN event_kind = 'sell' THEN COALESCE(shares, 0) * COALESCE(price_sar, 0) - COALESCE(fees_sar, 0)
+          WHEN event_kind = 'buy' THEN -(COALESCE(shares, 0) * COALESCE(price_sar, 0) + COALESCE(fees_sar, 0))
+          ELSE 0 END)
+        FROM portfolio_events WHERE owner_id = NEW.owner_id
+      ), 0) < NEW.shares * NEW.price_sar + COALESCE(NEW.fees_sar, 0)
+      THEN RAISE(ABORT, 'buy exceeds confirmed cash') END;
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS portfolio_prevent_oversell
+    BEFORE INSERT ON portfolio_events
+    WHEN NEW.event_kind = 'sell'
+    BEGIN
+      SELECT CASE WHEN COALESCE((
+        SELECT SUM(CASE
+          WHEN event_kind IN ('opening_position', 'buy') THEN COALESCE(shares, 0)
+          WHEN event_kind = 'sell' THEN -COALESCE(shares, 0)
+          ELSE 0 END)
+        FROM portfolio_events WHERE owner_id = NEW.owner_id AND symbol = NEW.symbol
+      ), 0) < NEW.shares
+      THEN RAISE(ABORT, 'sell exceeds confirmed holding') END;
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS portfolio_require_monotonic_time
+    BEFORE INSERT ON portfolio_events
+    WHEN NEW.event_kind NOT IN ('opening_balance', 'opening_position')
+    BEGIN
+      SELECT CASE WHEN EXISTS(
+        SELECT 1 FROM portfolio_events
+        WHERE owner_id = NEW.owner_id AND confirmed_at >= NEW.confirmed_at
+      ) THEN RAISE(ABORT, 'confirmedAt must be later than the previous event') END;
+    END`,
   `CREATE TABLE IF NOT EXISTS top10_proposals (
     proposal_id TEXT PRIMARY KEY, trade_date TEXT NOT NULL, researched_at TEXT NOT NULL,
     proposal_json TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('draft','approved','rejected')), decided_at TEXT

@@ -1,6 +1,12 @@
 const finite = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 const reasons = (value) => Array.isArray(value) ? value.filter((s) => typeof s === 'string').join('. ') : typeof value === 'string' ? value : '';
 
+function previousTradingDate(date) {
+  const cursor=new Date(`${date}T00:00:00Z`);
+  do cursor.setUTCDate(cursor.getUTCDate()-1); while (![0,1,2,3,4].includes(cursor.getUTCDay()));
+  return cursor.toISOString().slice(0,10);
+}
+
 export function conditionReason(rule) {
   if (rule.rule === 'rsi_band') return Number(rule.actual) > 60
     ? 'Overbought: waiting for RSI to return to the recovery band.'
@@ -25,12 +31,15 @@ export function buildDecisionView(snapshot, freshness) {
     const known = ['HOLD','WATCH','BUY','SELL','SELL (STOP)','SELL (TARGET)','STOP','STOP_LOSS','EXIT','TRIM','TAKE_PROFIT','TARGET'].includes(action);
     const decisionChecksReady = !owned || (Array.isArray(record.rules) && record.rules.length > 0
       && record.rules.every((rule) => rule?.available !== false));
-    const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady;
+    const priceDate=record.priceDate ?? latest?.date ?? null;
+    const quoteStale=owned && Boolean(priceDate) && priceDate < previousTradingDate(snapshot.tradeDate);
+    const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady || quoteStale;
     const stop = ['SELL','SELL (STOP)','STOP','STOP_LOSS','EXIT'].includes(action);
     const profit = ['SELL (TARGET)','TRIM','TAKE_PROFIT','TARGET'].includes(action);
     const label = unavailable ? 'Insufficient data' : stop ? 'Review stop' : profit ? 'Review profit level' : owned ? 'Hold' : 'Watching';
     const missing = (record.rules ?? []).filter((r) => !r.passed).map(conditionReason);
     const reason = freshness === 'stale' ? 'This is the last successful snapshot. Check current prices before reviewing a decision.'
+      : quoteStale ? `This quote (${priceDate}) is older than the expected previous session. Check your broker before reviewing a decision.`
       : unavailable ? 'A verified price or complete rule check is unavailable.'
       : record.decision?.reason ? record.decision.reason
       : stop ? 'Your protective level was reached in the daily snapshot. Check your broker.'
@@ -38,7 +47,7 @@ export function buildDecisionView(snapshot, freshness) {
       : owned ? 'No decision level crossed in this daily snapshot.'
       : missing.join(' ') || reasons(record.reason) || 'Research candidate; confirm the full entry conditions before acting.';
     return { code:identity.code, name:identity.name, owned, label, reason, price: price !== null && price > 0 ? price : null,
-      priceDate:record.priceDate ?? latest?.date ?? null,
+      priceDate,
       dailyChange:finite(record.delta?.price_pct), pnl:finite(record.unrealized_pct),
       conditionsMet:finite(record.rules_met), conditionsTotal:finite(record.rules_total),
       missing, chart, record, shares:identity.shares ?? null,

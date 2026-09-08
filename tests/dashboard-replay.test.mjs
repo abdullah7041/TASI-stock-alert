@@ -22,5 +22,13 @@ test("cockpit refresh always replays the canonical artifact without sending Disc
 });
 
 test("ordinary modes skip an artifact already confirmed in production", () => {
-  assert.equal(dashboardReplayNeeded({ mode: "reconcile", local, remote: { snapshot: local } }), false);
+  assert.equal(dashboardReplayNeeded({ mode: "reconcile", local, remote: {
+    snapshot: local, delivery: { cockpit: { status: "success" } },
+  } }), false);
+});
+
+test("an identical artifact is replayed when its Cockpit receipt is missing", () => {
+  assert.equal(dashboardReplayNeeded({ mode: "reconcile", local, remote: {
+    snapshot: local, delivery: { cockpit: { status: "unknown" } },
+  } }), true);
 });

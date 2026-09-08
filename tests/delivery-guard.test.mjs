@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deliveryGuardSatisfied } from "../scripts/delivery-guard.mjs";
+import { deliveryGuardSatisfied, deliveryGuardState } from "../scripts/delivery-guard.mjs";
 
 const artifact = {
   schemaVersion: 3,
@@ -19,4 +19,12 @@ test("production guard requires today's same-artifact Cockpit and Discord receip
   assert.equal(deliveryGuardSatisfied({ snapshot: artifact, delivery: {
     cockpit: { status: "success" }, discord: { status: "success" },
   } }, "2026-09-07"), false);
+});
+
+test("production guard distinguishes an unavailable authority from no delivery", () => {
+  assert.equal(deliveryGuardState(null, "2026-09-08"), "unknown");
+  assert.equal(deliveryGuardState({ error: "Temporary gateway failure" }, "2026-09-08"), "unknown");
+  assert.equal(deliveryGuardState({ snapshot: artifact, delivery: {
+    cockpit: { status: "success" }, discord: { status: "unknown" },
+  } }, "2026-09-08"), "not-delivered");
 });

@@ -14,7 +14,13 @@ function wholeShares(value) {
 
 export function expandPortfolioEvent(existing, event) {
   if (event?.kind === "opening_position") throw new Error("Opening positions are internal to the opening balance.");
-  if (event?.kind !== "opening_balance") return [event];
+  if (event?.kind !== "opening_balance") {
+    const latest = existing.reduce((value, item) => !value || item.confirmedAt > value ? item.confirmedAt : value, null);
+    if (latest && (!(typeof event?.confirmedAt === "string") || event.confirmedAt <= latest)) {
+      throw new Error("confirmedAt must be later than the previous event.");
+    }
+    return [event];
+  }
   if (existing.length) throw new Error("Opening balance requires an empty ledger.");
   if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) {
     throw new Error("Opening cash must not be negative.");

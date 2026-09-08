@@ -179,6 +179,10 @@ export function parseDashboardSnapshot(value) {
   const digestRecords = list(value.digestRecords, "digestRecords").map((record) => {
     if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("digestRecords items must be objects.");
     const priceDate = typeof record.priceDate === "string" ? record.priceDate : chartPriceDates.get(record.code);
+    const chartPriceDate = chartPriceDates.get(record.code);
+    if (typeof record.priceDate === "string" && typeof chartPriceDate === "string" && record.priceDate !== chartPriceDate) {
+      throw new Error("priceDate must match the chart's final bar date.");
+    }
     if (typeof record.price === "number" && Number.isFinite(record.price) && record.price > 0 && typeof priceDate !== "string") {
       throw new Error("A priced digest record requires priceDate.");
     }

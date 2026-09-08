@@ -110,11 +110,13 @@ def _portfolio_ledger() -> dict | None:
          "spentThisMonthSar": float, "month": "YYYY-MM"}
 
     None means the fetch did not happen or the file is unusable -- never that
-    the portfolio is empty. Callers fall back to config.py, so a bad deploy
-    cannot make your holdings vanish from the morning digest.
+    the portfolio is empty. Interactive/local runs may retain the legacy
+    fallback, while production decision workflows require the confirmed ledger.
     """
     value = _load(PORTFOLIO_FILE, None)
     if not isinstance(value, dict) or not isinstance(value.get("view"), dict):
+        if os.getenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "").lower() == "true":
+            raise RuntimeError("Confirmed portfolio ledger is required but unavailable.")
         return None
     return value
 
