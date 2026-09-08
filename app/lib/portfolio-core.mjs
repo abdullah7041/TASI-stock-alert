@@ -12,14 +12,20 @@ function wholeShares(value) {
   return value;
 }
 
+function canonicalTimestamp(value) {
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) throw new Error("confirmedAt is required.");
+  return new Date(value).toISOString();
+}
+
 export function expandPortfolioEvent(existing, event) {
   if (event?.kind === "opening_position") throw new Error("Opening positions are internal to the opening balance.");
+  const normalizedEvent = { ...event, confirmedAt: canonicalTimestamp(event?.confirmedAt) };
   if (event?.kind !== "opening_balance") {
-    const latest = existing.reduce((value, item) => !value || item.confirmedAt > value ? item.confirmedAt : value, null);
-    if (latest && (!(typeof event?.confirmedAt === "string") || event.confirmedAt <= latest)) {
+    const latest = existing.reduce((value, item) => Math.max(value, Date.parse(item.confirmedAt)), -Infinity);
+    if (Number.isFinite(latest) && Date.parse(normalizedEvent.confirmedAt) <= latest) {
       throw new Error("confirmedAt must be later than the previous event.");
     }
-    return [event];
+    return [normalizedEvent];
   }
   if (existing.length) throw new Error("Opening balance requires an empty ledger.");
   if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) {
@@ -40,7 +46,7 @@ export function expandPortfolioEvent(existing, event) {
       name: holding.name,
       shares: wholeShares(holding.shares),
       priceSar: finitePositive(holding.avgCostSar, "avgCostSar"),
-      confirmedAt: event.confirmedAt,
+      confirmedAt: normalizedEvent.confirmedAt,
     };
   });
   const expanded = [{
@@ -48,7 +54,7 @@ export function expandPortfolioEvent(existing, event) {
     kind: "opening_balance",
     cashSar: event.cashSar,
     reason: event.reason,
-    confirmedAt: event.confirmedAt,
+    confirmedAt: normalizedEvent.confirmedAt,
   }, ...positions];
   foldPortfolio(expanded);
   return expanded;
@@ -69,8 +75,8 @@ export function foldPortfolio(events) {
     if (!event || typeof event !== "object" || typeof event.operationId !== "string" || !event.operationId) throw new Error("operationId is required.");
     if (operations.has(event.operationId)) throw new Error("duplicate operation.");
     operations.add(event.operationId);
-    if (typeof event.confirmedAt !== "string" || !Number.isFinite(Date.parse(event.confirmedAt))) throw new Error("confirmedAt is required.");
-    confirmedAt = !confirmedAt || event.confirmedAt > confirmedAt ? event.confirmedAt : confirmedAt;
+    const eventConfirmedAt = canonicalTimestamp(event.confirmedAt);
+    confirmedAt = !confirmedAt || eventConfirmedAt > confirmedAt ? eventConfirmedAt : confirmedAt;
     if (event.kind === "opening_balance") {
       if (index !== 0 || openingSeen) throw new Error("Opening balance must be the first and only opening balance.");
       if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) throw new Error("Opening cash must not be negative.");

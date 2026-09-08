@@ -65,7 +65,7 @@ export const researchSchemaStatements = [
     BEGIN
       SELECT CASE WHEN EXISTS(
         SELECT 1 FROM portfolio_events
-        WHERE owner_id = NEW.owner_id AND confirmed_at >= NEW.confirmed_at
+        WHERE owner_id = NEW.owner_id AND julianday(confirmed_at) >= julianday(NEW.confirmed_at)
       ) THEN RAISE(ABORT, 'confirmedAt must be later than the previous event') END;
     END`,
   `CREATE TABLE IF NOT EXISTS top10_proposals (

@@ -10,7 +10,7 @@ export class PortfolioStore {
   async ensureReady() { this.#ready ??= this.db.batch(researchSchemaStatements.map((sql) => this.db.prepare(sql))).then(() => undefined); return this.#ready; }
   async events(ownerId: string) {
     await this.ensureReady();
-    const rows = await this.db.prepare("SELECT operation_id,event_kind,month_key,symbol,name,shares,price_sar,cash_sar,fees_sar,reason,confirmed_at FROM portfolio_events WHERE owner_id = ? ORDER BY confirmed_at, operation_id").bind(ownerId).all<Row>();
+    const rows = await this.db.prepare("SELECT operation_id,event_kind,month_key,symbol,name,shares,price_sar,cash_sar,fees_sar,reason,confirmed_at FROM portfolio_events WHERE owner_id = ? ORDER BY julianday(confirmed_at), operation_id").bind(ownerId).all<Row>();
     return rows.results.map((row) => ({ operationId: row.operation_id, kind: row.event_kind, month: row.month_key ?? undefined, code: row.symbol ?? undefined, name: row.name ?? undefined, shares: row.shares ?? undefined, priceSar: row.price_sar ?? undefined, cashSar: row.cash_sar ?? undefined, feesSar: row.fees_sar ?? undefined, reason: row.reason ?? undefined, confirmedAt: row.confirmed_at }));
   }
   async view(ownerId: string) { return foldPortfolio(await this.events(ownerId)); }

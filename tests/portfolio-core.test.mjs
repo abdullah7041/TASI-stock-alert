@@ -62,6 +62,20 @@ test("later ledger events cannot be backdated before the persisted sequence", ()
   }), /later than the previous event/i);
 });
 
+test("event ordering compares normalized instants rather than timestamp strings", () => {
+  const existing = [{ operationId: "open", kind: "opening_balance", cashSar: 100,
+    confirmedAt: "2026-09-08T03:00:00+03:00" }];
+  const later = expandPortfolioEvent(existing, { operationId: "later", kind: "contribution",
+    month: "2026-09", cashSar: 50, confirmedAt: "2026-09-08T00:30:00Z" });
+  assert.equal(later[0].confirmedAt, "2026-09-08T00:30:00.000Z");
+
+  assert.throws(() => expandPortfolioEvent(
+    [{ ...existing[0], confirmedAt: "2026-09-08T00:30:00Z" }],
+    { operationId: "earlier", kind: "contribution", month: "2026-09", cashSar: 50,
+      confirmedAt: "2026-09-08T03:00:00+03:00" },
+  ), /later than the previous event/i);
+});
+
 test("one monthly contribution and confirmed sale proceeds carry forward", () => {
   const events = [
     { operationId: "c-2026-08", kind: "contribution", month: "2026-08", cashSar: 500, confirmedAt: "2026-08-01T08:00:00Z" },

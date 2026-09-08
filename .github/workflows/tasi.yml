@@ -198,6 +198,8 @@ jobs:
           payload = json.loads(Path(".portfolio-current.json").read_text(encoding="utf-8"))
           if not isinstance(payload, dict) or not isinstance(payload.get("view"), dict):
               raise RuntimeError("Confirmed portfolio ledger response is invalid.")
+          if not isinstance(payload.get("eventCount"), int) or payload["eventCount"] <= 0:
+              raise RuntimeError("Confirmed portfolio ledger requires an imported opening balance.")
           Path("portfolio_active.json").write_text(
               json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
           PY

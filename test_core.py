@@ -2818,6 +2818,16 @@ def test_required_portfolio_ledger_never_falls_back_to_config(monkeypatch):
         main._holdings()
 
 
+def test_required_empty_portfolio_ledger_must_be_initialized(monkeypatch):
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0}, "eventCount": 0,
+         "spentThisMonthSar": 0.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    with pytest.raises(RuntimeError, match="opening balance"):
+        main._holdings()
+
+
 def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
     monkeypatch.setattr(main, "_load", lambda path, default=None: (
         {"view": {"holdings": [{"code": "1303", "name": "EIC", "shares": 124,
@@ -3592,6 +3602,48 @@ def test_digest_artifact_v3_has_a_stable_identity_without_delivery_receipts():
     assert first["artifactId"].startswith("sha256:")
     assert first["artifactId"] == second["artifactId"]
     assert artifacts.artifact_id({**first, "deliveries": {"discord": {"ok": True}}}) == first["artifactId"]
+
+
+def test_stale_holding_quote_is_unavailable_in_artifact_summary_and_discord():
+    snapshot = main._dashboard_snapshot(
+        "ok", [], {"monthly_cap": 500.0}, {"candidates": [], "names": {}},
+        as_of="2026-09-08T05:30:00Z",
+    )
+    snapshot["urgent"] = [{"code": "1303", "action": "SELL (STOP)"}]
+    artifact = artifacts.build_digest_artifact(
+        snapshot,
+        recs=[_lean_rec(priceDate="2026-09-06", verified=True, rules=[
+            {"rule": "stop_level", "available": True, "passed": False},
+        ])],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[{"code": "1303", "status": "available", "bars": [
+            {"date": "2026-09-06", "Open": 15, "High": 16, "Low": 14,
+             "Close": 15.09, "Volume": 1000}
+            for _ in range(5)
+        ], "levels": {}}],
+        scheduled_for="2026-09-08T05:30:00Z",
+    )
+
+    record = artifact["digestRecords"][0]
+    assert record["decision"]["label"] == "Insufficient data"
+    assert "older than the expected previous session" in record["decision"]["reason"]
+    assert artifact["urgent"] == []
+    assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
+    assert "holding check" in artifact["summary"][0]
+    embeds = nt.build_digest_embeds(artifact=artifact)
+    assert any("Insufficient data" in (embed.get("title") or "") for embed in embeds)
+
+
+def test_missing_holding_chart_is_an_unavailable_shared_decision():
+    record = artifacts.decision_record(
+        _lean_rec(priceDate="2026-09-07", verified=True, rules=[
+            {"rule": "stop_level", "available": True, "passed": False},
+        ]),
+        [{"code": "1303", "status": "unavailable", "reason": "history failed"}],
+        trade_date="2026-09-08",
+    )
+    assert record["decision"]["label"] == "Insufficient data"
+    assert "chart history" in record["decision"]["reason"]
 
 
 def test_movement_artifact_v1_names_alerts_and_has_its_own_identity():

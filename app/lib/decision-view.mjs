@@ -31,15 +31,17 @@ export function buildDecisionView(snapshot, freshness) {
     const known = ['HOLD','WATCH','BUY','SELL','SELL (STOP)','SELL (TARGET)','STOP','STOP_LOSS','EXIT','TRIM','TAKE_PROFIT','TARGET'].includes(action);
     const decisionChecksReady = !owned || (Array.isArray(record.rules) && record.rules.length > 0
       && record.rules.every((rule) => rule?.available !== false));
+    const chartReady = !owned || (chart?.status === 'available' && bars.length >= 5);
     const priceDate=record.priceDate ?? latest?.date ?? null;
     const quoteStale=owned && Boolean(priceDate) && priceDate < previousTradingDate(snapshot.tradeDate);
-    const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady || quoteStale;
+    const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady || !chartReady || quoteStale;
     const stop = ['SELL','SELL (STOP)','STOP','STOP_LOSS','EXIT'].includes(action);
     const profit = ['SELL (TARGET)','TRIM','TAKE_PROFIT','TARGET'].includes(action);
     const label = unavailable ? 'Insufficient data' : stop ? 'Review stop' : profit ? 'Review profit level' : owned ? 'Hold' : 'Watching';
     const missing = (record.rules ?? []).filter((r) => !r.passed).map(conditionReason);
     const reason = freshness === 'stale' ? 'This is the last successful snapshot. Check current prices before reviewing a decision.'
       : quoteStale ? `This quote (${priceDate}) is older than the expected previous session. Check your broker before reviewing a decision.`
+      : !chartReady ? 'Required chart history is unavailable.'
       : unavailable ? 'A verified price or complete rule check is unavailable.'
       : record.decision?.reason ? record.decision.reason
       : stop ? 'Your protective level was reached in the daily snapshot. Check your broker.'

@@ -10,7 +10,7 @@ const snapshot = {
     {rule:'trim_level',available:true,passed:false,plain:'Trim level not crossed.'},
     {rule:'target_level',available:true,passed:false,plain:'Profit target not crossed.'},
   ]}],
-  charts: [{code:'1303',status:'available',bars:[{date:'2026-09-03',Close:12}],levels:{stop:9}}],
+  charts: [{code:'1303',status:'available',bars:Array.from({length:5},()=>({date:'2026-09-03',Close:12})),levels:{stop:9}}],
   leanStatus:{ok:false},
 };
 test('every holding is visible and absent market data cannot imply Hold', () => {
@@ -48,6 +48,14 @@ test('a holding quote older than the expected previous session is unavailable',(
   const view=buildDecisionView(old,'current');
   assert.equal(view.holdings[0].label,'Insufficient data');
   assert.match(view.holdings[0].reason,/older than the expected previous session/i);
+  assert.equal(view.incomplete,true);
+});
+
+test('a holding without sufficient chart history is unavailable',()=>{
+  const input=structuredClone(snapshot);
+  input.charts[0]={code:'1303',status:'unavailable',reason:'history failed',levels:{stop:9}};
+  const view=buildDecisionView(input,'current');
+  assert.equal(view.holdings[0].label,'Insufficient data');
   assert.equal(view.incomplete,true);
 });
 test('watchlist condition failure explains overbought accurately and keeps all candidates', () => {
