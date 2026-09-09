@@ -1,4 +1,4 @@
-export const PREOPEN_CRON = "20 5 * * 0-4";
+export const PREOPEN_CRON = "20 5 * * SUN-THU";
 
 const WORKFLOW_URL = "https://api.github.com/repos/abdullah7041/TASI-stock-alert/actions/workflows/tasi.yml/dispatches";
 

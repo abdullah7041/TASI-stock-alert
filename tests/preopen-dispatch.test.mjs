@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { dispatchPreopenWorkflow, PREOPEN_CRON } from "../machine-gateway/preopen-dispatch.mjs";
 
 test("Cloudflare pre-open cron dispatches the idempotent digest guard on main", async () => {
@@ -9,7 +10,11 @@ test("Cloudflare pre-open cron dispatches the idempotent digest guard on main", 
     return new Response(JSON.stringify({ workflow_run_id: 42 }), { status: 200 });
   });
 
-  assert.equal(PREOPEN_CRON, "20 5 * * 0-4");
+  // Cloudflare uses 1=Sunday, unlike GitHub's 0=Sunday. Named days
+  // prevent the invalid zero weekday that production rejected with 10100.
+  assert.equal(PREOPEN_CRON, "20 5 * * SUN-THU");
+  const config = JSON.parse(readFileSync(new URL("../wrangler.machine-gateway.json", import.meta.url), "utf8"));
+  assert.deepEqual(config.triggers.crons, [PREOPEN_CRON]);
   assert.equal(captured.method, "POST");
   assert.equal(captured.url, "https://api.github.com/repos/abdullah7041/TASI-stock-alert/actions/workflows/tasi.yml/dispatches");
   assert.equal(captured.headers.get("authorization"), "Bearer github-token");
