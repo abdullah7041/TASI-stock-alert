@@ -1,22 +1,8 @@
 {
-  "alerts": [
-    {
-      "alertId": "71d5213d631abed8481c",
-      "code": "4262",
-      "direction": "downside",
-      "excessMovePct": -2.3757046477203447,
-      "latency": "delayed-intraday",
-      "name": "Lumi Rental",
-      "observedAt": "2026-09-08T11:47:49Z",
-      "reason": "Delayed bot confirmation of statistically unusual price movement.",
-      "receivedAt": "2026-09-08T11:47:49Z",
-      "robustZ": -4.530433619469014,
-      "volumeRatio": 0.5146715874664903
-    }
-  ],
+  "alerts": [],
   "artifactKind": "movement",
-  "asOf": "2026-09-08T11:47:49Z",
+  "asOf": "2026-09-10T11:53:44Z",
   "dataStatus": "delayed-intraday",
   "schemaVersion": 1,
-  "artifactId": "sha256:3f2921d91d020c6b3ef5f215b7cd0b5b4cdfd29c73ed92cbebec82e1ffea87dd"
+  "artifactId": "sha256:7b56f1ec0b29864f9365bab88b298fc0d3f9f06ce06a30a27bfb569b239a1335"
 }
