@@ -214,6 +214,7 @@ jobs:
         env:
           MODE: ${{ steps.mode.outputs.mode }}
           COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_PUBLIC_URL: ${{ vars.COCKPIT_PUBLIC_URL }}
           SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
           SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

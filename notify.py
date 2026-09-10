@@ -15,7 +15,8 @@ from email.utils import parsedate_to_datetime
 import explain
 
 
-COCKPIT_URL = os.getenv("COCKPIT_ORIGIN", "").strip().rstrip("/") or "https://tasi-action-cockpit.busaud7041.chatgpt.site"
+# Human navigation must not inherit the machine-only ingestion gateway.
+COCKPIT_URL = os.getenv("COCKPIT_PUBLIC_URL", "").strip().rstrip("/") or "https://tasi-action-cockpit.ronaldinho1415.workers.dev"
 
 
 def _fmt_reads(rec: dict) -> str:

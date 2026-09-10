@@ -2990,7 +2990,7 @@ def test_digest_embeds_put_warnings_in_the_header():
 def test_digest_header_links_directly_to_the_private_cockpit():
     embeds = nt.build_digest_embeds([], regime="unknown", trade_date="2026-08-21")
 
-    assert "[Open TASI Action Cockpit](https://tasi-action-cockpit.busaud7041.chatgpt.site)" in embeds[0]["description"]
+    assert "[Open TASI Action Cockpit](https://tasi-action-cockpit.ronaldinho1415.workers.dev)" in embeds[0]["description"]
 
 
 def test_pack_embeds_respects_both_count_and_character_limits():
