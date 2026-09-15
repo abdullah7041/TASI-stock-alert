@@ -1,6 +1,6 @@
 {
   "2026-09": {
-    "spent": 913.85,
+    "spent": 1370.95,
     "allocations": [
       {
         "date": "2026-09-13",
@@ -11,6 +11,13 @@
       },
       {
         "date": "2026-09-13",
+        "code": "4016",
+        "name": "Avalon Pharma",
+        "shares": 7,
+        "spend": 457.1
+      },
+      {
+        "date": "2026-09-15",
         "code": "4016",
         "name": "Avalon Pharma",
         "shares": 7,

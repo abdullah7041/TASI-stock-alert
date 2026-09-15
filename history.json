@@ -197,6 +197,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 15.18,
+      "rsi": 47.8,
+      "trend": "up",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "2320": [
@@ -397,6 +407,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 58.9,
+      "rsi": 43.6,
+      "trend": "flat",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "8313": [
@@ -592,6 +612,16 @@
       "date": "2026-09-14",
       "price": 137.6,
       "rsi": 51.1,
+      "trend": "flat",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 137.5,
+      "rsi": 50.9,
       "trend": "flat",
       "rules_met": null,
       "blocking": null,
@@ -834,6 +864,18 @@
       "date": "2026-09-14",
       "price": 137.2,
       "rsi": 42.2,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 136.1,
+      "rsi": 39.4,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -1099,6 +1141,16 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 65.3,
+      "rsi": 56.1,
+      "trend": "up",
+      "rules_met": 3,
+      "blocking": [],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4164": [
@@ -1349,6 +1401,19 @@
       "date": "2026-09-14",
       "price": 91.65,
       "rsi": 37.8,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 91.2,
+      "rsi": 35.4,
       "trend": "down",
       "rules_met": 1,
       "blocking": [
@@ -1629,6 +1694,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 26.9,
+      "rsi": 32.1,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4017": [
@@ -1867,6 +1945,18 @@
       "date": "2026-09-14",
       "price": 38.46,
       "rsi": 67.1,
+      "trend": "up",
+      "rules_met": 2,
+      "blocking": [
+        "rsi_band"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 39.44,
+      "rsi": 73.4,
       "trend": "up",
       "rules_met": 2,
       "blocking": [
@@ -2137,6 +2227,18 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 12.6,
+      "rsi": 51.5,
+      "trend": "flat",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4263": [
@@ -2375,6 +2477,18 @@
       "date": "2026-09-14",
       "price": 168.8,
       "rsi": 47.7,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 170.0,
+      "rsi": 50.9,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -2638,6 +2752,19 @@
       "date": "2026-09-14",
       "price": 118.0,
       "rsi": 46.3,
+      "trend": "flat",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-15",
+      "price": 117.1,
+      "rsi": 43.1,
       "trend": "flat",
       "rules_met": 1,
       "blocking": [
