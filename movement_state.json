@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "alerts": {},
   "1303:downside": {
-    "armed": true
+    "armed": false
   },
   "2320:upside": {
     "armed": true
