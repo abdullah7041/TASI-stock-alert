@@ -58,6 +58,7 @@ TOP10_FILE = HERE / "top10_draft.json"
 TOP10_ACTIVE_FILE = HERE / "top10_active.json"
 MOVEMENT_STATE_FILE = HERE / "movement_state.json"
 ALERTS_FILE = HERE / "movement_alerts.json"
+MARKET_PULSE_FILE = HERE / "market_pulse.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
 EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
@@ -953,12 +954,12 @@ def mode_digest() -> int:
 
 def mode_research_evidence() -> int:
     """Collect official announcement links into a human-review queue only."""
-    import requests
+    from curl_cffi import requests
 
     retrieved_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     try:
         announcements = official_sources.collect_official_announcements(
-            requests.Session(), retrieved_at, lookback_days=7
+            requests.Session(impersonate="chrome"), retrieved_at, lookback_days=7
         )
     except Exception as exc:
         print(f"official evidence collection unavailable: {exc}")
@@ -1151,6 +1152,11 @@ def _movement_alerts(recs: list, received_at: str | None = None, state: dict | N
 
 
 def mode_run() -> int:
+    import market_pulse
+    pulse_items = _holdings() + cfg.WATCHLIST + [{"code": cfg.REGIME["index_code"], "name": "TASI"}]
+    pulse = market_pulse.collect(pulse_items)
+    _save(MARKET_PULSE_FILE, pulse)
+    print(f"market pulse: {pulse['status']} | quotes: {len(pulse['quotes'])}/{len(pulse['requested'])}")
     _regime, recs, _budget = _collect_recs(include_news=False, record_history=False)
     movement_alerts = _movement_alerts(recs)
     as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

@@ -73,7 +73,7 @@ test('manual refresh reports an updated artifact',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(updatedPayload));
-  vi.stubGlobal('fetch',fetchMock);
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
@@ -86,7 +86,7 @@ test('manual refresh reports when the latest saved artifact is stale',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(stalePayload));
-  vi.stubGlobal('fetch',fetchMock);
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
@@ -182,4 +182,47 @@ test('holding details expose only safe HTTPS source links',async()=>{
   await userEvent.click(screen.getByRole('button',{name:/View EIC details/}));
   expect(screen.getByRole('link',{name:/Official disclosure/}).getAttribute('href')).toBe('https://www.saudiexchange.sa/example');
   expect(screen.queryByRole('link',{name:/Unsafe source/})).toBeNull();
+});
+
+test('shows freshness before verified events and unexplained anomalies with a persistent copilot rail',()=>{
+  const base=structuredClone(saved);
+  const headline={title:'Insurance investment-rule draft published',link:'https://www.ia.gov.sa/regulations/investment-draft',published:'2026-09-16T06:08:00Z'};
+  const evidence={...base,digestRecords:base.digestRecords.map((record,index)=>index<2?{
+    ...record,news:{ok:true,status:'available' as const,headlines:[headline]},
+  }:record)};
+  const evidencePayload={snapshot:evidence,freshness:'current',alerts:[{
+    alertId:'alert-unexplained',code:'9997',name:'Example Co',direction:'downside',
+    observedAt:'2026-09-16T08:20:00Z',receivedAt:'2026-09-16T08:25:00Z',latency:'delayed-intraday',
+    excessMovePct:-4.7,robustZ:-4.6,volumeRatio:1.5,reason:'Delayed unusual movement.',
+  }]} as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(evidencePayload)));
+  render(<ActionCockpit dashboard={evidencePayload}/>);
+
+  const freshness=screen.getByRole('region',{name:'Daily freshness'});
+  const intelligence=screen.getByRole('region',{name:'Market intelligence'});
+  expect(freshness.compareDocumentPosition(intelligence)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(intelligence).getByText(/causation is not proven/i)).toBeTruthy();
+  expect(within(intelligence).getByText('Example Co')).toBeTruthy();
+  expect(within(intelligence).getByText(/No timely verified news/i)).toBeTruthy();
+  expect(screen.getByRole('complementary',{name:'TASI copilot'})).toBeTruthy();
+  expect(screen.getByRole('region',{name:'My holdings'})).toBeTruthy();
+});
+
+test('shows the delayed market pulse with its source observation time',()=>{
+  const pulsePayload={...payload,marketPulse:{
+    schemaVersion:1,artifactKind:'market-pulse',artifactId:`sha256:${'a'.repeat(64)}`,
+    asOf:'2026-09-16T07:10:00Z',dataStatus:'delayed-intraday',source:'yahoo',status:'available',
+    requested:['1303'],errors:[],quotes:[{
+      code:'1303',name:'EIC',price:14.73,changePct:1.3067,sessionVolume:250,
+      observedAt:'2026-09-16T07:05:00Z',latency:'delayed-intraday',
+    }],
+  }} as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(pulsePayload)));
+  render(<ActionCockpit dashboard={pulsePayload}/>);
+
+  const pulse=screen.getByRole('region',{name:'Delayed market pulse'});
+  expect(within(pulse).getByText('EIC')).toBeTruthy();
+  expect(within(pulse).getByText('14.73 SAR')).toBeTruthy();
+  expect(within(pulse).getByText(/Observed .*Asia\/Riyadh/i)).toBeTruthy();
+  expect(within(pulse).getByText(/5-minute delayed quote/i)).toBeTruthy();
 });

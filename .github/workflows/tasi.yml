@@ -336,6 +336,28 @@ jobs:
           printf 'mode=run\ncommit=%s\nalert_ingest_status=%s\nalert_ingest_body=%s\n' "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
           case "$STATUS" in 2??) ;; *) echo "::error::alert ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
 
+      - name: Update delayed market pulse
+        if: always() && steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
+        run: |
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            -o .pulse-ingest-response.json -w '%{http_code}' \
+            -X POST "$COCKPIT_ORIGIN/api/pulse/ingest" \
+            "${COCKPIT_AUTH_HEADERS[@]}" \
+            -H "Content-Type: application/json" \
+            --data-binary @market_pulse.json)
+          BODY=$(cat .pulse-ingest-response.json)
+          echo "HTTP $STATUS: $BODY"
+          printf 'mode=run\ncommit=%s\npulse_ingest_status=%s\npulse_ingest_body=%s\n' "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
+          case "$STATUS" in 2??) ;; *) echo "::error::market pulse ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
+
       - name: Record confirmed Discord delivery
         if: always() && steps.delivery_guard.outputs.delivered != 'true' && contains('digest,digest-guard,cockpit-refresh,reconcile', steps.mode.outputs.mode)
         env:
@@ -376,7 +398,7 @@ jobs:
           # the cockpit each run and DELETED when that read fails, so committing
           # it would land a transient outage in the repo as a deletion of the
           # approved list. Same reasoning as portfolio_active.json in .gitignore.
-          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json market_pulse.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi

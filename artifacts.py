@@ -197,6 +197,24 @@ def build_movement_artifact(alerts: list[dict], *, as_of: str) -> dict:
     })
 
 
+def build_market_pulse_artifact(*, status: str, as_of: str, quotes: list[dict],
+                                requested: list[str], errors: list[str]) -> dict:
+    """Create a canonical delayed intraday quote artifact."""
+    if status not in {"available", "partial", "empty", "failed"}:
+        raise ValueError("Unsupported market pulse status.")
+    return _with_id({
+        "schemaVersion": 1,
+        "artifactKind": "market-pulse",
+        "asOf": as_of,
+        "dataStatus": "delayed-intraday",
+        "source": "yahoo",
+        "status": status,
+        "requested": requested,
+        "quotes": quotes,
+        "errors": errors,
+    })
+
+
 def _finite_number(row: Any, key: str) -> float | None:
     try:
         value = float(row[key])

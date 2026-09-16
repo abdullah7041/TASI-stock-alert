@@ -22,3 +22,11 @@ test("dispatches only PING and documented ledger commands", () => {
   assert.equal(parseDiscordInteraction({ id: "abc", type: 2, data: { name: "budget" } }).kind, "budget");
   assert.equal(parseDiscordInteraction({ id: "abc", type: 2, data: { name: "anything-else" } }).kind, "unknown");
 });
+
+test("parses assistant questions and explicit decision confirmations", () => {
+  assert.deepEqual(parseDiscordInteraction({ id: "ask-1", type: 2, data: { name: "ask", options: [{ name: "question", value: "Why did my portfolio move?" }] } }), { kind: "ask", question: "Why did my portfolio move?" });
+  assert.deepEqual(parseDiscordInteraction({ id: "decide-1", type: 2, data: { name: "decide", options: [
+    { name: "symbol", value: "PORTFOLIO" }, { name: "action", value: "WATCH" },
+    { name: "conditions", value: "Wait for verified evidence" }, { name: "invalidation", value: "Evidence changes" },
+  ] } }), { kind: "decide", id: "discord:decide-1", draft: { symbol: "PORTFOLIO", action: "WATCH", conditions: "Wait for verified evidence", invalidation: "Evidence changes" } });
+});

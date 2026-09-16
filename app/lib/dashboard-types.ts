@@ -91,6 +91,7 @@ export type DashboardPayload = {
   snapshot: DashboardSnapshot | DashboardSnapshotV2 | DashboardSnapshotV3;
   freshness: "current" | "stale";
   alerts: MovementAlert[];
+  marketPulse?: import("./market-pulse-core.mjs").MarketPulse | null;
   delivery?: DeliveryStatus;
 };
 

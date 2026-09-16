@@ -2,6 +2,8 @@ yfinance>=0.2.40
 pandas>=2.0
 numpy>=1.24
 requests>=2.31
+# Saudi Exchange protects its official announcement feed with browser TLS checks.
+curl-cffi>=0.15
 google-genai>=1.33.0
 pytest>=8.0
 # Tests parse the committed workflow and Cloud Scheduler definitions.
