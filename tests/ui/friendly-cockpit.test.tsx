@@ -183,3 +183,27 @@ test('holding details expose only safe HTTPS source links',async()=>{
   expect(screen.getByRole('link',{name:/Official disclosure/}).getAttribute('href')).toBe('https://www.saudiexchange.sa/example');
   expect(screen.queryByRole('link',{name:/Unsafe source/})).toBeNull();
 });
+
+test('shows freshness before verified events and unexplained anomalies with a persistent copilot rail',()=>{
+  const base=structuredClone(saved);
+  const headline={title:'Insurance investment-rule draft published',link:'https://www.ia.gov.sa/regulations/investment-draft',published:'2026-09-16T06:08:00Z'};
+  const evidence={...base,digestRecords:base.digestRecords.map((record,index)=>index<2?{
+    ...record,news:{ok:true,status:'available' as const,headlines:[headline]},
+  }:record)};
+  const evidencePayload={snapshot:evidence,freshness:'current',alerts:[{
+    alertId:'alert-unexplained',code:'9997',name:'Example Co',direction:'downside',
+    observedAt:'2026-09-16T08:20:00Z',receivedAt:'2026-09-16T08:25:00Z',latency:'delayed-intraday',
+    excessMovePct:-4.7,robustZ:-4.6,volumeRatio:1.5,reason:'Delayed unusual movement.',
+  }]} as unknown as DashboardPayload;
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(evidencePayload)));
+  render(<ActionCockpit dashboard={evidencePayload}/>);
+
+  const freshness=screen.getByRole('region',{name:'Daily freshness'});
+  const intelligence=screen.getByRole('region',{name:'Market intelligence'});
+  expect(freshness.compareDocumentPosition(intelligence)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(intelligence).getByText(/causation is not proven/i)).toBeTruthy();
+  expect(within(intelligence).getByText('Example Co')).toBeTruthy();
+  expect(within(intelligence).getByText(/No timely verified news/i)).toBeTruthy();
+  expect(screen.getByRole('complementary',{name:'TASI copilot'})).toBeTruthy();
+  expect(screen.getByRole('region',{name:'My holdings'})).toBeTruthy();
+});
