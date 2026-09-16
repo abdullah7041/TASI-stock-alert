@@ -207,6 +207,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 15.25,
+      "rsi": 49.5,
+      "trend": "up",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "2320": [
@@ -417,6 +427,16 @@
       "blocking": null,
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 58.35,
+      "rsi": 41.3,
+      "trend": "flat",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "8313": [
@@ -622,6 +642,16 @@
       "date": "2026-09-15",
       "price": 137.5,
       "rsi": 50.9,
+      "trend": "flat",
+      "rules_met": null,
+      "blocking": null,
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 142.6,
+      "rsi": 59.4,
       "trend": "flat",
       "rules_met": null,
       "blocking": null,
@@ -879,6 +909,19 @@
       "trend": "down",
       "rules_met": 2,
       "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 134.7,
+      "rsi": 36.0,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
         "trend"
       ],
       "lean": null,
@@ -1151,6 +1194,18 @@
       "blocking": [],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 67.0,
+      "rsi": 63.1,
+      "trend": "up",
+      "rules_met": 2,
+      "blocking": [
+        "rsi_band"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4164": [
@@ -1414,6 +1469,19 @@
       "date": "2026-09-15",
       "price": 91.2,
       "rsi": 35.4,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 90.6,
+      "rsi": 32.5,
       "trend": "down",
       "rules_met": 1,
       "blocking": [
@@ -1707,6 +1775,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 26.44,
+      "rsi": 28.1,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4017": [
@@ -1957,6 +2038,18 @@
       "date": "2026-09-15",
       "price": 39.44,
       "rsi": 73.4,
+      "trend": "up",
+      "rules_met": 2,
+      "blocking": [
+        "rsi_band"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 38.58,
+      "rsi": 62.2,
       "trend": "up",
       "rules_met": 2,
       "blocking": [
@@ -2239,6 +2332,18 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 12.47,
+      "rsi": 48.5,
+      "trend": "flat",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4263": [
@@ -2489,6 +2594,18 @@
       "date": "2026-09-15",
       "price": 170.0,
       "rsi": 50.9,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 169.3,
+      "rsi": 49.0,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -2765,6 +2882,19 @@
       "date": "2026-09-15",
       "price": 117.1,
       "rsi": 43.1,
+      "trend": "flat",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-09-16",
+      "price": 117.0,
+      "rsi": 42.8,
       "trend": "flat",
       "rules_met": 1,
       "blocking": [

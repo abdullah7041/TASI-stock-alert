@@ -1,32 +1,24 @@
 {
   "alerts": [],
   "artifactKind": "digest",
-  "asOf": "2026-09-15T05:21:18Z",
+  "asOf": "2026-09-16T05:21:51Z",
   "changed": [
     {
-      "code": "1303",
-      "name": "EIC",
-      "reason": "price -0.7%; RSI -2.2; trend flipped",
-      "status": "HOLD"
+      "code": "4015",
+      "name": "Jamjoom Pharma",
+      "reason": "price -1.0%; RSI -3.4; rules met -1; momentum_floor flipped",
+      "status": "WATCH"
     },
     {
       "code": "4016",
       "name": "Avalon Pharma",
-      "reason": "price -1.9%; RSI -8.7; rules met +1; rsi_band flipped",
-      "status": "BUY"
+      "reason": "price +2.6%; RSI +7.0; rules met -1; rsi_band flipped",
+      "status": "WATCH"
     }
   ],
   "charts": [
     {
       "bars": [
-        {
-          "Close": 16.700000762939453,
-          "High": 17.280000686645508,
-          "Low": 16.700000762939453,
-          "Open": 17.049999237060547,
-          "Volume": 2258758.0,
-          "date": "2026-05-10"
-        },
         {
           "Close": 16.829999923706055,
           "High": 17.170000076293945,
@@ -738,6 +730,14 @@
           "Open": 15.270000457763672,
           "Volume": 1619810.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 15.25,
+          "High": 15.300000190734863,
+          "Low": 15.020000457763672,
+          "Open": 15.140000343322754,
+          "Volume": 1430115.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "1303",
@@ -752,14 +752,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 69.1500015258789,
-          "High": 71.9000015258789,
-          "Low": 68.5,
-          "Open": 71.44999694824219,
-          "Volume": 706712.0,
-          "date": "2026-05-10"
-        },
         {
           "Close": 69.0,
           "High": 69.69999694824219,
@@ -1471,6 +1463,14 @@
           "Open": 59.400001525878906,
           "Volume": 364915.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 58.349998474121094,
+          "High": 59.20000076293945,
+          "Low": 58.0,
+          "Open": 58.849998474121094,
+          "Volume": 341838.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "2320",
@@ -1485,14 +1485,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 149.8000030517578,
-          "High": 151.1999969482422,
-          "Low": 142.8000030517578,
-          "Open": 144.1999969482422,
-          "Volume": 506636.0,
-          "date": "2026-05-11"
-        },
         {
           "Close": 151.8000030517578,
           "High": 153.0,
@@ -2204,6 +2196,14 @@
           "Open": 137.8000030517578,
           "Volume": 155912.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 142.60000610351562,
+          "High": 144.39999389648438,
+          "Low": 137.0,
+          "Open": 137.0,
+          "Volume": 495391.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "8313",
@@ -2218,14 +2218,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 156.6999969482422,
-          "High": 157.60000610351562,
-          "Low": 152.6999969482422,
-          "Open": 154.0,
-          "Volume": 51960.0,
-          "date": "2026-05-10"
-        },
         {
           "Close": 155.0,
           "High": 156.6999969482422,
@@ -2937,6 +2929,14 @@
           "Open": 136.8000030517578,
           "Volume": 6827.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 134.6999969482422,
+          "High": 136.5,
+          "Low": 133.39999389648438,
+          "Open": 136.5,
+          "Volume": 57048.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "4015",
@@ -2951,14 +2951,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 58.85714340209961,
-          "High": 60.0,
-          "Low": 58.4571418762207,
-          "Open": 60.0,
-          "Volume": 188447.0,
-          "date": "2026-05-11"
-        },
         {
           "Close": 58.04999923706055,
           "High": 60.5,
@@ -3670,6 +3662,14 @@
           "Open": 66.0,
           "Volume": 86966.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 67.0,
+          "High": 67.0999984741211,
+          "Low": 65.25,
+          "Open": 65.25,
+          "Volume": 52967.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "4016",
@@ -3684,14 +3684,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 102.5999984741211,
-          "High": 103.80000305175781,
-          "Low": 102.0,
-          "Open": 103.80000305175781,
-          "Volume": 53956.0,
-          "date": "2026-05-10"
-        },
         {
           "Close": 99.80000305175781,
           "High": 102.69999694824219,
@@ -4403,6 +4395,14 @@
           "Open": 91.0,
           "Volume": 95891.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 90.5999984741211,
+          "High": 91.19999694824219,
+          "Low": 90.4000015258789,
+          "Open": 91.19999694824219,
+          "Volume": 62648.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "4164",
@@ -4417,14 +4417,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 36.81999969482422,
-          "High": 37.400001525878906,
-          "Low": 36.79999923706055,
-          "Open": 37.099998474121094,
-          "Volume": 206853.0,
-          "date": "2026-05-10"
-        },
         {
           "Close": 37.13999938964844,
           "High": 37.7400016784668,
@@ -5136,6 +5128,14 @@
           "Open": 27.200000762939453,
           "Volume": 49363.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 26.440000534057617,
+          "High": 26.979999542236328,
+          "Low": 26.360000610351562,
+          "Open": 26.979999542236328,
+          "Volume": 81152.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "4262",
@@ -5150,14 +5150,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 36.0,
-          "High": 36.599998474121094,
-          "Low": 36.0,
-          "Open": 36.400001525878906,
-          "Volume": 81020.0,
-          "date": "2026-05-11"
-        },
         {
           "Close": 35.47999954223633,
           "High": 36.099998474121094,
@@ -5869,6 +5861,14 @@
           "Open": 38.459999084472656,
           "Volume": 325953.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 38.58000183105469,
+          "High": 39.439998626708984,
+          "Low": 38.36000061035156,
+          "Open": 39.439998626708984,
+          "Volume": 101401.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "4017",
@@ -5883,14 +5883,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 14.0,
-          "High": 14.100000381469727,
-          "Low": 13.369999885559082,
-          "Open": 13.369999885559082,
-          "Volume": 4576787.0,
-          "date": "2026-05-10"
-        },
         {
           "Close": 13.010000228881836,
           "High": 13.479999542236328,
@@ -6602,6 +6594,14 @@
           "Open": 12.760000228881836,
           "Volume": 298689.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 12.470000267028809,
+          "High": 12.630000114440918,
+          "Low": 12.460000038146973,
+          "Open": 12.569999694824219,
+          "Volume": 137679.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "6017",
@@ -6616,14 +6616,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 168.0,
-          "High": 168.89999389648438,
-          "Low": 164.60000610351562,
-          "Open": 165.39999389648438,
-          "Volume": 235849.0,
-          "date": "2026-05-11"
-        },
         {
           "Close": 164.1999969482422,
           "High": 168.3000030517578,
@@ -7335,6 +7327,14 @@
           "Open": 169.0,
           "Volume": 205990.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 169.3000030517578,
+          "High": 170.3000030517578,
+          "Low": 168.5,
+          "Open": 170.0,
+          "Volume": 141440.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "4263",
@@ -7349,14 +7349,6 @@
     },
     {
       "bars": [
-        {
-          "Close": 129.5,
-          "High": 131.0,
-          "Low": 128.8000030517578,
-          "Open": 129.3000030517578,
-          "Volume": 27205.0,
-          "date": "2026-05-11"
-        },
         {
           "Close": 125.0,
           "High": 128.8000030517578,
@@ -8068,6 +8060,14 @@
           "Open": 118.0,
           "Volume": 13626.0,
           "date": "2026-09-13"
+        },
+        {
+          "Close": 117.0,
+          "High": 117.69999694824219,
+          "Low": 117.0,
+          "Open": 117.5,
+          "Volume": 10039.0,
+          "date": "2026-09-14"
         }
       ],
       "code": "4018",
@@ -8088,14 +8088,14 @@
       "code": "1303",
       "decision": {
         "label": "Insufficient data",
-        "reason": "This quote (2026-09-13) is older than the expected previous session. Check your broker before reviewing a decision."
+        "reason": "This quote (2026-09-14) is older than the expected previous session. Check your broker before reviewing a decision."
       },
       "delta": {
         "flipped": [],
-        "price_pct": -0.65,
-        "rsi_delta": -2.2,
+        "price_pct": 0.46,
+        "rsi_delta": 1.7,
         "rules_met_delta": null,
-        "trend_flipped": true
+        "trend_flipped": false
       },
       "disclosures": {
         "items": [],
@@ -8107,8 +8107,8 @@
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": -7.55,
-        "rsi": 47.8,
+        "momentum_pct": -7.8,
+        "rsi": 49.5,
         "trend": "up"
       },
       "name": "EIC",
@@ -8126,19 +8126,19 @@
             "title": "Electrical Industries Q2 Profit Jumps 55% to SAR 212 Mln - صحيفة مال"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxOLW5Tbk9QSUJpT2ZPVmVkSXdUMTJNUzNGLWxPaFc1bGdwcjV1VU5RREZmRjdfejFTYUtKN2w5MnZpMURUTkZoYTVXVk9BejRFMHJYNHhhSlBQVHZXTkR0cWtWWEVscFNDNnItbmJfNnNpbkdOak9DUDJlTWdlb0FIRHgwSlBkSGZPNFYxcm9uWXJCWDVUM3JFcXBZYVJVQW5YZC1vcG1EbHZRYVVFUWllRUducVBEV1QtamRVYmJ0alpjS3VaLTJiNVZPZExzdjJSaGQwckx5REFWZnE4WjhGN1dKMNIB6AFBVV95cUxQTVZJWHR4RENtNXZLTTQtWG9vUHJ3UElUWTg4cktSR2pYODk3azhVT3NXSjJTLTNWS1ByMXlaZ1VQOTgwMEdIcTV4X2tWQ1FvWTVITjU2bzVUdTZPOFVTTUtJYnZiZUpzVW96MmpKXzIyUlVaY01fYzZGeTVtTTZFTXJ3Rk9wTW9kTWZTUTJOWHFmcnV3dVJxRXFNbS0ybzl0U21PaEl2ZzlQR21aM1NBRVVfOU1TTjM0SG1GNDVGeFJyM2lYZjlBWk5qTlU4NEdrbjFVcHhOMmNxOHZLZUxpVi1nSXQwYzYy?oc=5",
-            "published": "Sun, 02 Aug 2026 07:00:00 GMT",
-            "title": "Electrical Industries Company (TADAWUL:1303) Looks Like A Good Stock, And It's Going Ex-Dividend Soon - simplywall.st"
+            "link": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxPTUozdExrNWstaS1YeVhsOVdIWDVZMGw5NUtzcHZrcHVrT1htc255NWI0UUpqdWxPVWxJZk9SYVp5eU9Nd08xay14R3BsS1E1V1luQUtIY0NJV2x6TW4wRTBQeGZnSXNMbG5vS0wyU2hXSEdyTFg1bUFkZ0R5YVlHeE9wN280NWZoYm1qS0hMdkc0UzRIRGowTlBmUndrNUZ6dndFTGFYd3F2cG1GN1c5NU1BSjExTi0zZTR4SEk5RXZfOXNrQkpHTTdWalNOOGVjd2c2WHJLdGdPRC1Va0tuOVZnYzLSAeoBQVVfeXFMTXdHWGFHM21PM2dkY3pGSmUxMkx1MEZsdnFwZkVNSGtPQXM1d00ycUxLTXhaeFpuUGZudGJ1Z3FsZUkwb3lfcEN5c0NsanVVUkI0TVA2ZDEyVEJUWGRhTlNIaExHNGprV0lndGRYZkgzOW8ySC1lbVFBMHNkVElkaVlVdUI3cGQ1OXUwZHpwVzhRSnIzOTlmUmJqMlh5UHlHOXlqdmtHblpXZkdNcVpUTW5OZjdjX3dfOHFwSHo4aFBmVE9XTnZhWEJ0d0hOQl9YUXVrRno3UDAwb2J5Q0V3dDRheVVwdjZNb2RR?oc=5",
+            "published": "Wed, 04 Feb 2026 08:00:00 GMT",
+            "title": "Earnings Tell The Story For Electrical Industries Company (TADAWUL:1303) As Its Stock Soars 27% - simplywall.st"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE1LVWRVVTNYSDdSUHh6Z0ptcHRET3JCcXBCTXZBbVNxOV9QUFlIcV9nVjM5bG1hTzlhaG55ZW9MQkhOd043bjdvdEZxNzBBTDZmYW90cQ?oc=5",
             "published": "Sun, 06 Sep 2026 20:13:00 GMT",
-            "title": "شركة الامارات للتأمين - اقتصاد سكاي نيوز عربية"
+            "title": "شركة الامارات للتأمين - snabusiness.com"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTFB0bTRxMThwRng4RktMalRHZ2xiY2FUbnlfVWgxNGtTZHpDSGRXUGlLaEhOenB1a2ppVTFRYmVkTzF2ejRHazN1a3pOQ2ZQRVprOEZCd2MzcUhld0VyekE1Njl6UDFuMWZnOGc?oc=5",
             "published": "Mon, 19 Jan 2026 08:00:00 GMT",
-            "title": "EIC subsidiary signs SAR 150.4M power transformer manufacturing deal - ارقام"
+            "title": "EIC subsidiary signs SAR 150.4M power transformer manufacturing deal - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMi5gNBVV95cUxOVTZkbkxUVmZNVFlXZjhoNVpQWjlVRG1XWDhRQ2pPUkJneTlYNDhzWFQzT2ZqQkx5VjRTa0EwRHBTaUZZTHd6LU40N1JBcTA4cnlXeExoRmdQdDE4QkZ6UW90TG1OWUV1TUl6dHlnQkdxYktTZURWZVRibEo4NTFDUXVJd1hUa0pCdnhMdl9UcGJIV3JUUDJwTG9Vb1d4WEh5Y0lPTGVCTzdSVHhJV1lMa0RMTlo3eXZ0QnZES3ZRcC1GaXgwVmJtbUIxRzFvMURocTNJeUlVVm8tQ3pWdjNPZnZGVl9RQjJkSjFsZUxLZy1xbjkyR1hJUjVoQ01fcTNkX21obVp0QUc4SDZfNmxCQ3dQWnVnNEo0WnMzSVRhU3UxdjZEMXQ3ZFFxdUc2cjB2cHNpMlcxMk5UN1NtZHNOci03MnQyUUVfajlDTjVoYTh6YkwwNUJHVWFZX0owTFhmdVBOOERpSEI4d2RFcmU5NUZ5cm9XS2M1TXdMWFdwMEVMejBSeFY0MHZhOTNhNGk2dDhlT0hCLUhaT3hwdTJISzR1MEpJX05GN09QT0ExczJpZDBoOEwtRXhVN3AyQUFDaWtuU3gwQUJDa2ZzUFVJdjZHc2dkSzB2REI4U2I5MVhXSzZEbWfSAesDQVVfeXFMT3hWVVNidDBkZzFXdkEtUmg5TUtoX0pOWmV1MFl5bWlXb1hVV2pXOUc4Q0Q4Y3NoZkdIbl9KT3pXNkJGMjBtVEh4cWVWM21jQjJocHl3MC1NdjFQQ1JCMm1fVTJRckRuNkhXMXhMRGkyVDBHWklXb0lCMnVUWHhkUXJ2QTJFZlBYS3VJMWZOLUZDc0Jxa3c0YXhpdmxPczZtV1RhbDZsd1RxRC1XN0w1UFBxc0RCZUZsejg3V0t0UF9mWUZaR20zaDR4aWp4R3E4VUV3QTcyN3FmeGhpaVhxaElCa28tbWdGUzh5WUdZcUplZ05KUE5sVGduWEV1N3o3bjUxWUlzS3lkajFIZnRjaDFFN0phdml1bjlaanpXTFVsRGx0Rl9qNmdDczNvZGxwem9JZm9TR3Z6ZTRiTFJ0eWdCZjlpRGxfeGdqRDBfSGUwcU9sV2J2MDh1SVJNbGZUVzhxWkxNY09iOHBFVjBZTi1VUUdUNVRSdnN5bzQ2N0k5aVpnRndDMGtWVmdIVmd2RXdSdG5HLUVMcXlhSG53WmhQbWdQTHJYUVZpZzBWQ3NCMDZudHFUdXhkbGk3UEMtRHhJeXR6TURoVWhtRVg2V3BlN3A0OEZMZWN2MjF4ZXhvbzlIckQ4RU9LVG8?oc=5",
@@ -8146,14 +8146,14 @@
             "title": "الإلكترونات \"ترقص\" في ثنائيات... حتى علماء نوبل لم يتوقعوا ذلك - العربي الجديد"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxPTUozdExrNWstaS1YeVhsOVdIWDVZMGw5NUtzcHZrcHVrT1htc255NWI0UUpqdWxPVWxJZk9SYVp5eU9Nd08xay14R3BsS1E1V1luQUtIY0NJV2x6TW4wRTBQeGZnSXNMbG5vS0wyU2hXSEdyTFg1bUFkZ0R5YVlHeE9wN280NWZoYm1qS0hMdkc0UzRIRGowTlBmUndrNUZ6dndFTGFYd3F2cG1GN1c5NU1BSjExTi0zZTR4SEk5RXZfOXNrQkpHTTdWalNOOGVjd2c2WHJLdGdPRC1Va0tuOVZnYzLSAeoBQVVfeXFMTXdHWGFHM21PM2dkY3pGSmUxMkx1MEZsdnFwZkVNSGtPQXM1d00ycUxLTXhaeFpuUGZudGJ1Z3FsZUkwb3lfcEN5c0NsanVVUkI0TVA2ZDEyVEJUWGRhTlNIaExHNGprV0lndGRYZkgzOW8ySC1lbVFBMHNkVElkaVlVdUI3cGQ1OXUwZHpwVzhRSnIzOTlmUmJqMlh5UHlHOXlqdmtHblpXZkdNcVpUTW5OZjdjX3dfOHFwSHo4aFBmVE9XTnZhWEJ0d0hOQl9YUXVrRno3UDAwb2J5Q0V3dDRheVVwdjZNb2RR?oc=5",
-            "published": "Wed, 04 Feb 2026 08:00:00 GMT",
-            "title": "Earnings Tell The Story For Electrical Industries Company (TADAWUL:1303) As Its Stock Soars 27% - simplywall.st"
+            "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxOamFDalI5QTY1aUFiTWR1SXhYdkgwN1dicEV5Uk45OFNFbG1qM1RDVlhsOWc2VTQzRThEMlpCSVNoT1YtUndCeFcyNTVLcmNTMWdQV0tCN3BJY2FndWwzdFAtTVBmYi1VeDVtY0F6NnRNYW45TGZ0Y25zQ1lQaDZPbXNvQUNsTWVIUC1XMGJsQnYzRVR6T01mZTBOdHdtWUZOLXNzalR6Tnpla1Q4c1hZeUx1OGxiSUdScVh6bmx6NEstMnFOZ3c?oc=5",
+            "published": "Thu, 02 Jul 2026 07:00:00 GMT",
+            "title": "Saudi Arabia stocks lower at close of trade; Tadawul All Share down 0.28% - Investing.com"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMigAFBVV95cUxQaUctS01NU1FwZHNnOVlqZkcycUZza2VYQVlEWmY2ajM0c0VMdlR5VGlUS21iM0RucEJ3SXlMWEo3TlhGUmFjZlNzMlNQQ1h4T2draG5OWEEwc2M1UE1hMll1U3pqbmd4TFVnMHhWQVo1cXA5dkZQTi1rdU1KT0pHXw?oc=5",
-            "published": "Sat, 17 May 2025 16:29:02 GMT",
-            "title": "معلومات وتحديثات الصناعات الكهربائية - الشرق بلومبرغ"
+            "link": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE1UQzB3NERZR25wUTJYckFqanZmLUx0cWppU3dRb2tBVVZ1ZmVYVHFNNExWWHc2MXNIaW9XUWdrRVpZQndaMG9TWHZTZTVUbFk3VG40UmdR?oc=5",
+            "published": "Sun, 18 Jan 2026 08:00:00 GMT",
+            "title": "تقرير دولي: مصر تتصدر مشروعات الهيدروجين الأخضر في إفريقيا - بوابة الأهرام"
           }
         ],
         "label": "positive",
@@ -8161,31 +8161,31 @@
         "score": 1.0,
         "status": "available"
       },
-      "price": 15.18,
-      "priceDate": "2026-09-13",
+      "price": 15.25,
+      "priceDate": "2026-09-14",
       "reason": [],
       "rules": [
         {
-          "actual": 15.18,
+          "actual": 15.25,
           "available": true,
           "passed": false,
-          "plain": "Protective stop 13.95 not crossed at 15.18.",
+          "plain": "Protective stop 13.95 not crossed at 15.25.",
           "required": "<= 13.95",
           "rule": "stop_level"
         },
         {
-          "actual": 15.18,
+          "actual": 15.25,
           "available": true,
           "passed": false,
-          "plain": "Trim level 15.89 not crossed at 15.18.",
+          "plain": "Trim level 15.89 not crossed at 15.25.",
           "required": ">= 15.89",
           "rule": "trim_level"
         },
         {
-          "actual": 15.18,
+          "actual": 15.25,
           "available": true,
           "passed": false,
-          "plain": "Profit target 16.59 not crossed at 15.18.",
+          "plain": "Profit target 16.59 not crossed at 15.25.",
           "required": ">= 16.59",
           "rule": "target_level"
         }
@@ -8193,35 +8193,35 @@
       "short_term": {
         "above_ma": false,
         "horizon": "short",
-        "momentum_pct": -1.94,
-        "rsi": 47.8
+        "momentum_pct": -2.31,
+        "rsi": 49.5
       },
       "trend_streak": {
-        "days": 1,
+        "days": 2,
         "started": "2026-09-15"
       },
-      "unrealized_pct": 22.3,
+      "unrealized_pct": 22.9,
       "verified": true,
       "volume": {
         "median_sar": 40744924.0,
-        "ratio": 0.6,
-        "turnover_sar": 24588716.0,
+        "ratio": 0.54,
+        "turnover_sar": 21809254.0,
         "unusual": false,
         "window": 20
       },
       "yahoo_name": "Electrical Industries Company"
     },
     {
-      "action": "HOLD",
+      "action": "SELL (STOP)",
       "code": "2320",
       "decision": {
         "label": "Insufficient data",
-        "reason": "This quote (2026-09-13) is older than the expected previous session. Check your broker before reviewing a decision."
+        "reason": "This quote (2026-09-14) is older than the expected previous session. Check your broker before reviewing a decision."
       },
       "delta": {
         "flipped": [],
-        "price_pct": -1.83,
-        "rsi_delta": -5.2,
+        "price_pct": -0.93,
+        "rsi_delta": -2.3,
         "rules_met_delta": null,
         "trend_flipped": false
       },
@@ -8235,8 +8235,8 @@
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": -9.24,
-        "rsi": 43.6,
+        "momentum_pct": -10.09,
+        "rsi": 41.3,
         "trend": "flat"
       },
       "name": "Al-Babtain",
@@ -8249,9 +8249,9 @@
             "title": "This Analyst Just Wrote A Brand New Outlook For Al-Babtain Power and Telecommunications Company's (TADAWUL:2320) Business - Sahm"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTFBxUEpvUzlFVlVkQW5tZWRGcFdMcEQ5TmR2bFVxVElkMjJJaVpwbXR1S25BM0wyMk04TC1jSF9sVHlwamp1Sk1sVGpHa0g1QS03WVpUd0txTDlIQVc0eHFIUllxYjVwd0Z0U3NNbg?oc=5",
-            "published": "Thu, 21 May 2026 07:00:00 GMT",
-            "title": "Al-Babtain to Begin Liquidation of Subsidiary International Wind Power - صحيفة مال"
+            "link": "https://news.google.com/rss/articles/CBMiigFBVV95cUxNUVBGZkpUWFkzSGZZTTNVdHpXdS0xMDZnV3FHenBPeXh5Tm90SHM1dFZqeGpIMS1KZ2dEakNMa3h1Z0VOQ0h5ck9EaVM0QzdfRW5FdXBQdUpKbllxSEtxWGlSM2tBZUYxbEhQLXlfMURFQnU5VFZXcTNWTEpNQnRCRVM3VHN2ZHk1N2c?oc=5",
+            "published": "Tue, 01 Sep 2026 07:00:00 GMT",
+            "title": "اتفاق كهرباء Expo 2030 Riyadh: ما الملتزم فعلا - vision2030.ai"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMieEFVX3lxTFBhZ1BuaWl3ZVQ3cHVZeEpyUzd4NHpJWWVvMWo3QmF5VnlPUEwwNTZKVzlPWml0S3BnX3dFNTc4Szl6ZW9hTUJJQmFZeXV1Vmp1UGJVa1BjM0YyTzVVenN4NjRwTVdVWHptN2RlRC1QZjJoQUY1T3NjQg?oc=5",
@@ -8259,9 +8259,9 @@
             "title": "Al-Babtain Power & Telecommunication Co. Revenue Breakdown – TADAWUL:2320 - TradingView"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiRkFVX3lxTE1YaW0taFYwbm5WQkppX2pTeEpKM21QZ0hXZGVnZUU1N1VKNW00QnFPZ3JrQTgyOUhRb2RZbHppNmdGcDE5M0E?oc=5",
-            "published": "Wed, 15 Apr 2026 10:34:12 GMT",
-            "title": "General Authority of Two Holy Mosques Sponsors Signing of MoU to Localize Advanced Shading Systems Manufacturing - وكالة الأنباء السعودية"
+            "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTE1IMVcza2tMUEt3R2ZLZm5jOGFXWm0za1czTFUxWEM4bi1yeGhOdkdiYVJuZVd2cFhRRkN5YVVPSDhPd2JFcjVYdDdaMGx4UEQxbjV3MUdPMXI0V2xVT1J2WmdrRlB6ejdpXzdtMQ?oc=5",
+            "published": "Wed, 19 Aug 2026 07:27:33 GMT",
+            "title": "FADECO Appoints Bandar Al-Safeer as Nomination and Remuneration Committee Chairman - صحيفة مال"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMi_AFBVV95cUxQc2xiSjRQSTVuRFVlaXJMci1zT0lJV08xdk05R2c4OV9JQjJIREtmc1pLQkI0ZDZob2Nvbm9ydEZNbmZjU2lfeGd0YmlKUFkwVHRja3VwUk1qSU1yN1VUc0V3QWdXc3kySi1zejI2XzJRQ3UzcXR4QkFDYXJLYmZpZ0ZDbnhWSHk4b3dPb0JMYmJxcHpCS1hCUERrNmN6clo5WFdST3YwNUtxZmxhMmp3T1ZCR1ZoWVBGV0NtblM2QnV2Vk1rQXpHbU5sMXJEQ19JOS1WaF93VWxGazNiS1o3dFRSNC1UZ1hOaEx1Y09mdzRtcFJYSm5wTUdZSFbSAYICQVVfeXFMT3ZLbzlCblJWOW1ON2FJYTN2MTdaaXBXb21adjFlQW4wbm9tcVIwaW1MOExmZ01xb1NKU01zR0owcUoxVURWUk1USkszS2hITlAxenBscWJkVzQyNWVIVmxWTThOZFU3QmZwd3ZPcjdXNU9Qak9oR2FNb0xEdW53UlMxMHlGYUtpUzNSRjdmeHhtb0ZqT3I0YzQtdUwxSWVlMHNjbl9PeUpLRHFvakJORlNJREpsUGNmNFJ0ZHY0enVhQUY3V1Q2dXdXbzdWSmFjZTVtQnhaS1ZtZkFZRFF2VVd3TjhqNW11R1lVNndwR3ZFZDJCc3VXYnpyd1hSR1VzbUtR?oc=5",
@@ -8269,9 +8269,9 @@
             "title": "There's A Lot To Like About Al-Babtain Power and Telecommunications' (TADAWUL:2320) Upcoming ر.س0.50 Dividend - simplywall.st"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTE1IMVcza2tMUEt3R2ZLZm5jOGFXWm0za1czTFUxWEM4bi1yeGhOdkdiYVJuZVd2cFhRRkN5YVVPSDhPd2JFcjVYdDdaMGx4UEQxbjV3MUdPMXI0V2xVT1J2WmdrRlB6ejdpXzdtMQ?oc=5",
-            "published": "Wed, 19 Aug 2026 07:27:33 GMT",
-            "title": "FADECO Appoints Bandar Al-Safeer as Nomination and Remuneration Committee Chairman - صحيفة مال"
+            "link": "https://news.google.com/rss/articles/CBMiRkFVX3lxTE1YaW0taFYwbm5WQkppX2pTeEpKM21QZ0hXZGVnZUU1N1VKNW00QnFPZ3JrQTgyOUhRb2RZbHppNmdGcDE5M0E?oc=5",
+            "published": "Wed, 15 Apr 2026 10:34:12 GMT",
+            "title": "General Authority of Two Holy Mosques Sponsors Signing of MoU to Localize Advanced Shading Systems Manufacturing - وكالة الأنباء السعودية"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMi_AFBVV95cUxON0NZMUZObXpTZlRQZ09JLXBqZFhEZHBXMlJXdnZfZE12NXcxckZGQllsbXdXOEpOdlF3dnphZ1Z4aHdFSm9BUkI4LXVJeUtTQ0NDVmRtTVlxVzJ0OFl2X1RyOTYta09kNlVVY2VQeFVmVVhtdm16eEtiTDRzOVlrWTZpRzZCRDE1d3lZdjMzTFZGT0NrQWNDTVlkNGpIcXM4SDZyUGRJSG1YWEhMMmhNR0hDa29uekZQNWJwb0NGc3NTbnJRZ2JubmV1Ml9LLXBycFpyNU53NnE1Qnh2dUpibjFTb21pdTVfS2RPMUVLYzRtRVA2d3hqRmlJbkjSAYICQVVfeXFMTnYwaDNmSjFpMUVDS0JVVDFCVlBkd0d0TDlwcjZxMG9sblZOUWpGWjIwS3o4bEdwaHlIbGNjNGZTY3JHUnJqZ0lYLWhXYVJyM09mZ0VnbFBxUldsNlhnVGthMXc4bS1sa2pkMTZkNWNVWXBpNEhULVNwTTV1eFVaeTQtVDRmQmZYNWFGQUhTR2Rqd1JOVW94YTJsd0FfZFpWWlBaZFItSGlLVGxUcGVISTNWMUZ6MjE5MjhFdFRZQ3d1MVZvLWNfcWdpRGU5dXphVXdONXVJWDl6Um9VNnRHTWxpRUNkVmtsajFrMEh0cDZKYURwa2JKb25PQ1Q0TUFnbk5B?oc=5",
@@ -8289,31 +8289,33 @@
         "score": 1.0,
         "status": "available"
       },
-      "price": 58.9,
-      "priceDate": "2026-09-13",
-      "reason": [],
+      "price": 58.35,
+      "priceDate": "2026-09-14",
+      "reason": [
+        "price 58.35 <= stop 58.37"
+      ],
       "rules": [
         {
-          "actual": 58.9,
+          "actual": 58.35,
           "available": true,
-          "passed": false,
-          "plain": "Protective stop 58.37 not crossed at 58.90.",
+          "passed": true,
+          "plain": "Protective stop 58.37 crossed at 58.35.",
           "required": "<= 58.37",
           "rule": "stop_level"
         },
         {
-          "actual": 58.9,
+          "actual": 58.35,
           "available": true,
           "passed": false,
-          "plain": "Trim level 63.61 not crossed at 58.90.",
+          "plain": "Trim level 63.61 not crossed at 58.35.",
           "required": ">= 63.61",
           "rule": "trim_level"
         },
         {
-          "actual": 58.9,
+          "actual": 58.35,
           "available": true,
           "passed": false,
-          "plain": "Profit target 65.51 not crossed at 58.90.",
+          "plain": "Profit target 65.51 not crossed at 58.35.",
           "required": ">= 65.51",
           "rule": "target_level"
         }
@@ -8321,19 +8323,19 @@
       "short_term": {
         "above_ma": false,
         "horizon": "short",
-        "momentum_pct": -5.38,
-        "rsi": 43.6
+        "momentum_pct": -5.04,
+        "rsi": 41.3
       },
       "trend_streak": {
-        "days": 3,
+        "days": 4,
         "started": "2026-09-13"
       },
-      "unrealized_pct": -8.3,
+      "unrealized_pct": -9.2,
       "verified": true,
       "volume": {
-        "median_sar": 29100903.0,
-        "ratio": 0.74,
-        "turnover_sar": 21493494.0,
+        "median_sar": 26216958.0,
+        "ratio": 0.76,
+        "turnover_sar": 19946247.0,
         "unusual": false,
         "window": 20
       },
@@ -8344,12 +8346,12 @@
       "code": "8313",
       "decision": {
         "label": "Insufficient data",
-        "reason": "This quote (2026-09-13) is older than the expected previous session. Check your broker before reviewing a decision."
+        "reason": "This quote (2026-09-14) is older than the expected previous session. Check your broker before reviewing a decision."
       },
       "delta": {
         "flipped": [],
-        "price_pct": -0.07,
-        "rsi_delta": -0.2,
+        "price_pct": 3.71,
+        "rsi_delta": 8.5,
         "rules_met_delta": null,
         "trend_flipped": false
       },
@@ -8363,8 +8365,8 @@
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": 3.0,
-        "rsi": 50.9,
+        "momentum_pct": 6.82,
+        "rsi": 59.4,
         "trend": "flat"
       },
       "name": "Rasan",
@@ -8382,14 +8384,24 @@
             "title": "Rasan Q1 profit Surges 194% to SAR 88 mln - صحيفة مال"
           },
           {
+            "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxQVlN0WThRSUdVRTlUdWtwYUo4aWUyWnFVTF9ZTzlaRVlYZXRFdVhjcmlsRUZGTWFDejBMTExhWjNPNmo1OU5rNWszWEtqaUl5VVlMQ1BKRDBRSVh5TEdDUFVUZ2VEMGlRei1Oc3c4aE9YaTBfeEdRdnBJMG1lNjNuX2VzN1ZtdUFVeHRiS3phTEctYW5lVGVKT3VKRi0yTUFwMVZienYxclFJR251d0J2cVFEZmF5QXVBOEMxOGY4bjNXbER2bkE?oc=5",
+            "published": "Thu, 09 Jul 2026 07:00:00 GMT",
+            "title": "Saudi Arabia stocks lower at close of trade; Tadawul All Share down 0.42% - Investing.com"
+          },
+          {
+            "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxNRENqSnpsRlphTkdPSFVRZXFPWjc0UVpfMENHMkwySXRuQVRITWQtTG5aY3RpalpjcWJWaEw0VGFaZXZBUExHY1RwX2pjRklpX0VCRUI1Qk9mNVpYVVQteDduQTFqSE1qRGY0VnZPZk1PQkJHRkg2bjc5bHBHeDhRNVpkdw?oc=5",
+            "published": "Mon, 12 Dec 2022 08:00:00 GMT",
+            "title": "Rasan - Forbes Middle East"
+          },
+          {
             "link": "https://news.google.com/rss/articles/CBMieEFVX3lxTE9OelpqbE9uMkNmSUlWTXVXTFF4dkhPbkItZUZJV1lxTjJiSEtHVmhnd2R2R0xIbGFoaTVCQ05DUUc2TUpVUmR6VW1tODdSZE9xVzRmNTdoWlhEaDYxRUVEVTM4T0VacGxDWk92bE5RVldaYUNPeUFlTg?oc=5",
             "published": "Sun, 26 Jul 2026 10:00:15 GMT",
             "title": "Rasan Information Technology Co. Revenue Breakdown – TADAWUL:8313 - TradingView"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQeVFsU0ZwWlBZS2JrWnlCTlVIeWVudVNCWWlEYkZoRVNyVmtoTW9HUWpjYVBxM3FsMFM3Mk5IUjh2eGZtVEx5eDNqNVZRUEF0MGptLWUxUGdTUFkxeGNrSUFNbTh6WHd0czNHWm1Ca2ZMZVU3U2F0Y1NFTFUwbHJ5b3p0TDJxMGQtcmRFMA?oc=5",
-            "published": "Thu, 10 Oct 2024 22:06:46 GMT",
-            "title": "معلومات وتحديثات شركة رسن لتقنية المعلومات - الشرق بلومبرغ"
+            "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPUXN4YmxxbG8xX2xxRHJ6ZmlOWGlxSkJ1WHU3NnBhRjI5UTR3eHUxMGVFTTdtb3JSeVJYNmpGRnZJV0k2SF9qOFFfdUFQSURkZF9CaWhSNlZBNHRnamI3U2JuVTJ1SzdkVm9tM19KQ1hqN1hBWE5nNmFaQVpJZjNCMS0zaUU2ZDdlUG9uUGZ4UG1Vbjh4TWlNUk0wQQ?oc=5",
+            "published": "Tue, 16 Aug 2022 07:00:00 GMT",
+            "title": "Rasan - Forbes Middle East"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMihgJBVV95cUxPZ0p4SV9nekdsU1JJdTkzWG5MdGQxZkpGOXJDcEFtMUIxTEtWakN4Z09NUFg5b2hMNTJuVGFoVGZkaG1sNmp4R19zUm9WWWdNTXh3SkJLUHp1ZVZpa005RHg4OUdYejEwU09mUlgxdGlrb1RFeTFqdUo3VjZoVFpYeHduM1dCYnRDSVdUMHFfR2RHd21SbWxDM2xCaWRoc2hOZmRoQkI1U3R4aDVrZHVibGNzYm01Z1VrNjZ1dEpfcjBpR3dNUWR2d2lmdG52VklKNHVVM1ZGdE5JMkZ3ckJXc1dlZGhid25nWTZ3NzBLb3liRWp1NjZjdXZxa09GQ0JSZ09rR0ZR?oc=5",
@@ -8397,19 +8409,9 @@
             "title": "Rasan Reports Record FY 2025 Results with 82% Revenue Growth to SAR 653 Million and Adjusted Net Income Nearly Tripling - Business Wire"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxNRENqSnpsRlphTkdPSFVRZXFPWjc0UVpfMENHMkwySXRuQVRITWQtTG5aY3RpalpjcWJWaEw0VGFaZXZBUExHY1RwX2pjRklpX0VCRUI1Qk9mNVpYVVQteDduQTFqSE1qRGY0VnZPZk1PQkJHRkg2bjc5bHBHeDhRNVpkdw?oc=5",
-            "published": "Mon, 12 Dec 2022 08:00:00 GMT",
-            "title": "Rasan - forbesmiddleeast.com"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxQVlN0WThRSUdVRTlUdWtwYUo4aWUyWnFVTF9ZTzlaRVlYZXRFdVhjcmlsRUZGTWFDejBMTExhWjNPNmo1OU5rNWszWEtqaUl5VVlMQ1BKRDBRSVh5TEdDUFVUZ2VEMGlRei1Oc3c4aE9YaTBfeEdRdnBJMG1lNjNuX2VzN1ZtdUFVeHRiS3phTEctYW5lVGVKT3VKRi0yTUFwMVZienYxclFJR251d0J2cVFEZmF5QXVBOEMxOGY4bjNXbER2bkE?oc=5",
-            "published": "Thu, 09 Jul 2026 07:00:00 GMT",
-            "title": "Saudi Arabia stocks lower at close of trade; Tadawul All Share down 0.42% - Investing.com"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQZEhoV3cwTFdnYkZBSExZQ0pHeHJDVGM4bF9OdDRvMkNCR1k1bUxQUzhfdkg4XzNnSDIzOWhPWGFWcmROSlk4ZWpRV0kzandObTJpc2l4c1JhNFBZNFBRWVROX2NLSFlzVTQ1VDI1dXAwOUJzMjFTaEZ0aTFwcTR6TThiMldaZW80RU9kbWhJWFNnb0J4alhVSU5SR0pQT2hmbkNYT0FiY196Zw?oc=5",
-            "published": "Thu, 15 Feb 2024 02:21:51 GMT",
-            "title": "شركة رسن لتقنية المعلومات: المعلومات الكاملة - من هم"
+            "link": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE5wM25oR190am1ZSjE0czlmanhaa0lYdGVjYWU0WVJlQy13NUY1Z1paRThZT3luYzAyaXFTZUdyQnM2aTRqeXBhNGlUSHZaeERqZUQ0VNIBVEFVX3lxTE9UcS1rb0NFT3FIMkV0NThHNnR4eEJheC03R3dLbVF1Mk1zdk1WdmVhc0NlTHBWZGloUG5hMmZiRkc2VU9jUlV5RU5NRldQQy0yZWt5Tg?oc=5",
+            "published": "Mon, 06 Jul 2026 07:00:00 GMT",
+            "title": "الأسهم ترتد 14 نقطة.. المؤشر فوق 10.813 - عكاظ"
           }
         ],
         "label": "positive",
@@ -8417,31 +8419,31 @@
         "score": 1.0,
         "status": "available"
       },
-      "price": 137.5,
-      "priceDate": "2026-09-13",
+      "price": 142.6,
+      "priceDate": "2026-09-14",
       "reason": [],
       "rules": [
         {
-          "actual": 137.5,
+          "actual": 142.6,
           "available": true,
           "passed": false,
-          "plain": "Protective stop 129.84 not crossed at 137.50.",
+          "plain": "Protective stop 129.84 not crossed at 142.60.",
           "required": "<= 129.84",
           "rule": "stop_level"
         },
         {
-          "actual": 137.5,
+          "actual": 142.6,
           "available": true,
           "passed": false,
-          "plain": "Trim level 144.94 not crossed at 137.50.",
+          "plain": "Trim level 144.94 not crossed at 142.60.",
           "required": ">= 144.94",
           "rule": "trim_level"
         },
         {
-          "actual": 137.5,
+          "actual": 142.6,
           "available": true,
           "passed": false,
-          "plain": "Profit target 150.43 not crossed at 137.50.",
+          "plain": "Profit target 150.43 not crossed at 142.60.",
           "required": ">= 150.43",
           "rule": "target_level"
         }
@@ -8449,20 +8451,20 @@
       "short_term": {
         "above_ma": true,
         "horizon": "short",
-        "momentum_pct": -0.36,
-        "rsi": 50.9
+        "momentum_pct": 4.32,
+        "rsi": 59.4
       },
       "trend_streak": {
-        "days": 4,
+        "days": 5,
         "started": "2026-09-10"
       },
-      "unrealized_pct": 28.0,
+      "unrealized_pct": 32.7,
       "verified": true,
       "volume": {
         "median_sar": 32315325.0,
-        "ratio": 0.66,
-        "turnover_sar": 21437900.0,
-        "unusual": false,
+        "ratio": 2.19,
+        "turnover_sar": 70642760.0,
+        "unusual": true,
         "window": 20
       },
       "yahoo_name": "Rasan Information Technology Company"
@@ -8476,28 +8478,30 @@
       "code": "4015",
       "decision": {
         "label": "Watching",
-        "reason": "2 of 3 buy conditions met. The one missing: the price is still below its longer-term average. This remains a research opportunity."
+        "reason": "1 of 3 buy conditions met. This remains a research opportunity."
       },
       "delta": {
-        "flipped": [],
-        "price_pct": -0.8,
-        "rsi_delta": -2.8,
-        "rules_met_delta": 0,
+        "flipped": [
+          "momentum_floor"
+        ],
+        "price_pct": -1.03,
+        "rsi_delta": -3.4,
+        "rules_met_delta": -1,
         "trend_flipped": false
       },
       "disclosures": {
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": -4.42,
+      "distance_to_zone_pct": -5.41,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": -4.15,
-        "rsi": 39.4,
+        "momentum_pct": -6.98,
+        "rsi": 36.0,
         "trend": "down"
       },
       "name": "Jamjoom Pharma",
@@ -8527,39 +8531,40 @@
           {
             "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxNOGs1S0VGNEt3TTdxX1pKRUY0eEtaUWdlZk45ZmtSLU8xVHY4blFGY0ZndHEyUFNTMDdpXzFGRGF2a2d5WGt4eGNuNzVOQnhmdllUdFhhQW1KOE8yMjFodkp0NFp2a0g4Tm5BUDhmNElpbnVkaWg2LW95cHVISjRadElMbDhXRkt5YXdVUnNKcTMtNkdM?oc=5",
             "published": "Sat, 31 Jan 2026 19:09:57 GMT",
-            "title": "JAMJOOM PHARMA organizational-structure | 4015 | TADAWUL | TASI - ارقام"
+            "title": "JAMJOOM PHARMA organizational-structure | 4015 | TADAWUL | TASI - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
+          },
+          {
+            "link": "https://news.google.com/rss/articles/CBMizwhBVV95cUxNTjNvak5vUUhtSWdOMDc0MjlNWm0xbHlqbUZ5RVJ5WHhfaGJmLTR1a2wxQ2RQNmExOE8xaGhrUDVjcjdWMjJuZlRnZGg0OHRTeERpQVkwcDhsMnpuXzhRc19ySFo3RWhlMkV0YWhrdHJfOU5Pcm1LMGlzV2dFZUtRYlM4emg4b0tmNk00RVoxaGxYV041RHhPR1ZjUzlYS1hwVVFZMVdKM2dwWGlTdkFZVnAxaThhT2VnSlh6LWdET1NBdXlQYWkwTWN3M0NRRHE0bjRkMEJHY1pxU2xrSW5ua2VCaEs1Zi1mcnlYcnducVUxejFlM0hOaDBDUjAtQ2hESVU0dmtKT1FWTHpxam9RVTBfUjFValBaU05vUlhSeUFSbVJqWXMxRDFTZUZPVENlcEVZVERDbWZaSURkLWRvMWpHU2x6U0poZ1UxVTdsVy1od25sQkUxTHhwWExJWTFnTGVtam00MjNGZ3RRX2Z5SGpmc09ma3B4UElvZUkxU0M2MkhQRGVwMnFNYmp0ZlI5UUlMdEpGYXhxZ3B2ZW41RXZzcUg4OFBvSUlvMU8wc1lXazRUc0VfLWZ3cVR1cE1QcjBubDg5X0xwcFluMDVoUXdEMTE0YXRvMkJGb0h4U19xbDZZYVVvRjFPYkZrN21lZEtxN3J2cEhvRFpXYi1FYi1yYzhsMWQ2NEFwM1E5RVQ2Szg2dHhLRUVyX3hnay1IaWc0SkMxN2s3bmtyVkxlRUVRT2ltMTFNRDRObENzMmMyeE5EeVNTbDU3RmF6eGxEN21ia1ZWdkJXV1I2TU92SlZIaEllN1hjaHpENjBmb1JLRkt4V3V3Nm9Rc0pyM2poVUZmamI2RkIwYWhPU0p4czlfLUtJc0tieG9ZRjdDektoQ0VnT1FfZGRWbTZZYUwyTDhhRnYydW14SjNfdVJYRnpqTGNyVlExclJxTFN4T1dEVGJHSHFYYjJRdlBXc2lreFhSdE9jOEN3eE12dWU1SXoyRlpjc2g4ejl4RDg0WmtjNlZlTXhZZFdJRENBaW9rbm5lcDhwcllrOGJtMEJQX0RDVVFVRzhvQS1QR3J5RzJPSHZlRjN0ZnJYeUhKTURHM1llSzVFSWdybDM2V1ZtNUZpQmNlM1laaG5GRVlXb2pzdlJ3U0d0dTBNMUttX21BNE5UN3BZcFR4SjNiN0ktWDlidmRTZWN1Y2RWN3RkbjNHcWo5R2ZwV21ybC1uYlNyUWVXLUVhTGE1WHVIOVhoT2dJTXNDSWM1VVBlaVZ6VDlLbUk0cFVST1ZHOXM0eFprY2dGTDdnTVF2QW9XU3o3Ul9QUHAtODRWaFl4QUZYYk1mdW91c0JhNTN5OUluLUY0TzBjcnlEY0JLaVNxSUctWDZNTHhHbHVEcHdJREV4d05HRGVEYV9kTHh5MW5RTUViaENESTVkbzZqaXN5UzFJOC16M1kxZTVYcUxseTRDQQ?oc=5",
+            "published": "Mon, 14 Sep 2026 13:58:00 GMT",
+            "title": "\"جمجوم فارما\" ترسخ ريادتها الممتدة لعدة عقود في طب العيون عبر اتفاقية حصرية مع \"نورديك فارما\" في منطقة الشرق الأوسط وأفريقيا - Zawya"
+          },
+          {
+            "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTFBKaG10VFptRzN6aG1nVkVVemhvZk1yd0RtWTFqeWdnR1BOQWc1dmdGS1RmNHRfbG1IMDEtQV9feGljYmxLUUJiNFlJYW9kZmY4bE9ETldHRnA0ODZSb3dCREdFdHE4SXNzN0E?oc=5",
+            "published": "Thu, 23 Jul 2026 07:00:00 GMT",
+            "title": "Jamjoom Pharma signs binding share subscription deal for biopharma SPV - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiugRBVV95cUxNUXU0TE1jQ0NjTDFwRDFHVlB3X0xuQTg1bHdkUGRJdHBKMF9qTWs2eGpxT1hjOGRfOFVhQXJ3NERha1k0R2xMNm1wRTJ0aXpjZmlYemFFem9XN3hmbnJ6cUpITGZSdHBMVlA4c29BaXFBM1gtWFNGenplUXdKSE1LZXhOY21CZ0NaUXA4Yk9YSDZNeklONUV3NXR6c0daemhDeWlNMVBHR19DR1VibjdLUmtYaE4zUWswbUNfbVdKQ2JyWjdwZ1pQMkk1bWFPVFo4LWR6YndkWXJKTnNCMXVJZlRiUFlnb3Y4YjVJSmZJeXZ3dlVCb2llRF9qVXBqT2RRcjFfekJQR0hlYmZrenpzUGlTZGJHb00weUVWbkEzalMxV1FQeDhTbkVYLTUwMzZxVHdYSXlEYW5Sc211LTdKTk5CSTBMbGZ0SjlRaFctOXV3YzgzemdZSlFnbEo2UGhnX2lZN093WjVkTTJlRjRIaVFzY3hsNGxwYVJFRFBjVFVNV21jS28tdnpPc1FmR2JoQ3BEcUkyWGpxdEhNWWFoLVFHWXNBMjFuemJMT1phbWFiTlhLZDFfazJ1eXJ5bFJORDUxckRGRXpVWE54Z21ZUWVlMHdPa1o5UDM2dDZlXzBRR0g0TnRxMFVVREhwVTJtajF2YW9paVFIYnZ4aTFNa0RBeC1jcW5XbzliN240VUw2YlE5UERnaTdiaDEyOHd3dkJUbl9UNmdRUUtBQ3cwbm1ZQndITGJ0UGfSAb8EQVVfeXFMT0MyRGhkSFRkRHZVRk1ic19sLWxrQTE3MTFsc2tyME92UHkxVm1WUjhYV2ljaVR1akVBR0lXcFkzUGh3V00tSms2MHo3dGMwa0FzOTNNS3NlMW9YcVo4UUJNNm1uREswcHdZMDNISWZScFFKbGVCTWJkNldCa1VxOVZvbGdkd2xmOXBvUXJNS1NhRjhGaWpXWTFoTWlWTVFFVGJkMWhXNGowNGhKWGljYUdTTXRYcWdlamxzYVJYTXlZMGFwbzBGTzU5Tjg5ZEhHOVlhMlpVMzZhcUdFZWlpNWd5cVMyelNBRXFjRUkzaXdWS1UwekZEeE5qZHI5N2h4M1FnMlg3T0NrZkRHVm9Bd0Q4dFA5MHhoNExBTHFnYWNiNzVXNUZ5M1VuWGdRX0dkYmtpOW0tcU9QRy1HdFlYUXpDOWV2ZC1LN0pDdnM3UmNDWE0zY01Oek1yUXFTRDQ2WnlaMTMwOXE0WHVoYU1ESkpPZTB0RHk4TUplLVM3aUtCeTFWZzRfSkt2VWp2SjJWRmR6MDRsYTR2dlpuS3d0Y2ktbHhua2d4bU1SbDBkSExIRDV4dWo3Vy1XMXV1MnhCTEJxTkZXTDhmTExDOGYwRkVLU3o4dkozTlUtUnhUT1hJQmdoeDc1dlQwM3BhWVBETmx0QzVFUTN1MGJDWk5Ea2N5X2FNQ3VKOVNDdnI1bUVEbDRra0l4VnlEeWpwdlBvWWZDaHUyOWpNVW8xU1NOdVJRZTgxSTRDaFhTeUpyYlU?oc=5",
             "published": "Wed, 09 Sep 2026 10:48:00 GMT",
             "title": "\"جمجوم فارما\": نتجه لدخول سوق أدوية إنقاص الوزن مع تزايد الطلب الإقليمي - العربية"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMi7wFBVV95cUxOaEdhY3FacHBFQ3NxV2JtT3FCNjJ6T00tenNGMEpjbjN1ZXVrdzdaWURGb3NWSW5YUXNuR3BYaFlrTm5mMk5TMHd1ZFRzbi1VQ3d3bXp6OUNoOGd4ZVVySEg3Nk5lbElrM2dldVA4RDYwMDY3eDB2azNOdjFTTEVXQ2RDcEZsTmV1aXI2VEQtT09aZ3ZXODJWYkQzenR4OHlnMUdlRG5lajVQOU9GQ0tyVHhnbEx3dUtjYWxIaEJqQTM3WGlfUElnVlVoVExyV0lJSllSOXhwbGNoVjl2OGMyWDVGRjU0YlRBNFNFbjdLNA?oc=5",
-            "published": "Wed, 30 Apr 2025 07:00:00 GMT",
-            "title": "Jamjoom Pharma sees a surge in its profits and its stock rises sharply at the start of today's trading - المتداول العربي"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMiwAJBVV95cUxNQzlZMXdHeUtvNjdPWEUwS3NPNTBYWXJWdTBNeWd0aTRDRkZrUm0ydDFPTi1ScHVXTEtDWnFyaHBabFpVdXFiMlFWQm9fTnJIZktSNlpldFVfVmxtYzQ4ZEN1ZlUxSUdPTGx3QUI5dDdONTdzRjYxY2h5NG9sUXRPWVlWbnZCTkxOWXk4eWc5cGpLTWFXLWxtdm5UbWlsUE81aUZXYkl1RGFQQmxXXzBpZkVQdEJmS1JOOFFDSUdEWW9uTTVYa2tDTG91cjZUdlg4NjlrLWo5WG5ESV95S3k2dFRkYVpGOEZjVmlEbjlqUzRzT3JBUVlLVUd6S2hydkFOb0poWXJCaWpPcnlyY21sQkN5Y1JBaE1DaEZ3X3BJOURhRkFlcU9tbmk5bmZ0Z1hZRmNHYThiRElLYnQwUWJIaw?oc=5",
-            "published": "Mon, 14 Sep 2026 14:04:53 GMT",
-            "title": "“جمجوم فارما” ترسخ ريادتها الممتدة لعدة عقود في طب العيون عبر اتفاقية حصرية مع “نورديك فارما” في منطقة الشرق الأوسط وأفريقيا - 25h.app"
           }
         ],
-        "label": "positive",
+        "label": "neutral",
         "ok": true,
-        "score": 1.0,
+        "score": 0.0,
         "status": "available"
       },
-      "price": 136.1,
-      "priceDate": "2026-09-13",
+      "price": 134.7,
+      "priceDate": "2026-09-14",
       "reason": [
-        "trend down, need up"
+        "trend down, need up",
+        "momentum -6.98% below floor -5.0%"
       ],
       "rules": [
         {
-          "actual": 39.4,
+          "actual": 36.0,
           "passed": true,
-          "plain": "RSI 39.4 inside 25-60",
+          "plain": "RSI 36.0 inside 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -8571,24 +8576,24 @@
           "rule": "trend"
         },
         {
-          "actual": -4.15,
-          "passed": true,
-          "plain": "momentum -4.15% >= floor -5.0%",
+          "actual": -6.98,
+          "passed": false,
+          "plain": "momentum -6.98% below floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
       ],
-      "rules_met": 2,
+      "rules_met": 1,
       "rules_total": 3,
       "short_term": {
         "above_ma": false,
         "horizon": "short",
-        "momentum_pct": -2.02,
-        "rsi": 39.4
+        "momentum_pct": -3.23,
+        "rsi": 36.0
       },
       "sizing": null,
       "trend_streak": {
-        "days": 23,
+        "days": 24,
         "started": "2026-08-02"
       },
       "triggers": [
@@ -8598,20 +8603,27 @@
           "reachable": false,
           "rule": "trend",
           "trigger_price": null
+        },
+        {
+          "pct_away": 2.13,
+          "plain": "6-mo momentum clears -5.0% at 137.57 (+2.1% away)",
+          "reachable": true,
+          "rule": "momentum_floor",
+          "trigger_price": 137.57
         }
       ],
       "verified": true,
       "volume": {
         "median_sar": 3856794.0,
-        "ratio": 0.24,
-        "turnover_sar": 929155.0,
+        "ratio": 1.99,
+        "turnover_sar": 7684365.0,
         "unusual": false,
         "window": 20
       },
       "yahoo_name": "Jamjoom Pharmaceuticals Factory Company"
     },
     {
-      "action": "BUY",
+      "action": "WATCH",
       "buy_zone": [
         59.1,
         60.87
@@ -8619,30 +8631,30 @@
       "code": "4016",
       "decision": {
         "label": "Watching",
-        "reason": "All 3 buy conditions are met. This remains a research opportunity."
+        "reason": "2 of 3 buy conditions met. The one missing: it is overbought and RSI must return to the recovery band. This remains a research opportunity."
       },
       "delta": {
         "flipped": [
           "rsi_band"
         ],
-        "price_pct": -1.95,
-        "rsi_delta": -8.7,
-        "rules_met_delta": 1,
+        "price_pct": 2.6,
+        "rsi_delta": 7.0,
+        "rules_met_delta": -1,
         "trend_flipped": false
       },
       "disclosures": {
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": 10.49,
+      "distance_to_zone_pct": 13.37,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": 16.31,
-        "rsi": 56.1,
+        "momentum_pct": 19.34,
+        "rsi": 63.1,
         "trend": "up"
       },
       "name": "Avalon Pharma",
@@ -8655,9 +8667,9 @@
             "title": "Should Income Investors Look At Middle East Pharmaceutical Industries Company (TADAWUL:4016) Before Its Ex-Dividend? - simplywall.st"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTFBURGduQTVuTGpiMmNVUDFScF9CbnIwWWttUDhoUHdpRU5uWHZDQ2lwNUViWFktWTRFNWw4ZENaejlaSmxqN3QtMVk5bUllN05wdkJ3bHYyZUlIWjFjTjRyU2tiTExZYlV6MXc?oc=5",
-            "published": "Sun, 13 Sep 2026 06:15:34 GMT",
-            "title": "هيئة السوق توافق على طلب أفالون فارما بزيادة رأس مالها عن طريق أسهم منحة - ارقام"
+            "link": "https://news.google.com/rss/articles/CBMi0ANBVV95cUxOWFVOZTdVbEg2ckh6M05sZkFkbUFmWVg3ZGFTSTltQ0szWmZVS1h3bjMySzdBLUYybnd6QWR5OVFJOTB4T0lpdkxvck12aDk1WTktV3Rka2JKY0ljWlgzY3NRODdLcHptUzJMWlcybVZhVmRXWlBsaUlBQVdXZDZIZUViSG9qeGlOVlB5NnM1TzVHcEQxWExSVF9aeDMzaFY5NFE2WUJGWmNya2ZnWHJsUjBXXzJnZnBhODNHOVp0Y1J6dkR4RWVnTDZnM2hnc2EtVE1nOTJiZDFKMTdvbWljV2VNRUpVTTNsaEhZX1B0bFk2TWpXUzRhR2phanFBN3ltc0xKNlFkRzJ4TUZ1b3JJS2c1RS1tcTZNbUZkQXBsOEctTUFfa0VfRGluLUo3QjNjU04tcFR5TjdDWkN5azBhMllscXZWdHdhM1VmQ0p6Q1hKYzN4U2U3c1hFQV93U1BjcUdZb1N2dUltMUdoeGNlemhBc3pacU5pR0NlR0F0TXByNE5XX3laRjZfM1ZPdENvWFZ0TVNlT2RjaVk3V2JQMG5EVkJzZC1wZmswOEl6YWZ1eEtjV0VZNmFMVkQ0RWVHMU8yOE9aeHdIWGZ5RlVUcdIB1gNBVV95cUxQaEVfazZSck1JVW9MbDF3aUx2R1lQWU9PNUdHaHBOdks4djBGd0Y1TS1obVhHN2J3OER2RWx3b002dUVQY0lXeW9rMnVxYjY0azRVTVZpa3c2cDEyemlNN0w1VC1yR0ZENjRETWt0RGVHWHpGeW5zYUV0Yk92UVp1aEVkMVk2eWZraXh5MVZCSW95TFRoRnRrTGQ3Szl6cHZvTU42SEFpdS00clk2OTZKRjJ4MFQ0cDBKajZodnFXMUZoSW9aLTZCZllTRVlaWm1jTDhXa1J0a0lWUGhxbHJzV2pncjdIeFo2dnNYdEVNZWZPYXdXN3otNjM4X0dobUxkeW9KcnZNWWFzM0Z2a1Z6Uy1pUEtUOWtLVkdDcTZmSWhjVEpYTXd6a05YMEdFOHpfcHdueWN0UE1Ndk9Wdi1jQThOcUNkczQxNGpLcTUxcG5rQmJKR0M4T1kyTDZfYlNIOTFvQ1N1YnBiLVBkS1dlV25SVU5ubmFqRzhYMmVYZnh2RmhfNG5kSjQ1dXBmV1Y1enV3VWZLbVNnbE82YUFfQ1FRYkluVXBlS1prV3hHczRvanZZYUxOU3YzdnkxamIzY1BGTUNBSzBoclgzQ1A3QmNYRGhhZw?oc=5",
+            "published": "Sun, 05 Apr 2026 07:00:00 GMT",
+            "title": "موافقة على زيادة رأس مال \"أفالون فارما\" بـ 150 مليون ريال - العربية"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxQVlN0WThRSUdVRTlUdWtwYUo4aWUyWnFVTF9ZTzlaRVlYZXRFdVhjcmlsRUZGTWFDejBMTExhWjNPNmo1OU5rNWszWEtqaUl5VVlMQ1BKRDBRSVh5TEdDUFVUZ2VEMGlRei1Oc3c4aE9YaTBfeEdRdnBJMG1lNjNuX2VzN1ZtdUFVeHRiS3phTEctYW5lVGVKT3VKRi0yTUFwMVZienYxclFJR251d0J2cVFEZmF5QXVBOEMxOGY4bjNXbER2bkE?oc=5",
@@ -8665,9 +8677,9 @@
             "title": "Saudi Arabia stocks lower at close of trade; Tadawul All Share down 0.42% - Investing.com"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMi0ANBVV95cUxOWFVOZTdVbEg2ckh6M05sZkFkbUFmWVg3ZGFTSTltQ0szWmZVS1h3bjMySzdBLUYybnd6QWR5OVFJOTB4T0lpdkxvck12aDk1WTktV3Rka2JKY0ljWlgzY3NRODdLcHptUzJMWlcybVZhVmRXWlBsaUlBQVdXZDZIZUViSG9qeGlOVlB5NnM1TzVHcEQxWExSVF9aeDMzaFY5NFE2WUJGWmNya2ZnWHJsUjBXXzJnZnBhODNHOVp0Y1J6dkR4RWVnTDZnM2hnc2EtVE1nOTJiZDFKMTdvbWljV2VNRUpVTTNsaEhZX1B0bFk2TWpXUzRhR2phanFBN3ltc0xKNlFkRzJ4TUZ1b3JJS2c1RS1tcTZNbUZkQXBsOEctTUFfa0VfRGluLUo3QjNjU04tcFR5TjdDWkN5azBhMllscXZWdHdhM1VmQ0p6Q1hKYzN4U2U3c1hFQV93U1BjcUdZb1N2dUltMUdoeGNlemhBc3pacU5pR0NlR0F0TXByNE5XX3laRjZfM1ZPdENvWFZ0TVNlT2RjaVk3V2JQMG5EVkJzZC1wZmswOEl6YWZ1eEtjV0VZNmFMVkQ0RWVHMU8yOE9aeHdIWGZ5RlVUcdIB1gNBVV95cUxQaEVfazZSck1JVW9MbDF3aUx2R1lQWU9PNUdHaHBOdks4djBGd0Y1TS1obVhHN2J3OER2RWx3b002dUVQY0lXeW9rMnVxYjY0azRVTVZpa3c2cDEyemlNN0w1VC1yR0ZENjRETWt0RGVHWHpGeW5zYUV0Yk92UVp1aEVkMVk2eWZraXh5MVZCSW95TFRoRnRrTGQ3Szl6cHZvTU42SEFpdS00clk2OTZKRjJ4MFQ0cDBKajZodnFXMUZoSW9aLTZCZllTRVlaWm1jTDhXa1J0a0lWUGhxbHJzV2pncjdIeFo2dnNYdEVNZWZPYXdXN3otNjM4X0dobUxkeW9KcnZNWWFzM0Z2a1Z6Uy1pUEtUOWtLVkdDcTZmSWhjVEpYTXd6a05YMEdFOHpfcHdueWN0UE1Ndk9Wdi1jQThOcUNkczQxNGpLcTUxcG5rQmJKR0M4T1kyTDZfYlNIOTFvQ1N1YnBiLVBkS1dlV25SVU5ubmFqRzhYMmVYZnh2RmhfNG5kSjQ1dXBmV1Y1enV3VWZLbVNnbE82YUFfQ1FRYkluVXBlS1prV3hHczRvanZZYUxOU3YzdnkxamIzY1BGTUNBSzBoclgzQ1A3QmNYRGhhZw?oc=5",
-            "published": "Sun, 05 Apr 2026 07:00:00 GMT",
-            "title": "موافقة على زيادة رأس مال \"أفالون فارما\" بـ 150 مليون ريال - العربية"
+            "link": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE9vMFhDTFRRMlJpMFlfUG5pb3NaN1kyWXRuakpFRDZEa3FjbGZ0cG1yZWRxZUd6UmwyTkNJb1RvQlpZMnhwRUh6NlJ0OXltdV9hcEhiSNIBVEFVX3lxTE1ibXdzX08tMXJxdWVOcVR5R3BoR3lPNlIwZE0wWC1tVDlTM19tdDJQWUZhczB6eFN3blpWNm54RjhRNmV1ckpxVHVCMWswMzk1Zlc2NQ?oc=5",
+            "published": "Thu, 09 Jul 2026 07:00:00 GMT",
+            "title": "الأسهم تفقد 45 نقطة.. التداولات 4.1 مليار ريال - عكاظ"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFA4V1phaV9KQ191RDZrUnZnYTlNTENGdHpyRWp6dXRSNGR2R093ejFDZmhKZjJKYzA3VzFZck91NG9GSWZLeUdOckgyZktqQ3k4SFJfOXhrVUhqQWpDR1E?oc=5",
@@ -8675,19 +8687,19 @@
             "title": "4016 Stock Price and Chart — TADAWUL:4016 - TradingView"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE9vMFhDTFRRMlJpMFlfUG5pb3NaN1kyWXRuakpFRDZEa3FjbGZ0cG1yZWRxZUd6UmwyTkNJb1RvQlpZMnhwRUh6NlJ0OXltdV9hcEhiSNIBVEFVX3lxTE1ibXdzX08tMXJxdWVOcVR5R3BoR3lPNlIwZE0wWC1tVDlTM19tdDJQWUZhczB6eFN3blpWNm54RjhRNmV1ckpxVHVCMWswMzk1Zlc2NQ?oc=5",
-            "published": "Thu, 09 Jul 2026 07:00:00 GMT",
-            "title": "الأسهم تفقد 45 نقطة.. التداولات 4.1 مليار ريال - عكاظ"
+            "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQYXoxNHc1YnZPbGgyQ1NaUVp3M2p0MXYzX2w3T0RoMFFuZXNZenJzWkp6QXFCWkFoOUJRZjBtcTNCMXpNM2d1NW8xZnlYbnIydE1uV3duV1FUX0xnWGJYeXZOZ25rbTNKRDNFZ1dkdXRaSGRIRlV2TWFjV2JoeXlGdlFKYTJuMVRMZG1wOTd5WVJZd19MZEkydTk1RXh6VkcwcTc4U3cwdEdHdw?oc=5",
+            "published": "Sun, 10 May 2026 07:00:00 GMT",
+            "title": "أفالون فارما تبدأ 2026 بزخم قوي: نمو الإيرادات والربحية وتوسع التصنيع مع Avalon 4 ودخول مصر - Dawaa News MENA"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTE11SHo0dlI0ODdERVBVRXNhT2gybkIwbXpYVmNPc0kyemdIQktYclVNSjFMUWNFYkoxRjUwaWVCNXM3V19SVHR6Xy1hS3FYbk1ybkw5a0hkLUp5U3hTS0F0Vk13OE9FV3NuOGc?oc=5",
             "published": "Wed, 26 Nov 2025 08:00:00 GMT",
-            "title": "Avalon Pharma signs MoU with Benta SAS to localize innovative products in Saudi Arabia - ارقام"
+            "title": "Avalon Pharma signs MoU with Benta SAS to localize innovative products in Saudi Arabia - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQYXoxNHc1YnZPbGgyQ1NaUVp3M2p0MXYzX2w3T0RoMFFuZXNZenJzWkp6QXFCWkFoOUJRZjBtcTNCMXpNM2d1NW8xZnlYbnIydE1uV3duV1FUX0xnWGJYeXZOZ25rbTNKRDNFZ1dkdXRaSGRIRlV2TWFjV2JoeXlGdlFKYTJuMVRMZG1wOTd5WVJZd19MZEkydTk1RXh6VkcwcTc4U3cwdEdHdw?oc=5",
-            "published": "Sun, 10 May 2026 07:00:00 GMT",
-            "title": "أفالون فارما تبدأ 2026 بزخم قوي: نمو الإيرادات والربحية وتوسع التصنيع مع Avalon 4 ودخول مصر - Dawaa News MENA"
+            "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTFBURGduQTVuTGpiMmNVUDFScF9CbnIwWWttUDhoUHdpRU5uWHZDQ2lwNUViWFktWTRFNWw4ZENaejlaSmxqN3QtMVk5bUllN05wdkJ3bHYyZUlIWjFjTjRyU2tiTExZYlV6MXc?oc=5",
+            "published": "Sun, 05 Apr 2026 07:00:00 GMT",
+            "title": "هيئة السوق توافق على طلب أفالون فارما بزيادة رأس مالها عن طريق أسهم منحة - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           }
         ],
         "label": "positive",
@@ -8695,16 +8707,16 @@
         "score": 1.0,
         "status": "available"
       },
-      "price": 65.3,
-      "priceDate": "2026-09-13",
+      "price": 67.0,
+      "priceDate": "2026-09-14",
       "reason": [
-        "all rules met"
+        "RSI 63.1 outside recovery band 25-60"
       ],
       "rules": [
         {
-          "actual": 56.1,
-          "passed": true,
-          "plain": "RSI 56.1 inside 25-60",
+          "actual": 63.1,
+          "passed": false,
+          "plain": "RSI 63.1 outside recovery band 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -8716,37 +8728,40 @@
           "rule": "trend"
         },
         {
-          "actual": 16.31,
+          "actual": 19.34,
           "passed": true,
-          "plain": "momentum 16.31% >= floor -5.0%",
+          "plain": "momentum 19.34% >= floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
       ],
-      "rules_met": 3,
+      "rules_met": 2,
       "rules_total": 3,
       "short_term": {
         "above_ma": true,
         "horizon": "short",
-        "momentum_pct": 0.31,
-        "rsi": 56.1
+        "momentum_pct": -1.47,
+        "rsi": 63.1
       },
-      "sizing": {
-        "budget_left_after": 42.9,
-        "shares": 7,
-        "spend": 457.1,
-        "weight_pct": 100.0
-      },
+      "sizing": null,
       "trend_streak": {
-        "days": 8,
+        "days": 9,
         "started": "2026-09-06"
       },
-      "triggers": [],
+      "triggers": [
+        {
+          "pct_away": -0.78,
+          "plain": "RSI clears the 25-60 band at 66.48 (-0.8% away)",
+          "reachable": true,
+          "rule": "rsi_band",
+          "trigger_price": 66.48
+        }
+      ],
       "verified": true,
       "volume": {
-        "median_sar": 4707223.0,
-        "ratio": 1.21,
-        "turnover_sar": 5678880.0,
+        "median_sar": 5248621.0,
+        "ratio": 0.68,
+        "turnover_sar": 3548789.0,
         "unusual": false,
         "window": 20
       },
@@ -8765,8 +8780,8 @@
       },
       "delta": {
         "flipped": [],
-        "price_pct": -0.49,
-        "rsi_delta": -2.4,
+        "price_pct": -0.66,
+        "rsi_delta": -2.9,
         "rules_met_delta": 0,
         "trend_flipped": false
       },
@@ -8774,15 +8789,15 @@
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": 1.62,
+      "distance_to_zone_pct": 0.95,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": -13.72,
-        "rsi": 35.4,
+        "momentum_pct": -15.72,
+        "rsi": 32.5,
         "trend": "down"
       },
       "name": "Nahdi Medical",
@@ -8835,17 +8850,17 @@
         "score": 0.6,
         "status": "available"
       },
-      "price": 91.2,
-      "priceDate": "2026-09-13",
+      "price": 90.6,
+      "priceDate": "2026-09-14",
       "reason": [
         "trend down, need up",
-        "momentum -13.72% below floor -5.0%"
+        "momentum -15.72% below floor -5.0%"
       ],
       "rules": [
         {
-          "actual": 35.4,
+          "actual": 32.5,
           "passed": true,
-          "plain": "RSI 35.4 inside 25-60",
+          "plain": "RSI 32.5 inside 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -8857,9 +8872,9 @@
           "rule": "trend"
         },
         {
-          "actual": -13.72,
+          "actual": -15.72,
           "passed": false,
-          "plain": "momentum -13.72% below floor -5.0%",
+          "plain": "momentum -15.72% below floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
@@ -8869,25 +8884,25 @@
       "short_term": {
         "above_ma": false,
         "horizon": "short",
-        "momentum_pct": -2.88,
-        "rsi": 35.4
+        "momentum_pct": -2.84,
+        "rsi": 32.5
       },
       "sizing": null,
       "trend_streak": {
-        "days": 3,
+        "days": 4,
         "started": "2026-09-13"
       },
       "triggers": [
         {
-          "pct_away": 17.61,
-          "plain": "trend flips up at 107.26 (+17.6% away)",
+          "pct_away": 20.51,
+          "plain": "trend flips up at 109.18 (+20.5% away)",
           "reachable": true,
           "rule": "trend",
-          "trigger_price": 107.26
+          "trigger_price": 109.18
         },
         {
-          "pct_away": 11.98,
-          "plain": "6-mo momentum clears -5.0% at 102.13 (+12.0% away)",
+          "pct_away": 12.73,
+          "plain": "6-mo momentum clears -5.0% at 102.13 (+12.7% away)",
           "reachable": true,
           "rule": "momentum_floor",
           "trigger_price": 102.13
@@ -8895,9 +8910,9 @@
       ],
       "verified": true,
       "volume": {
-        "median_sar": 13093169.0,
-        "ratio": 0.67,
-        "turnover_sar": 8745259.0,
+        "median_sar": 12445459.0,
+        "ratio": 0.46,
+        "turnover_sar": 5675909.0,
         "unusual": false,
         "window": 20
       },
@@ -8916,8 +8931,8 @@
       },
       "delta": {
         "flipped": [],
-        "price_pct": -1.25,
-        "rsi_delta": -3.4,
+        "price_pct": -1.71,
+        "rsi_delta": -4.0,
         "rules_met_delta": 0,
         "trend_flipped": false
       },
@@ -8925,15 +8940,15 @@
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": -8.63,
+      "distance_to_zone_pct": -10.19,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": -29.25,
-        "rsi": 32.1,
+        "momentum_pct": -29.38,
+        "rsi": 28.1,
         "trend": "down"
       },
       "name": "Lumi Rental",
@@ -8948,32 +8963,32 @@
           {
             "link": "https://news.google.com/rss/articles/CBMisAFBVV95cUxQWGtVZF96empvNldFT29lRjd6bXA1OUNSZm1UamVGck93MElLY2NQbjlOTnRhWDFCNUJEd29ERUhDUFJvc0Z4NmI4VGhKcWVabDdHbTV4dTN1X0xQSHA5d0NoSjYwX1FGbHl0Ym9RekxVSl9FMTVVblN5ZFczYnRseE5ILWM4M1M3MFhBUlNhMEQ5eTF2bEJiNnJmWjZyOTA0d2NzbGZrREdxcnVGSE10Yg?oc=5",
             "published": "Wed, 25 Feb 2026 08:00:00 GMT",
-            "title": "Lumi Rental profit rises 10% in 2025 on leasing growth, stronger pricing - arabnews.com"
+            "title": "Lumi Rental profit rises 10% in 2025 on leasing growth, stronger pricing - Arab News"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxOMWlkWmE2aFZoMmJjZ2hVWkJtMnl0anVDTmtpOERKYkI1UTBaLU55Wnl1UUZVS1ZXLWJoYXN2RzRKaXdvdzVxMDVpb3hmSExMSWhPbWk2b3dYWjRrbnBLTURXeWQwYXVZczRUTFdyMkFfSkt3N1d2YmRqQUUxUno4aUsxdVQyaHJ1N0x4UHVTVXBxRHI1M0hNRS1VTVA5MnVZT3dqckZGUE9XajgybDRvbmJiUTRoTmNHYjhGalpsYnFUOEQ5?oc=5",
             "published": "Sun, 19 Apr 2026 07:00:00 GMT",
-            "title": "Saudi Arabia shares lower at close of trade; Tadawul All Share down 0.78% - Investing.com India"
+            "title": "Saudi Arabia shares lower at close of trade; Tadawul All Share down 0.78% - in.investing.com"
+          },
+          {
+            "link": "https://news.google.com/rss/articles/CBMidEFVX3lxTFBOX0lmZHhqY21HczRSSUswdm0zcGNLNlFfT2gxX1Y3R0NmNW1MWnc2MURuWU44VmxhMloyYTRLbEM0M2lLMmN4eDdINGM0UnJOai1nY3VfVVNZVmVselZ1UWZlbUJXQTBrY2NjQXdjQWpvTUNl?oc=5",
+            "published": "Sat, 18 Apr 2026 07:00:00 GMT",
+            "title": "Saudi Arabia Stock Market 2025: Tadawul Exchange, IPO Pipeline, MSCI Inclusion and Foreign Access - vision2030.ai"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiYEFVX3lxTFBYb2duMkh6NzU2eWZSeGpjamJmLWxBLVFHcHhha2QzRTlCNHdXODRpWmVJMklEYTNNdjZ6djRibkdnemRUN2dBbFZVQUJqT2RHOVZ5Q3M2c3hOcWZJemUxTw?oc=5",
             "published": "Fri, 22 Dec 2023 13:45:50 GMT",
-            "title": "LUMI profile | 4262 | TADAWUL | TASI - ارقام"
+            "title": "LUMI profile | 4262 | TADAWUL | TASI - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxQMENFUG9RY0pnR1R1SGxkLUU2clB4Y2ppNkc2d1Q4elRURmRCWXZBUGo2WElzT0hLZ2JWV3dOSmVmY0hKSjNXdTRiQUdFTDhidjVUZGhTdHUzdnptaWhxbWFmenMxamh0R0N0OFJPQk81OV84SHVFUzVVd0tkc2FBS2NST2l5SkRIZnBWQW5BdDIzZU9QX0ltcVptQkpYNEFLNGM4?oc=5",
             "published": "Thu, 12 Oct 2023 07:00:00 GMT",
-            "title": "EFG Hermes advises on ADES Holding’s $1.219bn IPO on Tadawul - Dailynewsegypt"
+            "title": "EFG Hermes advises on ADES Holding’s $1.219bn IPO on Tadawul - dailynewsegypt.com"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE1YTmVSX0FVejRReloyUlhzWlRvRERHbWZDczJZZndDRndPUlJycUdTY0xuVUVHM2pNUUthWHpqYzdsYzJLa3pTUHNzSF9SRzctRG53NzZNSnBpMXcwVnc?oc=5",
             "published": "Thu, 21 Sep 2023 17:36:05 GMT",
             "title": "4262 Stock Price and Chart — TADAWUL:4262 - TradingView"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxPTjZpbkZVZmtyd2ZDMEZTSkZ3bU5UV3JlTWRhdjJadXVFS1NvNUNtSWVtNGVrRFFuUlhqMlBjcEdxb2JoUUhEN0RWX1VScnQ2anJ2Y3VnaVhCb0lUUlV5SUVqYUZBVkFkdy1sNURmNDBndFZENlhRdk96T2ZOR3ZZY2dRNGVrVXU5WXpRMFY2X3Y5X3JrR2NONg?oc=5",
-            "published": "Mon, 24 Feb 2025 08:00:00 GMT",
-            "title": "Closing Bell: Saudi main index closes in red at 12,319 - Arab News PK"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQcGNzWk5lUmY3djc2cWJFMWYyZ3BjUE1ZUXByRXE2cVJ5b1RhalhpT2FfLS11bzU0REFlQkdzTjBSNlBHcURwaHJ0cnE0aXdjWUhCLTBFV215OVpIYi1qa1dGM2w3SlpWQ3FOdjR5Ung4dU1YUFMxY2FudjNpSlp4am1mVzFhZXp4Y1R6TDhLNHhrcVVvUUJF?oc=5",
@@ -8986,17 +9001,17 @@
         "score": 1.0,
         "status": "available"
       },
-      "price": 26.9,
-      "priceDate": "2026-09-13",
+      "price": 26.44,
+      "priceDate": "2026-09-14",
       "reason": [
         "trend down, need up",
-        "momentum -29.25% below floor -5.0%"
+        "momentum -29.38% below floor -5.0%"
       ],
       "rules": [
         {
-          "actual": 32.1,
+          "actual": 28.1,
           "passed": true,
-          "plain": "RSI 32.1 inside 25-60",
+          "plain": "RSI 28.1 inside 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -9008,9 +9023,9 @@
           "rule": "trend"
         },
         {
-          "actual": -29.25,
+          "actual": -29.38,
           "passed": false,
-          "plain": "momentum -29.25% below floor -5.0%",
+          "plain": "momentum -29.38% below floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
@@ -9020,12 +9035,12 @@
       "short_term": {
         "above_ma": false,
         "horizon": "short",
-        "momentum_pct": -6.47,
-        "rsi": 32.1
+        "momentum_pct": -8.0,
+        "rsi": 28.1
       },
       "sizing": null,
       "trend_streak": {
-        "days": 23,
+        "days": 24,
         "started": "2026-08-02"
       },
       "triggers": [
@@ -9037,8 +9052,8 @@
           "trigger_price": null
         },
         {
-          "pct_away": 32.23,
-          "plain": "6-mo momentum needs a +32.2% move — beyond ±25%",
+          "pct_away": 34.53,
+          "plain": "6-mo momentum needs a +34.5% move — beyond ±25%",
           "reachable": false,
           "rule": "momentum_floor",
           "trigger_price": 35.57
@@ -9046,9 +9061,9 @@
       ],
       "verified": true,
       "volume": {
-        "median_sar": 3301475.0,
-        "ratio": 0.4,
-        "turnover_sar": 1327865.0,
+        "median_sar": 3025840.0,
+        "ratio": 0.71,
+        "turnover_sar": 2145659.0,
         "unusual": false,
         "window": 20
       },
@@ -9067,8 +9082,8 @@
       },
       "delta": {
         "flipped": [],
-        "price_pct": 2.55,
-        "rsi_delta": 6.3,
+        "price_pct": -2.18,
+        "rsi_delta": -11.2,
         "rules_met_delta": 0,
         "trend_flipped": false
       },
@@ -9076,15 +9091,15 @@
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": 14.99,
+      "distance_to_zone_pct": 12.48,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": 22.71,
-        "rsi": 73.4,
+        "momentum_pct": 20.04,
+        "rsi": 62.2,
         "trend": "up"
       },
       "name": "Fakeeh Care",
@@ -9097,6 +9112,16 @@
             "title": "Dr. Soliman Abdul Kader Fakeeh Hospital Co. Trade Ideas — TADAWUL:4017 - TradingView"
           },
           {
+            "link": "https://news.google.com/rss/articles/CBMia0FVX3lxTE9qakpwbVI0aXZoR2J3TnVZa3d5QlpRdmVCQWgxVHJwRWZQV1VaMW5MTTZPbVZHeUhGRHN4bFVkS0U2c0xqRXgwTHdXSmZ0bnpkUVU3Q2NabGZmeVQ4emhsWndldmNZejh4Tnhn?oc=5",
+            "published": "Mon, 08 Jun 2026 07:00:00 GMT",
+            "title": "June 30: Fakeeh Care Shareholders to Vote on 33% Dividend for 2025 - صحيفة مال"
+          },
+          {
+            "link": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQblRYRjJWTnlDX2F6a2pNZmduaFJ6QldUODd2Wnc5MlcyRkVUQUVIalVsY3RycGFNTElSR3doNUhpTDlMa1N5VU1SampCTVhrMVpFUC1VYWdFOHotako2LXJ4Uk9kME1nWkhXS3RpenZxV2t2cE5NWU5CTmRZYUc1STZFT1JiUHJCZy1Pejc2Y3ZPZw?oc=5",
+            "published": "Thu, 07 May 2026 07:00:00 GMT",
+            "title": "Fakeeh Care moves to full ownership of Al Fagih - EnterpriseAM"
+          },
+          {
             "link": "https://news.google.com/rss/articles/CBMiygJBVV95cUxPTVI0cUp2ZWRfSVhzTmhkQVZJVmpGV2pramNpcFdjUlBDUk1od3VheHlfbzJLTU50WjFQUlRIWFpHV29oNUdiaVRKZExEMmtSUllaQmo5bnpzWjh2M2tfZ21HVzdVLW14WVVYZ2g0ZHBtRTJqeldHaHJuUzNFSG5VM29lc1ZkR2ZWcnBQa2tZcVdiQWZKQjREOVh5TzVnQzB1RnA5eDVzTXgzX3RIN3NoaGlfTTRlNHJFWkxiS1VXUW9JV2lXY29EVjZ6UHhlelNDMVVkc282Nm5UY3VrQ0dZTWk3dFlNWkZvUGdaYjZlTE5LTU1leXZQOG0yTVE1aHE0a19BRlBLZzVhQTBWZ3RhMk5rWVpxZWhwZGxlS0hGblJETEVLTTN6elZ1UVZfaTRPRExEUDNRXzVPTHlzLUg2eWRFT2VPbGkzUWc?oc=5",
             "published": "Mon, 14 Sep 2026 12:35:33 GMT",
             "title": "مستشفى الدكتور سليمان فقيه بجدة ينضم إلى التحالف العالمي للإنتان للمساهمة في تطوير إطار عالمي جديد لاعتماد المستشفيات في رعاية الإنتان” التسمم الدموي الجرثومي “ - 25h.app"
@@ -9107,9 +9132,9 @@
             "title": "Dr. Soliman Abdel Kader Fakeeh Hospital Company's (TADAWUL:4017) largest shareholder, CEO Mazen Soliman Abdel Fakeeh sees holdings value fall by 4.0% following recent drop - simplywall.st"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMia0FVX3lxTE9qakpwbVI0aXZoR2J3TnVZa3d5QlpRdmVCQWgxVHJwRWZQV1VaMW5MTTZPbVZHeUhGRHN4bFVkS0U2c0xqRXgwTHdXSmZ0bnpkUVU3Q2NabGZmeVQ4emhsWndldmNZejh4Tnhn?oc=5",
-            "published": "Mon, 08 Jun 2026 07:00:00 GMT",
-            "title": "June 30: Fakeeh Care Shareholders to Vote on 33% Dividend for 2025 - صحيفة مال"
+            "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxPZXVVV2tzc3ZOOV9uZEJfdFBOZEdyc21NLVQwLUN6dWFCVkFMZUN3NEI0dVZDaEpmNmxxLVYxOTNPZkQweU1aeXpSV2VBNWgxc2gzZ0tLdW82QThqdmo3LU1TSWI2X1F5cVBiazV3Q2VZdUU1djlVd24tZDFrMWlmMWtFQ2x2ZTJ2NkUwQzU3dzJRTl9HQkhvWmF2MlZldw?oc=5",
+            "published": "Thu, 10 Oct 2024 23:12:13 GMT",
+            "title": "معلومات وتحديثات شركة مستشفى الدكتور سليمان عبدالقادر فقيه - الشرق بلومبرغ"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQT29Dc1NsSVB0a3Jxdm5HU2ExeXM4Z3ViZFJGUFpzRGRsdjNFZ1RodVhHQTl4WE5KUGJndlh4TUhrbk1XUXFHWlFrMDRzUmhjMTJvdW1lbmxMeXB5cnhUOUxjaVZtVi1kdU5PbkNubG11RE1EVGJfX2V5S3hxbEthbVg4aE9hMHhhNzNoSW5n?oc=5",
@@ -9117,36 +9142,26 @@
             "title": "White & Case advises Fakeeh Care Group on IPO - White & Case LLP"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxPZXVVV2tzc3ZOOV9uZEJfdFBOZEdyc21NLVQwLUN6dWFCVkFMZUN3NEI0dVZDaEpmNmxxLVYxOTNPZkQweU1aeXpSV2VBNWgxc2gzZ0tLdW82QThqdmo3LU1TSWI2X1F5cVBiazV3Q2VZdUU1djlVd24tZDFrMWlmMWtFQ2x2ZTJ2NkUwQzU3dzJRTl9HQkhvWmF2MlZldw?oc=5",
-            "published": "Thu, 10 Oct 2024 23:12:13 GMT",
-            "title": "معلومات وتحديثات شركة مستشفى الدكتور سليمان عبدالقادر فقيه - الشرق بلومبرغ"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMib0FVX3lxTE9HUG5uTGk5dElCV2czZkFSZE1zQzB4bTVBRjBSbjhPRUsxMC1YaFJUY182X2J5R2pzMFFieDZVcm9YMExpZ2tpVzhHOWFWWTBaSVhLU01GeGNsU3pvUDItOXR1Nm1TbVlaRlVwcGRxaw?oc=5",
-            "published": "Tue, 30 Jun 2026 07:00:00 GMT",
-            "title": "Ex-dividend date today for 6 Saudi stocks - ارقام"
-          },
-          {
             "link": "https://news.google.com/rss/articles/CBMiUEFVX3lxTE90TnFWaXdicjFOM2R6Z3lhUFk0YkcxaWdweTZLYjYyRzFsMUlJNFg1MnE5aTJLeW11OHBFWVN1Q3F2d2N5SmwwRk5tU0RqSmpw0gFUQVVfeXFMUGotZkhQRkhITGNtcGVNMUNRdUZhTjNrd3lXQ3hEMXZ0T1VBVTZZNWZVV29UVWRwdk9vazdFUHdnVlFlajA0MFhHZDBTZm5OMVluaGRX?oc=5",
             "published": "Sun, 23 Jun 2024 07:00:00 GMT",
             "title": "عيادات مستشفى الدكتور سليمان فقيه بمشعر منى تقدم خدماتها لأكثر من 2000 حاج خلال حج هذا العام - عكاظ"
           }
         ],
-        "label": "neutral",
+        "label": "negative",
         "ok": true,
-        "score": 0.0,
+        "score": -0.33,
         "status": "available"
       },
-      "price": 39.44,
-      "priceDate": "2026-09-13",
+      "price": 38.58,
+      "priceDate": "2026-09-14",
       "reason": [
-        "RSI 73.4 outside recovery band 25-60"
+        "RSI 62.2 outside recovery band 25-60"
       ],
       "rules": [
         {
-          "actual": 73.4,
+          "actual": 62.2,
           "passed": false,
-          "plain": "RSI 73.4 outside recovery band 25-60",
+          "plain": "RSI 62.2 outside recovery band 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -9158,9 +9173,9 @@
           "rule": "trend"
         },
         {
-          "actual": 22.71,
+          "actual": 20.04,
           "passed": true,
-          "plain": "momentum 22.71% >= floor -5.0%",
+          "plain": "momentum 20.04% >= floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
@@ -9170,29 +9185,29 @@
       "short_term": {
         "above_ma": true,
         "horizon": "short",
-        "momentum_pct": 4.95,
-        "rsi": 73.4
+        "momentum_pct": 1.53,
+        "rsi": 62.2
       },
       "sizing": null,
       "trend_streak": {
-        "days": 8,
+        "days": 9,
         "started": "2026-09-06"
       },
       "triggers": [
         {
-          "pct_away": -2.71,
-          "plain": "RSI clears the 25-60 band at 38.37 (-2.7% away)",
+          "pct_away": -0.49,
+          "plain": "RSI clears the 25-60 band at 38.39 (-0.5% away)",
           "reachable": true,
           "rule": "rsi_band",
-          "trigger_price": 38.37
+          "trigger_price": 38.39
         }
       ],
       "verified": true,
       "volume": {
-        "median_sar": 3721711.0,
-        "ratio": 3.45,
-        "turnover_sar": 12855586.0,
-        "unusual": true,
+        "median_sar": 4158141.0,
+        "ratio": 0.94,
+        "turnover_sar": 3912051.0,
+        "unusual": false,
         "window": 20
       },
       "yahoo_name": "Dr. Soliman Abdel Kader Fakeeh"
@@ -9210,8 +9225,8 @@
       },
       "delta": {
         "flipped": [],
-        "price_pct": -1.41,
-        "rsi_delta": -4.5,
+        "price_pct": -1.03,
+        "rsi_delta": -3.0,
         "rules_met_delta": 0,
         "trend_flipped": false
       },
@@ -9219,15 +9234,15 @@
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": 5.26,
+      "distance_to_zone_pct": 4.18,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": 3.36,
-        "rsi": 51.5,
+        "momentum_pct": 1.63,
+        "rsi": 48.5,
         "trend": "flat"
       },
       "name": "Jahez",
@@ -9247,12 +9262,12 @@
           {
             "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTE9lQ0l6MV9tdVUzR1d5OXNqT0lzaUFmaDlra25hdU52RnNhNlBiajQ3WlA2eXM5ZDhiVVI0dmhpRkx3ZWZ0VnZzUTBKVm1mUnQxcHZwLWdBWEFuek9GY2xCd0p6OENEd2tySUE?oc=5",
             "published": "Thu, 18 Jun 2026 07:00:00 GMT",
-            "title": "59.4M shares traded at SAR 2.2B in Tadawul auction - ارقام"
+            "title": "59.4M shares traded at SAR 2.2B in Tadawul auction - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTE1BNFNGVFgzbEtGaTdRQ2NRaDNSYlNmVm1TZFN3WEhfakRtMG8zX0k4b3RwcnY4aGYtakE0TUpsbTJObVpaaEpqR0c1UlBUTFNqOWpTdGdXNkhoLWI3TDNnUVNadWRfUVc2cmc?oc=5",
-            "published": "Mon, 07 Sep 2026 10:45:07 GMT",
-            "title": "المتحدة للأوراق المالية تُعلق على نتائج جاهز وتخفض توصيتها للسهم - ارقام"
+            "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTE9wNDVVVW5ISnhZUDJkSzZVcVRUZGZKY2R0TElWaTU5ZUpPVHdiUl9ROGFwUVhoaldyVHZKSmhvcXRIT2htUzZQSzF3cGlFMGxJaGpyem4xa3dGSHRjN2hMeENYbmRXSk9rSmc?oc=5",
+            "published": "Mon, 31 Aug 2026 07:00:00 GMT",
+            "title": "جاهز: تخفض مستهدف الأرباح المعدلة لعام 2026 - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMisgFBVV95cUxNMmlSZy1VWFZiS0RMemJ0bms2WmVJdFVhcVA3U21Rc0lYQmpFYzdiWWd3UVljdkhhLUx6ODZXR3lGTUxEc0lmdl9ra1V2ck4yMlpOa090ck1XQ2U1TEUxZS1HQWtXMFV1NmhWNFctQ1puam5IMW1vTkNIQ0xkeHJKTTZraERSMUdvMkkyTWdWZmpfS1ItdENPVGxJWnpHUUxpWm9nbVB6dnlsRm9wWWt2WkhB?oc=5",
@@ -9260,9 +9275,9 @@
             "title": "How Jahez Built Saudi Arabia's AI-Ready Data Platform on Snowflake - Snowflake"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMi5gNBVV95cUxPU1pKVmpsQWU3UXdDbElGXzYxcGo2NWJmdzhDVUpoZFN1TktiOW9PRmdfWGZyaGU2cTdFa3VGOHA0NWUxanMtRDdXb2Zqc3BtOGRWM05zbGE3dG4wQ05US0dHUzUyQXppbXJTVVQwbGF1YXp4R2dnSmpfTk03YXJjd21UbzJfYVh1c3lHYnpBRkY4RTNQLS1qQnJaSE5GM1lmcF9LMXRSNGJDMGphWkE5cmhRc01kWjB0dVIzTWxjQU5LVUdlbEV1anFmMER4eGJpdTlXemNZd3RETWZCeERPV3VjMXVxS1h5OGxfbDhweVlKSU91QnJFZjBfVThhRTFobk4yVkxhNzRXOUswZEpxa2F3TVZmcUdaY0tSb0J3bzZjNm9QVkcydl9LcHJ1MEdGNzdjakl5MzhES1lJRkNqMVp6WFdsMzBkZU1EYVU0ZVM1SUdWSm5kclFKeWhIN1VDbEFLQkRnTmJqQTNmNzBTYW9oNTR1M01QUkdaRWoxWExud1B3bWpfTzB1djQ1ekozRUhwU3N0Z05CelNMbEdjdlhDd21nMGF6aUVvSWhnYWFUMFJhc1ZCU2NRWXZqblRKV1R6NmJUcXdTUUVmazk2UGpWVjFYUDI5MGI5UTNiWTZSV2dfYUE?oc=5",
-            "published": "Mon, 10 Aug 2026 07:00:00 GMT",
-            "title": "«جاهز» تتحول إلى خسارة 4.6 مليون دولار رغم نمو الإيرادات 34.5 % - الشرق الأوسط"
+            "link": "https://news.google.com/rss/articles/CBMi7ANBVV95cUxQLVRzejd5a1dtVF9weU51bEpMTG0xMXNYS3ViZXFHLXFIbDlHanY5dWg3RHJsdVB0eVZJM1NrbG9MVlJ3b0N2R1Z5eGcwS0lWX2RlVmZlTFlmX0tscHN0T3MweHdJQXk3dnotTWdKQTNCYTI0enJFWGhfRkRJYUd2ZWtuc2NxSDdHdk9FaXhWMU1kTFpSaG93VFl3Q3ozT2xtTDhQWEJPMXhtQ3Nha296dS1tSTJ6MzhIX2ItU0VzUUpEVHdELUM4Nk9UZmpGMkFzUnMxMFB2ZVRCWlRiMkpnZTVnMnM1TF94NnpLdkN0WURraWZIOTNuUjlOTWw4SnRwbWFfS2xSRklBSEIwV2dRc0V1QmIxRmllWHNPNFc5QV93eXhla2hWa1JJWVVITkJ2MzQ1bXVjdFl5NHBMVEpxelJ2Q0pTdG51dTVqNGVwZEQ2a01wV3ZzQVA1RGZSTE51V3V5dGtiMldXRnJjOV9Ldkt5TTVjRktsN0lTQ0FjdnplTTZaRmVEdDF1d0hTNXBheFRkSXY4UkFSNVhEbGRCVUVxV01pWWk4ZnVvNHdObGV2WktHT0tVcm1Cd2xOZVZMbTB2Q2dJam5feDNSWUZoYnpva3pSRmJoeE14djM1dVhsWWRsWWJwRFdxWknSAfIDQVVfeXFMTmc2d19NTzY4OUt1dzd6Y19TQVk0cU1lb1R5MUM0ZUFVNi12ZVROck9JeVVJUDBHZk45OW5jUjdIeVItVjBGZV94WjZVekVGRkNmT2NPTF9hUmR6VktFZk5wWnVmelJKSFNjNkowcFlJckNYMEZOZU42MjduenlXaV9RX3VIOGxaVW9vUzRuUDBzVGhXY0ZXdmczMFNlV0N2WHBNSi1BcUx5UEg2dGNoc243VHlxbkJjZVp2Q0pnMzhULWRTVk0tcm95R0FzZlpCT2ZObjRrQTBmdWlHbVJNRmdjbnV3UnViRmhkaV8wZE4zNnVudThER3FveERhZ0JjSHl6SHY0UGdHUTEwbW5LYXFPLVJZdWJ1YmZUMHBkRWZyTGR3SlFXM05seklfLVd5UVBJWjVyeUExMTNPdDhFSEhjeTlLR0V0QzQ2SUtrd0VPVGktaFNmQzlPVWYzYm9NNEtnNl9uY2d3SUQ0bHhkdVFMTjl5d1pNcERacXAtMzZLZzFRbUU2OTRyc3VuOWM1c3hydnlJZHA5MVBySjNONktyeFZRWU93cDdvclRyeDNSZ1JJc1JJSmtIUG1TTFE5bG5BTWdyUTRQUzRrb1Z0SmkxT3NIS0xOaEY3dWNTeGpaQUpnOHF5ZE9uamk4OUxxN0Nn?oc=5",
+            "published": "Mon, 11 May 2026 07:00:00 GMT",
+            "title": "\"جاهز\" تتكبد خسارة فصلية بـ 9.2 مليون ريال رغم قفزة الإيرادات - العربية"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMioAJBVV95cUxQa2dROEFRVHE0LTVKVS1zNWk5YmJBbGQtUlZHSlZkWHh1SjE2RFJiQ3piZjRFQnlhWFZRUDlMTlZfOFBUYUhNWUUtTmcwOFM2dVdWVy1sRkYyd1ZJeUxNUkhZaHROVDFHb0VuMmZBdENFMjk5NFgzbmxJT0VYMzZSTGdjeXZncjNvZWdGMjk1cl8xZ1JZY2xiaUVMS3A2VDhaZmEwRjBYcVNLSUQ3Q191WjA4OTRGZjVRYW1wMXBmLUtzd2duMVlOVmZPTm1sNDhJUmx6aHh4aEI0S25RU3A5UktNVXNIUXU4Vk9wc3JuVHhCdUZRbVpmYmxlQ3B3dXRRWm0wS3gya29QeGkwenF4Yl9XRWUxS3lfcTRKYWJ4RTLSAaYCQVVfeXFMTVk3QVZTbTJwTmtfS2hFVl9yellwLVBQdTF4ak1fdkZTMXowVk9fZk5rWF83bHdDSFU3U05hSmdZNUxHTm9XR0xLbzdfdVcxZkxNZnlxWTg1TlZnbmYyZGhkdzQ0WkdtYklBeEZ5bFpmSWM4Vl9wODRKa3pySGZLaHMwTG9OLUgwZXE1N3pqMXBCVk5FSmVmZnFLeUVIT2lERERDTzBYekZ4djFEclJKWG1Edk5MZTgzQXdIZXZnT0xRd0tVVl91NjhUc1ZHUWdFR0RyMWxLQUZ1VlkwekdpTXpMZkV6WnB1Q2NrN0g5VThLdmk2bFBWWlpleWd0OWtkM0k1UFVoTVpmS1NDaE04d29rQmJIdmhSWHZuYWt5LWd1NkJScDh3?oc=5",
@@ -9270,26 +9285,26 @@
             "title": "Investors Don't See Light At End Of Jahez International Company for Information Systems Technology's (TADAWUL:6017) Tunnel And Push Stock Down 25% - simplywall.st"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMi7ANBVV95cUxQLVRzejd5a1dtVF9weU51bEpMTG0xMXNYS3ViZXFHLXFIbDlHanY5dWg3RHJsdVB0eVZJM1NrbG9MVlJ3b0N2R1Z5eGcwS0lWX2RlVmZlTFlmX0tscHN0T3MweHdJQXk3dnotTWdKQTNCYTI0enJFWGhfRkRJYUd2ZWtuc2NxSDdHdk9FaXhWMU1kTFpSaG93VFl3Q3ozT2xtTDhQWEJPMXhtQ3Nha296dS1tSTJ6MzhIX2ItU0VzUUpEVHdELUM4Nk9UZmpGMkFzUnMxMFB2ZVRCWlRiMkpnZTVnMnM1TF94NnpLdkN0WURraWZIOTNuUjlOTWw4SnRwbWFfS2xSRklBSEIwV2dRc0V1QmIxRmllWHNPNFc5QV93eXhla2hWa1JJWVVITkJ2MzQ1bXVjdFl5NHBMVEpxelJ2Q0pTdG51dTVqNGVwZEQ2a01wV3ZzQVA1RGZSTE51V3V5dGtiMldXRnJjOV9Ldkt5TTVjRktsN0lTQ0FjdnplTTZaRmVEdDF1d0hTNXBheFRkSXY4UkFSNVhEbGRCVUVxV01pWWk4ZnVvNHdObGV2WktHT0tVcm1Cd2xOZVZMbTB2Q2dJam5feDNSWUZoYnpva3pSRmJoeE14djM1dVhsWWRsWWJwRFdxWknSAfIDQVVfeXFMTmc2d19NTzY4OUt1dzd6Y19TQVk0cU1lb1R5MUM0ZUFVNi12ZVROck9JeVVJUDBHZk45OW5jUjdIeVItVjBGZV94WjZVekVGRkNmT2NPTF9hUmR6VktFZk5wWnVmelJKSFNjNkowcFlJckNYMEZOZU42MjduenlXaV9RX3VIOGxaVW9vUzRuUDBzVGhXY0ZXdmczMFNlV0N2WHBNSi1BcUx5UEg2dGNoc243VHlxbkJjZVp2Q0pnMzhULWRTVk0tcm95R0FzZlpCT2ZObjRrQTBmdWlHbVJNRmdjbnV3UnViRmhkaV8wZE4zNnVudThER3FveERhZ0JjSHl6SHY0UGdHUTEwbW5LYXFPLVJZdWJ1YmZUMHBkRWZyTGR3SlFXM05seklfLVd5UVBJWjVyeUExMTNPdDhFSEhjeTlLR0V0QzQ2SUtrd0VPVGktaFNmQzlPVWYzYm9NNEtnNl9uY2d3SUQ0bHhkdVFMTjl5d1pNcERacXAtMzZLZzFRbUU2OTRyc3VuOWM1c3hydnlJZHA5MVBySjNONktyeFZRWU93cDdvclRyeDNSZ1JJc1JJSmtIUG1TTFE5bG5BTWdyUTRQUzRrb1Z0SmkxT3NIS0xOaEY3dWNTeGpaQUpnOHF5ZE9uamk4OUxxN0Nn?oc=5",
-            "published": "Mon, 11 May 2026 07:00:00 GMT",
-            "title": "\"جاهز\" تتكبد خسارة فصلية بـ 9.2 مليون ريال رغم قفزة الإيرادات - العربية"
+            "link": "https://news.google.com/rss/articles/CBMiSkFVX3lxTE1ITjZjY01qXzVRLWplalhDSHAwd01JNDVMMjBNeDhOUGQ5LVBQVURtUDJHdndCMlRmQjJuOEZGQ0daRHJMWG5YZVN3?oc=5",
+            "published": "Wed, 19 Nov 2025 08:00:00 GMT",
+            "title": "\"البلديات والإسكان\" و\"جاهز الدولية\" تُبرمان مذكرة تعاون لتعزيز التوطين وتنمية الكفاءات الوطنية في القطاع البلدي - momah.gov.sa"
           }
         ],
-        "label": "negative",
+        "label": "neutral",
         "ok": true,
-        "score": -0.33,
+        "score": 0.0,
         "status": "available"
       },
-      "price": 12.6,
-      "priceDate": "2026-09-13",
+      "price": 12.47,
+      "priceDate": "2026-09-14",
       "reason": [
         "trend flat, need up"
       ],
       "rules": [
         {
-          "actual": 51.5,
+          "actual": 48.5,
           "passed": true,
-          "plain": "RSI 51.5 inside 25-60",
+          "plain": "RSI 48.5 inside 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -9301,9 +9316,9 @@
           "rule": "trend"
         },
         {
-          "actual": 3.36,
+          "actual": 1.63,
           "passed": true,
-          "plain": "momentum 3.36% >= floor -5.0%",
+          "plain": "momentum 1.63% >= floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
@@ -9311,30 +9326,30 @@
       "rules_met": 2,
       "rules_total": 3,
       "short_term": {
-        "above_ma": true,
+        "above_ma": false,
         "horizon": "short",
-        "momentum_pct": -0.08,
-        "rsi": 51.5
+        "momentum_pct": -3.86,
+        "rsi": 48.5
       },
       "sizing": null,
       "trend_streak": {
-        "days": 4,
+        "days": 5,
         "started": "2026-09-10"
       },
       "triggers": [
         {
-          "pct_away": 8.57,
-          "plain": "trend flips up at 13.68 (+8.6% away)",
+          "pct_away": 10.1,
+          "plain": "trend flips up at 13.73 (+10.1% away)",
           "reachable": true,
           "rule": "trend",
-          "trigger_price": 13.68
+          "trigger_price": 13.73
         }
       ],
       "verified": true,
       "volume": {
         "median_sar": 9085637.0,
-        "ratio": 0.41,
-        "turnover_sar": 3763482.0,
+        "ratio": 0.19,
+        "turnover_sar": 1716857.0,
         "unusual": false,
         "window": 20
       },
@@ -9353,8 +9368,8 @@
       },
       "delta": {
         "flipped": [],
-        "price_pct": 0.71,
-        "rsi_delta": 3.2,
+        "price_pct": -0.41,
+        "rsi_delta": -1.9,
         "rules_met_delta": 0,
         "trend_flipped": false
       },
@@ -9362,15 +9377,15 @@
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": 4.49,
+      "distance_to_zone_pct": 4.06,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": 3.03,
-        "rsi": 50.9,
+        "momentum_pct": 2.61,
+        "rsi": 49.0,
         "trend": "down"
       },
       "name": "SAL Logistics",
@@ -9393,9 +9408,9 @@
             "title": "Saudi Arabia stocks higher at close of trade; Tadawul All Share up 0.23% - Investing.com"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxOcXpvY2xmcElaczZ2OFVfbVdoazBsZEo0U3ZCZEdGZ1BsdmRJbkZJekZvNkpTTHpVUXNSdVJONW9UWndjVDFjQV8xTXVtQ1VkcUREWF9acUVMdTFYRVFfVW84OVNfeS0tdEk3UE92eDgtNGxNRlhuQ1FVOXVBZWMzTGJYbjE1OXRJYzlwTXZOdV9xQXFJaDhuUEpjNUhzRFdkZDJv?oc=5",
-            "published": "Sun, 13 Sep 2026 16:30:51 GMT",
-            "title": "سال للخدمات اللوجستية وهواوي توقعان مذكرة تفاهم لتعزيز اللوجستيات الرقمية السعودية - IndexBox"
+            "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTE55LVlSWXpLSnRubUlTMlRZMGpTR2MzUThmeGVoMGJocHhNUHRvZ21wTm1ub3FzN3phZkpGVVVRNjUzcGhScGJhdW1ZVEFWeWNESmR3U1hCM0UyVTJab2lVZ0FDTXhpLVQ1cTZfSA?oc=5",
+            "published": "Sat, 18 Jul 2026 07:00:00 GMT",
+            "title": "SAL signs an MoU with King Salman Energy City Dry Port (SPARK Logistics) to strengthen logistics and industrial cooperation - صحيفة مال"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMi7wFBVV95cUxPLTFUNi1YYWFLMC1fMElQeVFrbmJVNTJSeW9QWUVnYWFGZnNiN2xWY0RBYVU2Z2FaaW9fdEZpNmNVZlhRZlMtcGNvaFRndjJLM2wtTXIwTEV5dWFIVHVLSFl0MjNORk4yNENCZ0RDMjJDeUtaYnZSOXFIc2pvQ0xJTDFZMmxUdHRxNFhYU09NNnBSaVItQTBnWVduRW9DUXpfRWpUSG8wLThqb0NWUUJGbFZHWmRQMFprTWtiOXY5ZDJhdmVFMDNPR1RfVVVWSXBhNGhzX2lwdkhZVzNJRV9ZeXY5VVFCZEgwTndaQUNMZ9IB9AFBVV95cUxNS0hlQ3Q0OW5rU3VvaW5WWGtEUWJhc0tGZ1JkOGpHaF9VaXM1Rlc0ZVRycjBBTDZZbm5QWjBMNG81cENHYThzaDBybS1lN0xaamNBR0JuMElPMGZQQ1U1dVRyTzZWc1BJZFVlaTRsYVo5MmV3LTlhOFd6UGs5WDgzWmF4VmFHdEQxUzd3RXhVbm9MejBIRHcwNG5nNTlRV1V2cUZKUGR1ZUZ6NjJORWJWSnplSzFHSUJGUXdkQWk1cUxGRmU0Q2Z6SWZkVzZtZzFBS1Zib3hzbktGMGZmNnM0UWVwTHdfOThJU2QtWmthLTBrWHpS?oc=5",
@@ -9403,19 +9418,19 @@
             "title": "Is Now An Opportune Moment To Examine SAL Saudi Logistics Services Company (TADAWUL:4263)? - simplywall.st"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTE55LVlSWXpLSnRubUlTMlRZMGpTR2MzUThmeGVoMGJocHhNUHRvZ21wTm1ub3FzN3phZkpGVVVRNjUzcGhScGJhdW1ZVEFWeWNESmR3U1hCM0UyVTJab2lVZ0FDTXhpLVQ1cTZfSA?oc=5",
-            "published": "Sat, 18 Jul 2026 07:00:00 GMT",
-            "title": "SAL signs an MoU with King Salman Energy City Dry Port (SPARK Logistics) to strengthen logistics and industrial cooperation - صحيفة مال"
+            "link": "https://news.google.com/rss/articles/CBMixAJBVV95cUxPWWdpWXQzckZpTlpfT3VZUFlRTTllRld4c2RkOEU4cENQbS01QVlaVldoTDBCY1AzTjRRWVRtanpIeW5qc2o3VWxsbGhJSFNVdlNfUUgwbF9KNU5PaEh4MkNzNnA4Q2VQY1E1cmlGVFVyMFROdGUwcnJVeDJrY1kwUkl6VGptbGx2bzA3MER2cmN0OFNtV0Fpb0p5Vl9fS1l2RmFiRnZjVEhuc2syRmNIR1ZmNmM1MllTUE5uM0UxbWpZMlpDRW5ZbmhzQ0xmeUY5bzlhUjVuRWJUenExTnR4NnhJUWV1elVRQWVHTXRlWkVLcDNmcFRNTDhMdDNjUkpXSndnbUJuNFBFYTZpMFY4aU1GRVhDSmtnMk1MSHk2RDM0VlA2MkFNVlBXbmx0aVFQaEhEendEUTd2OWFIcWluZ1JWMDE?oc=5",
+            "published": "Mon, 03 Aug 2026 07:00:00 GMT",
+            "title": "\"سال\" السعودية تستكمل استحواذها على Aviapartner Liège البلجيكية بـ32 مليون دولار - waya.media"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTE4zTV95enBDSjBIRFZVWjViQmg2RzdmeW5HM0VWT2NaRk43TjNpSVd0b0I3YWpfV2kxOUtCYjh5S2pfZDk5eXZDWmJrNmxUZUNvSWVFc3RoYkJXT21BbGhYeWFDcmRjVnVZTUE?oc=5",
             "published": "Tue, 25 Nov 2025 08:00:00 GMT",
-            "title": "SAL signs logistics services agreement with flyadeal - ارقام"
+            "title": "SAL signs logistics services agreement with flyadeal - ارقام : اخبار ومعلومات سوق الأسهم السعودي - تاسي"
           },
           {
-            "link": "https://news.google.com/rss/articles/CBMiVkFVX3lxTE9uUGtjXzM1WHMtSHZMUkVoZHdvLVZHZGNWT2ZsUXplbERHVW1ndmJ3a1RodXhxd3pYUE96ZmhMSE5RbFZtcjdHTktGZFJUcENyd1NhV0J30gFaQVVfeXFMTmp6b202UkRlbk1JWkdnOS1HUUZfODZPQ1dsTXdHM0hNRmNSTVU1cThyelJieU1mOUJMUTdLSXJ0M182b19FNExXS2xySm5GdDF4SVhMd25YU19n?oc=5",
-            "published": "Wed, 02 Sep 2026 11:54:30 GMT",
-            "title": "متحدثون محليون و دوليون يتصدرون برنامج القمة السعودية للمستودعات والخدمات اللوجستية - صحيفة مكة"
+            "link": "https://news.google.com/rss/articles/CBMiqgJBVV95cUxPT0lrcHFMbDNMZkNkSVJUSEJlS0drVlRGZG1kTlpjU0VSbmJjVE02ZnAxNENkbHNhbVFFX3E4OGJ0RkRKaE51OVlGQm9HTGZ1R1U1S2hQVlZqYnJMOF8zQnF4blFnd0E2cWk5QzhJRjJvcXZDRVd5MWplZEdRdFhjOU1XbkFQVEZsMzhoRTJNSFpaQVRMeGVrSUdIQUNpZ1dSTEp2OWRvR3hQem1Ob3hiVFJyV3ZvWEZFV0lzV0hRSlNxT0puNWVEaVBkbXo4bTMwX0lYY3B6ZVlNcEd0WFg4eWFKU1ZsbGtqdjYxeWtRRGpzMGFjS1VIMTNKaGhBU1JJSEo4VDNMeWczS3Q3aDlYQ0hJNWhndmMwUXRYUWJGNjZ5NEY2YnRkbHJR?oc=5",
+            "published": "Fri, 31 Oct 2025 07:00:00 GMT",
+            "title": "سال\" تُعلن أول حضور دولي عبر شراكة استراتيجية مع Tam Group لتوسيع عمليات الشحن الجوي بين المملكة والصين - PR Newswire"
           }
         ],
         "label": "neutral",
@@ -9423,16 +9438,16 @@
         "score": 0.0,
         "status": "available"
       },
-      "price": 170.0,
-      "priceDate": "2026-09-13",
+      "price": 169.3,
+      "priceDate": "2026-09-14",
       "reason": [
         "trend down, need up"
       ],
       "rules": [
         {
-          "actual": 50.9,
+          "actual": 49.0,
           "passed": true,
-          "plain": "RSI 50.9 inside 25-60",
+          "plain": "RSI 49.0 inside 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -9444,9 +9459,9 @@
           "rule": "trend"
         },
         {
-          "actual": 3.03,
+          "actual": 2.61,
           "passed": true,
-          "plain": "momentum 3.03% >= floor -5.0%",
+          "plain": "momentum 2.61% >= floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
@@ -9456,12 +9471,12 @@
       "short_term": {
         "above_ma": true,
         "horizon": "short",
-        "momentum_pct": 0.65,
-        "rsi": 50.9
+        "momentum_pct": 2.98,
+        "rsi": 49.0
       },
       "sizing": null,
       "trend_streak": {
-        "days": 14,
+        "days": 15,
         "started": "2026-08-19"
       },
       "triggers": [
@@ -9475,9 +9490,9 @@
       ],
       "verified": true,
       "volume": {
-        "median_sar": 19954602.0,
-        "ratio": 1.75,
-        "turnover_sar": 35018300.0,
+        "median_sar": 20454401.0,
+        "ratio": 1.17,
+        "turnover_sar": 23945792.0,
         "unusual": false,
         "window": 20
       },
@@ -9496,8 +9511,8 @@
       },
       "delta": {
         "flipped": [],
-        "price_pct": -0.76,
-        "rsi_delta": -3.2,
+        "price_pct": -0.09,
+        "rsi_delta": -0.3,
         "rules_met_delta": 0,
         "trend_flipped": false
       },
@@ -9505,15 +9520,15 @@
         "items": [],
         "ok": true
       },
-      "distance_to_zone_pct": 1.65,
+      "distance_to_zone_pct": 1.56,
       "kind": "watchlist",
       "lean": {
         "unavailable": "model call failed (ServerError)"
       },
       "long_term": {
         "horizon": "long",
-        "momentum_pct": -13.26,
-        "rsi": 43.1,
+        "momentum_pct": -13.33,
+        "rsi": 42.8,
         "trend": "flat"
       },
       "name": "Almoosa Health",
@@ -9521,24 +9536,14 @@
         "errors": [],
         "headlines": [
           {
-            "link": "https://news.google.com/rss/articles/CBMihwFBVV95cUxOd0Q4Y3E5UHJIeVB6enRXbTFDcHlqcjdZcHJOSHpUMUxtemp0TUtZX05ZQmlKaXdIVjVNYVNlbVZQNlVnaDd2cHVrS0YxVTJZTXlFc3hRYk5qU1AwZURCME1IQnNXemo0X20wbDIzSjR3MGdvMnBjenYtRlAwRkl4VXJtM1pmVlE?oc=5",
-            "published": "Sat, 05 Sep 2026 02:33:13 GMT",
-            "title": "ALMOOSA 16511 | 4018 | TADAWUL | TASI - ارقام"
+            "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxPUmFSdmlHcnhLcm5nUmVjT0RnZXp2c2xPai1keTRtbl9XLXRFM29LQ1JqMGktcVBtem81MGpPa3IzdTg0dG1DOWJlSjAwdGdnclljWDEwWVNWd1VuQTdDWmlBV3lHeF9tVTBvYS1takhwVEF2eC1wb2NsMmUyQk1wbjhPR3Q2V2pVbE45S2pUMk1VbVVJVHhPa3FxVjhzZXREdEk3NkdFYU9UTmZKUHk0d0s3dl9SZXdzVHJMWnZFRERKNmw4?oc=5",
+            "published": "Tue, 19 May 2026 07:00:00 GMT",
+            "title": "Saudi Arabia stocks higher at close of trade; Tadawul All Share up 0.24% - Investing.com"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMib0FVX3lxTE1xQ1VzTVlZQzItTEZIQnhMalh5eXdvbE9MR0ZRNnh6UmFudmxONFJZTlJyQzljaU5JUFR2ZWRwUVNoUGFoQ2NtbVBWWEdhbW9uMmxSWnRIVVhOalhuZl9XMkUwb25YdDJkTFZyZllYbw?oc=5",
             "published": "Wed, 15 Jul 2026 07:00:00 GMT",
             "title": "Almoosa Health Secures SAR 500 Mln Financing Facility - صحيفة مال"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMifEFVX3lxTE0xVllZOWhoZ2h0N254S0JPRVpHQW1NRDNXYm5aekF2c0J1T2pBMWpSUEFjcjVXVWphV0xqVjVRTnR3a3pyLXhiV05jVFlTV0VzcVRORXIzQmJqOWZpdHJYVXVlNDJjTmtSX1NTekxwZS1CRjNQM2Riby1JWEQ?oc=5",
-            "published": "Fri, 21 Feb 2025 12:56:26 GMT",
-            "title": "معلومات وتحديثات الموسى الصحية - الشرق بلومبرغ"
-          },
-          {
-            "link": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQaDZXUEc0RzdRVDBpOVhTbHQxR1JIcnpySzQ2VmhyODdjdkplbXpVUEtXMUJFZl9fNnhfNHA0WW85ejcyU01LVEE2SEdTS0pkVVotYldHOHdWa1d1SjdHYXhubzM1RXp6T3M0WG5VenBQdS1tODJjLUNUNkUtZTliVWdoaFBvdmRKOUE?oc=5",
-            "published": "Sat, 11 Jan 2025 23:59:07 GMT",
-            "title": "Almoosa Health Co. Statistics – TADAWUL:4018 - TradingView"
           },
           {
             "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTFBScG1DT08wRmJhcVE5Q0w5ZmdiU0QwTWh1QnlUT3dIa01KUmtlNnd3dVpaNW9xc3RpVUVMZ1lpZGpmWktfR1h3dDhOSm9RZHFMalBJc255TkZ5YXk1czhzR2xQMDVWc2xuenc?oc=5",
@@ -9551,6 +9556,11 @@
             "title": "Hospital operator Almoosa Health plans to debut a 30% stake on Tadawul - EnterpriseAM"
           },
           {
+            "link": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQaDZXUEc0RzdRVDBpOVhTbHQxR1JIcnpySzQ2VmhyODdjdkplbXpVUEtXMUJFZl9fNnhfNHA0WW85ejcyU01LVEE2SEdTS0pkVVotYldHOHdWa1d1SjdHYXhubzM1RXp6T3M0WG5VenBQdS1tODJjLUNUNkUtZTliVWdoaFBvdmRKOUE?oc=5",
+            "published": "Sat, 11 Jan 2025 23:59:07 GMT",
+            "title": "Almoosa Health Co. Statistics – TADAWUL:4018 - TradingView"
+          },
+          {
             "link": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQalY0aTU5WVhvdDNCbHY1OTVUY2tzSWNZTmhDNG40YklqNDhDaDBLYTNQSERtS2JVc211UHBNaXpDcC0xM2REQlBtU1hSYnI0MnRYVGQ2Y2FWRk83bkdQWlJiVzloR3ZQNEUtN1JWZlc5WU9VVEpjbUZuRmhFaVdXaXZnTE5oYlhrMWlHek5EdHFDcFI2TTBoZzZDMmlnQnJKSnfSAacBQVVfeXFMTzNFUVk4ZW55aTE5dTMtMHExbllabnJDSmxIZWxWXzU1UlJPcV8yNkhmWDk4bGY0emdPWWtVaVprUzk5NlpkZFZkeVg0ZEZ1ZWg3cEEwN3Q2R1dTcDFWTHh3MWpKbERfMjBYaEtqaVFycW8wWFdZNG0zWEwyUFVZelk5UTNELUtHVVkySGVmSFdLdGk5amJWTkx5Y0F0VWdTNTlEcDhRYWM?oc=5",
             "published": "Thu, 08 May 2025 07:00:00 GMT",
             "title": "MENA hosted IPOs worth $2.4 billion in first quarter of 2025 - Consultancy-me.com"
@@ -9559,24 +9569,29 @@
             "link": "https://news.google.com/rss/articles/CBMiiAJBVV95cUxNc0t6SU4wcFB4OFdUR1U3S1J4djVieDRxYlAyOVo2NVllc0M2U3JtbWN3RXNZQ3dxVTVOeHU0cE5ESHZkT09mbXFFTXRIdVNKM09Kc2ZJa3g3czZqcUF5Ti1RaUlBNmo0eENSR0xVd3RJY3ltSVFibnFSc1BlblRhWDhJVE84OVA5bWxGZmo1Rk54MFh1OXN1MVRHUEhIZ1hSVXlVN0ctSmZWZEhKZG1IdHJQRl94OTV2bjh1ZW9mcU83NnIxaEhRS0I5LUh3dkV1LVN0bjBZZ1dTUHR2cXpaclF5N1JQaWJ1bXhHbVFoZ0c0RzlkWnhHNWFyTktqbFByUHBoY0FsMk8?oc=5",
             "published": "Thu, 28 Nov 2024 08:00:00 GMT",
             "title": "IPO Monitor | Prepare for TASI's Almoosa Health IPO: Key Investment Highlights and Strategy – A Must-Read Before Subscription Opens - Sahm"
+          },
+          {
+            "link": "https://news.google.com/rss/articles/CBMiU0FVX3lxTFA5Tnd3b1VPOG8yRmVFekxDMnVYdmRtZURLVWJVeE1RY29ZWDlWS2E1OE42VkRuVGpEdnpEVVAzS2hxTmVIcUt1d3puVnBJNHZLYmpR?oc=5",
+            "published": "Fri, 29 Nov 2024 08:00:00 GMT",
+            "title": "Almoosa Health’s IPO to drive expansion and innovation in Saudi healthcare: CEO - Arab News"
           }
         ],
-        "label": "neutral",
+        "label": "positive",
         "ok": true,
-        "score": 0.0,
+        "score": 1.0,
         "status": "available"
       },
-      "price": 117.1,
-      "priceDate": "2026-09-13",
+      "price": 117.0,
+      "priceDate": "2026-09-14",
       "reason": [
         "trend flat, need up",
-        "momentum -13.26% below floor -5.0%"
+        "momentum -13.33% below floor -5.0%"
       ],
       "rules": [
         {
-          "actual": 43.1,
+          "actual": 42.8,
           "passed": true,
-          "plain": "RSI 43.1 inside 25-60",
+          "plain": "RSI 42.8 inside 25-60",
           "required": "25-60",
           "rule": "rsi_band"
         },
@@ -9588,9 +9603,9 @@
           "rule": "trend"
         },
         {
-          "actual": -13.26,
+          "actual": -13.33,
           "passed": false,
-          "plain": "momentum -13.26% below floor -5.0%",
+          "plain": "momentum -13.33% below floor -5.0%",
           "required": -5.0,
           "rule": "momentum_floor"
         }
@@ -9600,35 +9615,35 @@
       "short_term": {
         "above_ma": false,
         "horizon": "short",
-        "momentum_pct": -2.09,
-        "rsi": 43.1
+        "momentum_pct": -1.76,
+        "rsi": 42.8
       },
       "sizing": null,
       "trend_streak": {
-        "days": 4,
+        "days": 5,
         "started": "2026-09-10"
       },
       "triggers": [
         {
-          "pct_away": 4.71,
-          "plain": "trend flips up at 122.61 (+4.7% away)",
+          "pct_away": 3.5,
+          "plain": "trend flips up at 121.1 (+3.5% away)",
           "reachable": true,
           "rule": "trend",
-          "trigger_price": 122.61
+          "trigger_price": 121.1
         },
         {
-          "pct_away": 9.52,
-          "plain": "6-mo momentum clears -5.0% at 128.25 (+9.5% away)",
+          "pct_away": 12.21,
+          "plain": "6-mo momentum clears -5.0% at 131.29 (+12.2% away)",
           "reachable": true,
           "rule": "momentum_floor",
-          "trigger_price": 128.25
+          "trigger_price": 131.29
         }
       ],
       "verified": true,
       "volume": {
         "median_sar": 2537348.0,
-        "ratio": 0.63,
-        "turnover_sar": 1595605.0,
+        "ratio": 0.46,
+        "turnover_sar": 1174563.0,
         "unusual": false,
         "window": 20
       },
@@ -9637,53 +9652,53 @@
   ],
   "earlyMovers": [
     {
-      "code": "8300",
-      "conditionsMet": 2,
-      "name": "Wataniya Insurance Company",
-      "price": 15.4,
-      "relativeStrengthMet": true,
-      "relativeStrengthPct": 21.8,
-      "squeeze": true
-    },
-    {
-      "code": "8120",
-      "conditionsMet": 2,
-      "name": "Gulf Union Alahlia Cooperative Insurance Company",
-      "price": 14.8,
-      "relativeStrengthMet": true,
-      "relativeStrengthPct": 18.5,
-      "squeeze": true
-    },
-    {
-      "code": "4005",
-      "conditionsMet": 2,
-      "name": "National Medical Care Company",
-      "price": 118.9,
-      "relativeStrengthMet": true,
-      "relativeStrengthPct": 16.3,
-      "squeeze": true
-    },
-    {
-      "code": "6050",
+      "code": "1010",
       "conditionsMet": 1,
-      "name": "Saudi Fisheries Company",
-      "price": 67.55,
-      "relativeStrengthMet": true,
-      "relativeStrengthPct": 72.5,
-      "squeeze": false
+      "name": "Riyad Bank",
+      "price": 20.34,
+      "relativeStrengthMet": false,
+      "relativeStrengthPct": 0.0,
+      "squeeze": true
     },
     {
-      "code": "4310",
+      "code": "1060",
       "conditionsMet": 1,
-      "name": "Knowledge Economic City Company",
-      "price": 18.88,
-      "relativeStrengthMet": true,
-      "relativeStrengthPct": 68.3,
-      "squeeze": false
+      "name": "Saudi Awwal Bank",
+      "price": 33.82,
+      "relativeStrengthMet": false,
+      "relativeStrengthPct": 0.0,
+      "squeeze": true
+    },
+    {
+      "code": "1201",
+      "conditionsMet": 1,
+      "name": "Takween Advanced Industries",
+      "price": 4.49,
+      "relativeStrengthMet": false,
+      "relativeStrengthPct": 0.0,
+      "squeeze": true
+    },
+    {
+      "code": "1202",
+      "conditionsMet": 1,
+      "name": "Middle East Company for Manufacturing and Producing Paper",
+      "price": 17.61,
+      "relativeStrengthMet": false,
+      "relativeStrengthPct": 0.0,
+      "squeeze": true
+    },
+    {
+      "code": "1214",
+      "conditionsMet": 1,
+      "name": "Al Hassan Ghazi Ibrahim Shaker Company",
+      "price": 11.37,
+      "relativeStrengthMet": false,
+      "relativeStrengthPct": 0.0,
+      "squeeze": true
     }
   ],
   "forecast": {
-    "asOf": "2026-09-15",
+    "asOf": "2026-09-16",
     "reason": "Brier score did not beat the base rate. Log loss did not beat the base rate. Calibration error exceeds 0.05. After-cost expectancy is not positive. Out-of-sample skill is not stable across periods and regimes. Sample size is inadequate. Bootstrap uncertainty includes zero skill. Dataset is survivorship-limited.",
     "status": "unavailable"
   },
@@ -9725,33 +9740,11 @@
     "proposal": null
   },
   "producer": {
-    "generatedAt": "2026-09-15T05:21:18Z"
+    "generatedAt": "2026-09-16T05:21:51Z"
   },
-  "qualified": [
-    {
-      "code": "8300",
-      "conditionsMet": 2,
-      "name": "Wataniya Insurance Company",
-      "relativeStrengthPct": 21.8,
-      "squeeze": true
-    },
-    {
-      "code": "8120",
-      "conditionsMet": 2,
-      "name": "Gulf Union Alahlia Cooperative Insurance Company",
-      "relativeStrengthPct": 18.5,
-      "squeeze": true
-    },
-    {
-      "code": "4005",
-      "conditionsMet": 2,
-      "name": "National Medical Care Company",
-      "relativeStrengthPct": 16.3,
-      "squeeze": true
-    }
-  ],
-  "regime": "breakdown",
-  "researchCount": 7,
+  "qualified": [],
+  "regime": "unknown",
+  "researchCount": 10,
   "scheduledFor": null,
   "schemaVersion": 3,
   "summary": [
@@ -9783,34 +9776,35 @@
         "text": "Forecast unavailable: validation gates not passed."
       }
     ],
-    "generatedAt": "2026-09-15T05:21:18Z",
+    "generatedAt": "2026-09-16T05:21:51Z",
     "latenessMinutes": null,
     "scheduledFor": null,
     "version": 1
   },
   "top10": {
     "entries": [],
-    "proposalId": "top10-2026-09-14-evidence-pending",
-    "researchedAt": "2026-09-14T18:08:34Z",
+    "proposalId": "top10-2026-09-15-evidence-pending",
+    "researchedAt": "2026-09-15T17:12:23Z",
     "status": "draft"
   },
   "top10Review": {
     "entries": [],
-    "proposalId": "top10-2026-09-14-evidence-pending",
-    "researchedAt": "2026-09-14T18:08:34Z",
+    "proposalId": "top10-2026-09-15-evidence-pending",
+    "researchedAt": "2026-09-15T17:12:23Z",
     "status": "draft"
   },
-  "tradeDate": "2026-09-15",
+  "tradeDate": "2026-09-16",
   "urgent": [],
   "warnings": [
+    "Market regime unavailable: the index (^TASI.SR) returned 1 usable bars this run, so no regime could be computed.",
     "Top 10 draft unavailable: no current primary-source evidence has been reviewed yet.",
     "3 holding checks are unavailable; verify the current price in your broker."
   ],
-  "artifactId": "sha256:e513d09b02f049291b3e3c19e0b66c3d5f67dbdc1f15e1d597bd528cd3ba1b04",
+  "artifactId": "sha256:297172bf4faf2665592ea980fe203424580c6f12445e3612114fd375a923a627",
   "deliveries": {
     "discord": {
       "status": "success",
-      "attemptedAt": "2026-09-15T05:21:31Z"
+      "attemptedAt": "2026-09-16T05:22:28Z"
     }
   }
 }
