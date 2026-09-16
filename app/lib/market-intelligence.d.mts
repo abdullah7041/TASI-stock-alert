@@ -8,9 +8,17 @@ export type EventReaction = {
   sourceClass: "official" | "trusted";
   verification: "verified";
   publishedAt: string | null;
-  reactionWindow: "daily-close";
+  reactionWindow: "daily-close" | "delayed-intraday";
   causation: "not-proven";
-  related: Array<{ code: string; name: string; changePct: number | null; priceDate: string | null }>;
+  related: Array<{
+    code: string;
+    name: string;
+    changePct: number | null;
+    price: number | null;
+    priceDate: string | null;
+    observedAt: string | null;
+    reactionWindow: "daily-close" | "delayed-intraday";
+  }>;
   breadth: { positive: number; negative: number; unavailable: number };
 };
 
@@ -24,4 +32,5 @@ export type MarketAnomaly = MovementAlert & {
 export function buildMarketIntelligence(
   snapshot: DashboardPayload["snapshot"],
   alerts: MovementAlert[],
+  marketPulse?: DashboardPayload["marketPulse"],
 ): { events: EventReaction[]; anomalies: MarketAnomaly[] };

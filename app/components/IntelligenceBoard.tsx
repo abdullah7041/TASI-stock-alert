@@ -1,12 +1,13 @@
 import type { DashboardPayload } from "@/app/lib/dashboard-types";
 import type { MovementAlert } from "@/app/lib/evidence-types";
 import { buildMarketIntelligence } from "@/app/lib/market-intelligence.mjs";
+import { formatCockpitTimestamp } from "./AlertBoard";
 import styles from "./FriendlyCockpit.module.css";
 
 const signed = (value: number | null) => value === null ? "Unavailable" : `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 
-export function IntelligenceBoard({ snapshot, alerts }: { snapshot: DashboardPayload["snapshot"]; alerts: MovementAlert[] }) {
-  const intelligence = buildMarketIntelligence(snapshot, alerts);
+export function IntelligenceBoard({ snapshot, alerts, marketPulse }: { snapshot: DashboardPayload["snapshot"]; alerts: MovementAlert[]; marketPulse?: DashboardPayload["marketPulse"] }) {
+  const intelligence = buildMarketIntelligence(snapshot, alerts, marketPulse);
   return <section className={styles.intelligence} aria-label="Market intelligence">
     <div className={styles.sectionHead}>
       <div><p className={styles.eyebrow}>MARKET INTELLIGENCE</p><h2>Events and unusual moves</h2></div>
@@ -19,9 +20,9 @@ export function IntelligenceBoard({ snapshot, alerts }: { snapshot: DashboardPay
           <div className={styles.eventMeta}><span className={styles.pill} data-tone="green">Verified {event.sourceClass}</span><span>{event.publishedAt ?? "Publication time unavailable"}</span></div>
           <h3>{event.title}</h3>
           <div className={styles.reactionGrid}>{event.related.slice(0, 6).map((stock) => <div key={stock.code}>
-            <strong>{stock.name}</strong><span>{stock.code} · {signed(stock.changePct)}</span><small>{stock.priceDate ? `Daily price ${stock.priceDate}` : "Price date unavailable"}</small>
+            <strong>{stock.name}</strong><span>{stock.code} · {signed(stock.changePct)}</span><small>{stock.observedAt ? `Observed ${formatCockpitTimestamp(stock.observedAt)} · since prior close` : stock.priceDate ? `Daily price ${stock.priceDate}` : "Price date unavailable"}</small>
           </div>)}</div>
-          <p className={styles.honesty}>These moves were observed in the saved daily data; causation is not proven. Intraday event windows are not available yet.</p>
+          <p className={styles.honesty}>{event.reactionWindow === "delayed-intraday" ? "These delayed quotes were observed after the event publication time and show change since the prior close; causation is not proven." : "These moves were observed in the saved daily data; causation is not proven. An after-publication delayed quote is not available."}</p>
           <a href={event.sourceUrl} target="_blank" rel="noreferrer">Open verified source ↗</a>
         </article>) : <p className={styles.emptyEvidence}>No verified event is available in this snapshot. Social leads are not shown here until verified.</p>}
       </section>

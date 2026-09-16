@@ -34,6 +34,22 @@ test("does not promote a social discovery lead into a verified event", () => {
   assert.deepEqual(view.events, []);
 });
 
+test("uses a delayed pulse to observe a verified event reaction without claiming causation", () => {
+  const pulse = {
+    status: "available",
+    quotes: [{ code: "8200", name: "Saudi Re", price: 27.8, changePct: 9.97, observedAt: "2026-09-16T08:21:00Z" }],
+  };
+  const view = buildMarketIntelligence(snapshot([
+    { code: "8200", name: "Saudi Re", priceDate: "2026-09-15", delta: { price_pct: 0.5 }, news: { ok: true, status: "available", headlines: [officialHeadline] } },
+  ]), [], pulse);
+
+  assert.equal(view.events[0].reactionWindow, "delayed-intraday");
+  assert.equal(view.events[0].related[0].changePct, 9.97);
+  assert.equal(view.events[0].related[0].price, 27.8);
+  assert.equal(view.events[0].related[0].observedAt, "2026-09-16T08:21:00Z");
+  assert.equal(view.events[0].causation, "not-proven");
+});
+
 test("keeps an unusual move with no timely verified news unexplained", () => {
   const view = buildMarketIntelligence(snapshot([
     { code: "1303", name: "EIC", news: { ok: true, status: "empty", headlines: [] } },

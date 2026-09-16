@@ -31,9 +31,14 @@ function recordNewsStatus(record) {
   return headlines.length ? "available" : "empty";
 }
 
-export function buildMarketIntelligence(snapshot, alerts) {
+export function buildMarketIntelligence(snapshot, alerts, marketPulse = null) {
   const records = Array.isArray(snapshot?.digestRecords) ? snapshot.digestRecords : [];
   const grouped = new Map();
+  const pulseQuotes = new Map(
+    marketPulse && ["available", "partial"].includes(marketPulse.status) && Array.isArray(marketPulse.quotes)
+      ? marketPulse.quotes.map((quote) => [String(quote.code), quote])
+      : [],
+  );
 
   for (const record of records) {
     for (const headline of Array.isArray(record?.news?.headlines) ? record.news.headlines : []) {
@@ -52,11 +57,19 @@ export function buildMarketIntelligence(snapshot, alerts) {
         related: [],
       };
       if (!event.related.some((item) => item.code === record.code)) {
+        const code = String(record.code ?? "");
+        const pulseQuote = pulseQuotes.get(code);
+        const publishedAt = Date.parse(event.publishedAt ?? "");
+        const observedAt = Date.parse(pulseQuote?.observedAt ?? "");
+        const observedAfterPublication = pulseQuote && Number.isFinite(publishedAt) && Number.isFinite(observedAt) && observedAt >= publishedAt;
         event.related.push({
-          code: String(record.code ?? ""),
+          code,
           name: String(record.name ?? record.code ?? "Unknown"),
-          changePct: finite(record?.delta?.price_pct),
-          priceDate: typeof record.priceDate === "string" ? record.priceDate : null,
+          changePct: observedAfterPublication ? finite(pulseQuote.changePct) : finite(record?.delta?.price_pct),
+          price: observedAfterPublication ? finite(pulseQuote.price) : finite(record?.price),
+          priceDate: observedAfterPublication ? null : typeof record.priceDate === "string" ? record.priceDate : null,
+          observedAt: observedAfterPublication ? pulseQuote.observedAt : null,
+          reactionWindow: observedAfterPublication ? "delayed-intraday" : "daily-close",
         });
       }
       grouped.set(key, event);
@@ -65,6 +78,7 @@ export function buildMarketIntelligence(snapshot, alerts) {
 
   const events = [...grouped.values()].map((event) => ({
     ...event,
+    reactionWindow: event.related.some((item) => item.reactionWindow === "delayed-intraday") ? "delayed-intraday" : "daily-close",
     breadth: event.related.reduce((counts, item) => {
       if (item.changePct === null) counts.unavailable += 1;
       else if (item.changePct > 0) counts.positive += 1;
@@ -93,4 +107,3 @@ export function buildMarketIntelligence(snapshot, alerts) {
 
   return { events, anomalies };
 }
-
