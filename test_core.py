@@ -29,8 +29,75 @@ import config as cfg
 import data
 import news
 import main
+import market_pulse
 import summary_contract
 from movement import detect_unusual_movement
+
+
+def _stub_market_pulse(monkeypatch):
+    monkeypatch.setattr(market_pulse, "collect", lambda _items: artifacts.build_market_pulse_artifact(
+        status="empty", as_of="2026-09-16T07:00:00Z", quotes=[], requested=[], errors=[]))
+
+
+def test_intraday_batch_splits_yahoo_multi_index_by_requested_code(monkeypatch):
+    index = pd.date_range("2026-09-16 10:00", periods=2, freq="5min", tz="Asia/Riyadh")
+    columns = pd.MultiIndex.from_product([["1303.SR", "2320.SR"], ["Open", "High", "Low", "Close", "Volume"]])
+    batch_frame = pd.DataFrame([
+        [10, 11, 9, 10.5, 100, 20, 21, 19, 20.5, 200],
+        [10.5, 11.5, 10, 11, 150, 20.5, 22, 20, 21.5, 250],
+    ], index=index, columns=columns)
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.download = lambda *args, **kwargs: batch_frame
+    fake_yf.Ticker = lambda _symbol: (_ for _ in ()).throw(AssertionError("fallback must not run"))
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+
+    result = data.get_intraday_histories(["1303", "2320"], period="5d_test_split", interval="5m")
+
+    assert result.status == "available"
+    assert result.frames["1303"]["Close"].tolist() == [10.5, 11.0]
+    assert result.frames["2320"]["Close"].tolist() == [20.5, 21.5]
+
+
+def test_intraday_batch_distinguishes_empty_from_provider_failure(monkeypatch):
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.download = lambda *args, **kwargs: pd.DataFrame()
+    fake_yf.Ticker = lambda _symbol: types.SimpleNamespace(history=lambda **_kwargs: pd.DataFrame())
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+    empty = data.get_intraday_histories(["1303"], period="5d_test_empty", interval="5m")
+    assert empty.status == "empty"
+
+    fake_yf.download = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("provider down"))
+    fake_yf.Ticker = lambda _symbol: types.SimpleNamespace(history=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("provider down")))
+    failed = data.get_intraday_histories(["1303"], period="5d_test_failed", interval="5m")
+    assert failed.status == "failed"
+    assert failed.errors == ["Yahoo intraday request failed for 1303."]
+
+
+def test_market_pulse_uses_previous_session_close_and_source_timestamp():
+    index = pd.DatetimeIndex([
+        pd.Timestamp("2026-09-15 14:55", tz="Asia/Riyadh"),
+        pd.Timestamp("2026-09-16 10:00", tz="Asia/Riyadh"),
+        pd.Timestamp("2026-09-16 10:05", tz="Asia/Riyadh"),
+    ])
+    frame = pd.DataFrame({"Open": [10, 10.2, 10.3], "High": [10, 10.4, 10.6], "Low": [10, 10.1, 10.2], "Close": [10, 10.3, 10.5], "Volume": [1000, 100, 150]}, index=index)
+    batch = data.IntradayBatch(status="available", frames={"1303": frame}, errors=[])
+
+    pulse = market_pulse.collect([{"code": "1303", "name": "EIC"}], now="2026-09-16T07:10:00Z", fetch=lambda _codes: batch)
+
+    assert pulse["artifactKind"] == "market-pulse"
+    assert pulse["artifactId"].startswith("sha256:")
+    assert pulse["quotes"][0]["observedAt"] == "2026-09-16T07:05:00Z"
+    assert pulse["quotes"][0]["price"] == 10.5
+    assert pulse["quotes"][0]["changePct"] == 5.0
+    assert pulse["quotes"][0]["sessionVolume"] == 250.0
+
+
+def test_market_pulse_failed_collection_has_no_quotes_and_a_safe_reason():
+    batch = data.IntradayBatch(status="failed", frames={"1303": pd.DataFrame()}, errors=["Yahoo intraday request failed for 1303."])
+    pulse = market_pulse.collect([{"code": "1303", "name": "EIC"}], now="2026-09-16T07:10:00Z", fetch=lambda _codes: batch)
+    assert pulse["status"] == "failed"
+    assert pulse["quotes"] == []
+    assert pulse["errors"] == ["Yahoo intraday request failed for 1303."]
 
 
 def test_volume_without_unusual_price_never_alerts():
@@ -235,6 +302,7 @@ def test_discord_smoke_returns_failure_when_delivery_fails(monkeypatch):
 
 def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch):
     saved = {}
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [], {"monthly_cap": 500.0}))
     monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
@@ -247,6 +315,7 @@ def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch)
 
 def test_session_mode_fails_when_movement_delivery_fails(monkeypatch):
     alert = {"alertId": "m-1303", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500.0}))
     monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [alert])
     monkeypatch.setattr(main, "_save", lambda *_: None)
@@ -257,6 +326,7 @@ def test_session_mode_fails_when_movement_delivery_fails(monkeypatch):
 
 def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(monkeypatch):
     saved = {}
+    _stub_market_pulse(monkeypatch)
     recs = [{"code": "1303", "name": "EIC", "action": "HOLD", "price": 15.0}]
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", recs, {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "a1", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-12T10:00:00Z", "receivedAt": "2026-08-12T10:01:00Z", "latency": "delayed-intraday", "excessMovePct": 2.0, "robustZ": 4.5, "reason": "Delayed bot confirmation."}])
@@ -327,6 +397,7 @@ def test_digest_reports_a_discord_outage_after_writing_state(monkeypatch):
 def test_session_mode_sends_only_new_delayed_movement_cards(monkeypatch):
     saved = {}
     sent = []
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "m-1303-20260817", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
@@ -1790,6 +1861,7 @@ def test_mode_run_collects_without_recording_digest_history(monkeypatch):
     import main as m
 
     calls = []
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(
         m, "_collect_recs",
         lambda include_news, record_history: (

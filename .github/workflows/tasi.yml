@@ -376,7 +376,7 @@ jobs:
           # the cockpit each run and DELETED when that read fails, so committing
           # it would land a transient outage in the repo as a deletion of the
           # approved list. Same reasoning as portfolio_active.json in .gitignore.
-          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json market_pulse.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi

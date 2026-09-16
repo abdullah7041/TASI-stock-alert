@@ -30,6 +30,13 @@ class Quote:
     source: str       # 'yahoo' or 'sahmk'
 
 
+@dataclass
+class IntradayBatch:
+    status: str
+    frames: dict[str, pd.DataFrame]
+    errors: list[str]
+
+
 def yahoo_symbol(code: str) -> str:
     """Tadawul code -> Yahoo symbol. '2222' -> '2222.SR'. Index symbols
     already starting with '^' pass through."""
@@ -255,6 +262,51 @@ def get_quote(code: str, delayed_default: bool = True) -> Quote | None:
     except Exception:
         pass
     return _sahmk_quote(code)
+
+
+def get_intraday_histories(codes: list, period: str = "5d", interval: str = "5m") -> IntradayBatch:
+    """Delayed intraday OHLCV with honest complete, partial, empty, and failed states."""
+    import yfinance as yf
+
+    requested = [str(code) for code in dict.fromkeys(codes)]
+    symbols = {yahoo_symbol(code): code for code in requested}
+    frames = {code: pd.DataFrame() for code in requested}
+    errors: list[str] = []
+    try:
+        batch = yf.download(list(symbols), period=period, interval=interval, auto_adjust=False,
+                            group_by="ticker", threads=True, progress=False)
+        batch_failed = False
+    except Exception:
+        batch, batch_failed = None, True
+
+    for symbol, code in symbols.items():
+        frame = pd.DataFrame()
+        if batch is not None and not batch.empty:
+            try:
+                part = batch[symbol] if isinstance(batch.columns, pd.MultiIndex) else batch
+                frame = _clean_ohlcv(part)
+            except Exception:
+                frame = pd.DataFrame()
+        if frame.empty:
+            try:
+                fallback = yf.Ticker(symbol).history(period=period, interval=interval, auto_adjust=False)
+                frame = _clean_ohlcv(fallback)
+            except Exception:
+                errors.append(f"Yahoo intraday request failed for {code}.")
+        elif batch_failed:
+            errors.append(f"Yahoo intraday batch request failed for {code}; per-symbol fallback succeeded.")
+        frames[code] = frame
+
+    available = sum(not frame.empty for frame in frames.values())
+    if available == len(requested) and not errors:
+        status = "available"
+    elif available:
+        status = "partial"
+    elif errors:
+        status = "failed"
+    else:
+        status = "empty"
+    return IntradayBatch(status=status, frames=frames, errors=errors)
 
 
 # --- Symbol integrity ------------------------------------------------------
