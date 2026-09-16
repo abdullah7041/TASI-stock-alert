@@ -954,12 +954,12 @@ def mode_digest() -> int:
 
 def mode_research_evidence() -> int:
     """Collect official announcement links into a human-review queue only."""
-    import requests
+    from curl_cffi import requests
 
     retrieved_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     try:
         announcements = official_sources.collect_official_announcements(
-            requests.Session(), retrieved_at, lookback_days=7
+            requests.Session(impersonate="chrome"), retrieved_at, lookback_days=7
         )
     except Exception as exc:
         print(f"official evidence collection unavailable: {exc}")
