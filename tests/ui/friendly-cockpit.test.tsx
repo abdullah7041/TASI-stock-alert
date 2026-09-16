@@ -73,7 +73,7 @@ test('manual refresh reports an updated artifact',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(updatedPayload));
-  vi.stubGlobal('fetch',fetchMock);
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
@@ -86,7 +86,7 @@ test('manual refresh reports when the latest saved artifact is stale',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(stalePayload));
-  vi.stubGlobal('fetch',fetchMock);
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
