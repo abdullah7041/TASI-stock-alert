@@ -1,22 +1,8 @@
 {
-  "alerts": [
-    {
-      "alertId": "ef15424a89c1f58b9ea1",
-      "code": "1303",
-      "direction": "downside",
-      "excessMovePct": -4.655737955062111,
-      "latency": "delayed-intraday",
-      "name": "EIC",
-      "observedAt": "2026-09-15T12:16:21Z",
-      "reason": "Delayed bot confirmation of statistically unusual price movement.",
-      "receivedAt": "2026-09-15T12:16:21Z",
-      "robustZ": -4.573007679732585,
-      "volumeRatio": 1.5042154075908136
-    }
-  ],
+  "alerts": [],
   "artifactKind": "movement",
-  "asOf": "2026-09-15T12:16:21Z",
+  "asOf": "2026-09-16T12:15:00Z",
   "dataStatus": "delayed-intraday",
   "schemaVersion": 1,
-  "artifactId": "sha256:0a84a4f3522a9f5906c3ef072ebe823b7d08ac5559fe447611ceb66c585d32b7"
+  "artifactId": "sha256:b57f3d58007fd1caae6dc65dba861cfc566abd084ac611f8b209ad15d1a78290"
 }
