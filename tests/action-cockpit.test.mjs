@@ -108,6 +108,15 @@ test("connects explicit approval and trade confirmation controls to their APIs",
   assert.match(details, /Execution price \(SAR\)/);
 });
 
+test("registers Discord assistant commands and routes them through the copilot service", () => {
+  const commands = readFileSync(new URL("../discord-interactions/src/commands.mjs", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../app/api/discord/interactions/route.ts", import.meta.url), "utf8");
+  assert.match(commands, /name: "ask"/);
+  assert.match(commands, /name: "decide"/);
+  assert.match(route, /answerPortfolioQuestion/);
+  assert.match(route, /No order was sent/);
+});
+
 test("lint ignores local worktrees and their generated output", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 

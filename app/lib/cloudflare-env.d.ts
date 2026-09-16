@@ -33,6 +33,7 @@ declare module "cloudflare:workers" {
     DASHBOARD_INGEST_TOKEN?: string;
     PORTFOLIO_OWNER_ID?: string;
     DISCORD_APP_PUBLIC_KEY?: string;
+    DISCORD_OWNER_USER_ID?: string;
     DEPLOYED_COMMIT_SHA?: string;
   };
 }

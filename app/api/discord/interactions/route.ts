@@ -1,6 +1,9 @@
 import { DashboardStore } from "@/app/lib/dashboard-store";
 import { discordMessage, parseDiscordInteraction, verifyDiscordSignature } from "@/app/lib/discord-interactions.mjs";
 import { PortfolioStore } from "@/app/lib/portfolio-store";
+import { CopilotStore } from "@/app/lib/copilot-store";
+import { answerPortfolioQuestion } from "@/app/lib/copilot-service";
+import { parseDecision } from "@/app/lib/copilot-core";
 
 function reply(content: string, status = 200) {
   return Response.json(discordMessage(content), { status });
@@ -23,9 +26,16 @@ export async function POST(request: Request) {
   let interaction: unknown;
   try { interaction = JSON.parse(raw); }
   catch { return reply("Invalid interaction payload. No ledger record was created.", 400); }
+  const actorId = (interaction as {member?: {user?: {id?: string}}; user?: {id?: string}}).member?.user?.id
+    ?? (interaction as {user?: {id?: string}}).user?.id;
+  if (!env.DISCORD_OWNER_USER_ID || actorId !== env.DISCORD_OWNER_USER_ID) {
+    return reply("This private assistant is restricted to the portfolio owner.", 403);
+  }
   const command = parseDiscordInteraction(interaction) as
     | { kind: "ping" }
     | { kind: "portfolio" | "budget" }
+    | { kind: "ask"; question: string }
+    | { kind: "decide"; id: string; draft: unknown }
     | { kind: "unknown" | "invalid"; message: string }
     | { kind: "record"; operationId: string; event: { kind: "buy" | "sell"; code: string; shares: number; priceSar: number } };
   if (command.kind === "ping") return Response.json({ type: 1 });
@@ -35,6 +45,18 @@ export async function POST(request: Request) {
   const store = new PortfolioStore(env.DB);
   const month = new Date().toISOString().slice(0, 7);
   try {
+    if (command.kind === "ask") {
+      if (!env.OPENAI_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
+      const result = await answerPortfolioQuestion({ ownerId: env.PORTFOLIO_OWNER_ID, db: env.DB, openAiKey: env.OPENAI_API_KEY, chatModel: env.AGENT_CHAT_MODEL ?? "gpt-5.6-luna" }, command.question);
+      const draft = result.reply.draft;
+      const suffix = draft ? `\n\nDraft ${draft.action} for ${draft.symbol}: ${draft.conditions} Invalidation: ${draft.invalidation}. Use /decide to save it after reviewing.` : "";
+      return reply(`${result.reply.answer}${suffix}`);
+    }
+    if (command.kind === "decide") {
+      const draft = parseDecision(command.draft);
+      await new CopilotStore(env.DB).confirm(env.PORTFOLIO_OWNER_ID, { ...draft, id: command.id, confirmedAt: new Date().toISOString() });
+      return reply(`Decision note saved for ${draft.symbol}: ${draft.action}. Conditions and invalidation are recorded; no order was sent.`);
+    }
     if (command.kind === "portfolio") return reply(portfolioLine(await store.view(env.PORTFOLIO_OWNER_ID)));
     const current = await store.ledger(month);
     const snapshot = await new DashboardStore(env.DB).latest();

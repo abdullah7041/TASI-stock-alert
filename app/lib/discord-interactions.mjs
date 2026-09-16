@@ -22,6 +22,10 @@ function optionValue(options, name) {
   return option?.value;
 }
 
+export function interactionOption(options, name) {
+  return optionValue(options, name);
+}
+
 function positiveWhole(value) {
   const numeric = typeof value === "number" ? value : Number(value);
   return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
@@ -37,6 +41,19 @@ export function parseDiscordInteraction(interaction) {
   if (interaction?.type !== 2 || typeof interaction.id !== "string" || !interaction.id || !interaction.data || typeof interaction.data.name !== "string") return { kind: "unknown", message: "Unsupported interaction. No ledger record was created." };
   const command = interaction.data.name;
   if (command === "portfolio" || command === "budget") return { kind: command };
+  if (command === "ask") {
+    const question = String(optionValue(interaction.data.options, "question") ?? "").trim();
+    return question ? { kind: "ask", question } : { kind: "invalid", message: "Enter a question. No request was sent." };
+  }
+  if (command === "decide") {
+    const symbol = String(optionValue(interaction.data.options, "symbol") ?? "").trim().toUpperCase();
+    const action = String(optionValue(interaction.data.options, "action") ?? "").trim().toUpperCase();
+    const conditions = String(optionValue(interaction.data.options, "conditions") ?? "").trim();
+    const invalidation = String(optionValue(interaction.data.options, "invalidation") ?? "").trim();
+    if (!/^\d{4}$/.test(symbol) && symbol !== "PORTFOLIO") return { kind: "invalid", message: "Use a four-digit code or PORTFOLIO. No decision was saved." };
+    if (!["WATCH", "AVOID", "HOLD", "REDUCE", "RESEARCH_MORE"].includes(action) || !conditions || !invalidation) return { kind: "invalid", message: "Action, conditions, and invalidation are required. No decision was saved." };
+    return { kind: "decide", id: `discord:${interaction.id}`, draft: { symbol, action, conditions, invalidation } };
+  }
   if (command !== "bought" && command !== "sold") return { kind: "unknown", message: "That command is unavailable. No ledger record was created." };
   const code = String(optionValue(interaction.data.options, "code") ?? "").trim();
   const shares = positiveWhole(optionValue(interaction.data.options, "shares"));
