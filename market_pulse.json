@@ -1,0 +1,134 @@
+{
+  "artifactKind": "market-pulse",
+  "asOf": "2026-09-17T12:15:58.240264Z",
+  "dataStatus": "delayed-intraday",
+  "errors": [],
+  "quotes": [
+    {
+      "changePct": 3.0262,
+      "code": "1303",
+      "latency": "delayed-intraday",
+      "name": "EIC",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 15.32,
+      "sessionVolume": 3210757.0
+    },
+    {
+      "changePct": 1.1324,
+      "code": "2320",
+      "latency": "delayed-intraday",
+      "name": "Al-Babtain",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 58.05,
+      "sessionVolume": 263420.0
+    },
+    {
+      "changePct": 3.8651,
+      "code": "8313",
+      "latency": "delayed-intraday",
+      "name": "Rasan",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 147.8,
+      "sessionVolume": 487203.0
+    },
+    {
+      "changePct": 3.7692,
+      "code": "4015",
+      "latency": "delayed-intraday",
+      "name": "Jamjoom Pharma",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 134.9,
+      "sessionVolume": 158702.0
+    },
+    {
+      "changePct": 2.4352,
+      "code": "4016",
+      "latency": "delayed-intraday",
+      "name": "Avalon Pharma",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 65.2,
+      "sessionVolume": 125872.0
+    },
+    {
+      "changePct": 0.275,
+      "code": "4164",
+      "latency": "delayed-intraday",
+      "name": "Nahdi Medical",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 91.15,
+      "sessionVolume": 80363.0
+    },
+    {
+      "changePct": 0.0,
+      "code": "4262",
+      "latency": "delayed-intraday",
+      "name": "Lumi Rental",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 25.9,
+      "sessionVolume": 62130.0
+    },
+    {
+      "changePct": -0.107,
+      "code": "4017",
+      "latency": "delayed-intraday",
+      "name": "Fakeeh Care",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 37.34,
+      "sessionVolume": 84315.0
+    },
+    {
+      "changePct": 1.4358,
+      "code": "6017",
+      "latency": "delayed-intraday",
+      "name": "Jahez",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 12.01,
+      "sessionVolume": 292174.0
+    },
+    {
+      "changePct": 0.1765,
+      "code": "4263",
+      "latency": "delayed-intraday",
+      "name": "SAL Logistics",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 170.3,
+      "sessionVolume": 140204.0
+    },
+    {
+      "changePct": 2.1664,
+      "code": "4018",
+      "latency": "delayed-intraday",
+      "name": "Almoosa Health",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 117.9,
+      "sessionVolume": 45011.0
+    },
+    {
+      "changePct": 0.071,
+      "code": "^TASI.SR",
+      "latency": "delayed-intraday",
+      "name": "TASI",
+      "observedAt": "2026-09-17T11:55:00Z",
+      "price": 10787.2803,
+      "sessionVolume": 149345551.0
+    }
+  ],
+  "requested": [
+    "1303",
+    "2320",
+    "8313",
+    "4015",
+    "4016",
+    "4164",
+    "4262",
+    "4017",
+    "6017",
+    "4263",
+    "4018",
+    "^TASI.SR"
+  ],
+  "schemaVersion": 1,
+  "source": "yahoo",
+  "status": "available",
+  "artifactId": "sha256:c87e333c4e611e3c2bff603031082e2233471d672471d5bfd1e9be8209c18b1f"
+}
