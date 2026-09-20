@@ -46,8 +46,9 @@ export async function POST(request: Request) {
   const month = new Date().toISOString().slice(0, 7);
   try {
     if (command.kind === "ask") {
-      if (!env.OPENAI_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
-      const result = await answerPortfolioQuestion({ ownerId: env.PORTFOLIO_OWNER_ID, db: env.DB, openAiKey: env.OPENAI_API_KEY, chatModel: env.AGENT_CHAT_MODEL ?? "gpt-5.6-luna" }, command.question);
+      if (!env.OPENROUTER_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
+      const chatModel = env.AGENT_DEFAULT_MODEL ?? env.AGENT_CHAT_MODEL ?? "deepseek/deepseek-v4.1-flash";
+      const result = await answerPortfolioQuestion({ ownerId: env.PORTFOLIO_OWNER_ID, db: env.DB, apiKey: env.OPENROUTER_API_KEY, chatModel }, command.question);
       const draft = result.reply.draft;
       const suffix = draft ? `\n\nDraft ${draft.action} for ${draft.symbol}: ${draft.conditions} Invalidation: ${draft.invalidation}. Use /decide to save it after reviewing.` : "";
       return reply(`${result.reply.answer}${suffix}`);

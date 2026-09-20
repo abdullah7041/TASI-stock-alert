@@ -26,8 +26,9 @@ declare module "cloudflare:workers" {
     ACCESS_ISSUER?: string;
     ACCESS_AUD?: string;
     DB?: D1Database;
-    OPENAI_API_KEY?: string;
+    OPENROUTER_API_KEY?: string;
     AGENT_OWNER_EMAIL?: string;
+    AGENT_DEFAULT_MODEL?: string;
     AGENT_REPORT_MODEL?: string;
     AGENT_CHAT_MODEL?: string;
     DASHBOARD_INGEST_TOKEN?: string;
