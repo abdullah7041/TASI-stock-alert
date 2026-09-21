@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 
 _RIYADH = ZoneInfo("Asia/Riyadh")
+_MARKET_OPEN = time(10, 0)
 _TRUSTED_HOSTS = {
     "aleqt.com",
     "argaam.com",
@@ -137,8 +138,13 @@ def event_outcomes(events: list[dict], histories: dict[str, list[dict]], horizon
         if event_time is None:
             outcomes.append(_censored(event, horizon, "invalid event timestamp"))
             continue
-        event_day = event_time.astimezone(_RIYADH).date().isoformat()
-        future_dates = [value for value in benchmark_dates if value > event_day]
+        local_event = event_time.astimezone(_RIYADH)
+        event_day = local_event.date().isoformat()
+        first_session_day = event_day if local_event.time() < _MARKET_OPEN else None
+        future_dates = [
+            value for value in benchmark_dates
+            if value > event_day or value == first_session_day
+        ]
         if len(future_dates) < horizon:
             outcomes.append(_censored(event, horizon, "incomplete benchmark window"))
             continue
@@ -224,6 +230,9 @@ def walk_forward(rows: list[dict], min_training_events: int = 30) -> list[dict]:
         and _timestamp(row.get("label_available_at")) is not None
     ]
     complete.sort(key=lambda row: (_timestamp(row["available_at"]), row["event_id"], row.get("symbol", "")))
+    event_sizes: Counter[tuple[str, object]] = Counter(
+        (row["event_id"], row.get("horizon_sessions")) for row in complete
+    )
     predictions: list[dict] = []
     for test in complete:
         training_candidates = [
@@ -232,16 +241,27 @@ def walk_forward(rows: list[dict], min_training_events: int = 30) -> list[dict]:
             and row.get("horizon_sessions") == test.get("horizon_sessions")
             and _timestamp(row["label_available_at"]) < _timestamp(test["available_at"])
         ]
-        training_by_event: dict[str, dict] = {}
+        training_by_event: dict[str, list[dict]] = {}
         for row in sorted(training_candidates, key=lambda item: _timestamp(item["label_available_at"])):
-            training_by_event.setdefault(row["event_id"], row)
-        training = list(training_by_event.values())
+            training_by_event.setdefault(row["event_id"], []).append(row)
+        training = [
+            {
+                "event_id": event_id,
+                "event_class": members[0].get("event_class"),
+                "label_available_at": max(
+                    members, key=lambda row: _timestamp(row["label_available_at"])
+                )["label_available_at"],
+                "outcome": sum(row["outcome"] for row in members) / len(members),
+            }
+            for event_id, members in training_by_event.items()
+        ]
         prediction = {
             "event_id": test["event_id"],
             "symbol": test.get("symbol"),
             "available_at": test["available_at"],
             "horizon_sessions": test.get("horizon_sessions"),
             "outcome": test["outcome"],
+            "event_weight": 1 / event_sizes[(test["event_id"], test.get("horizon_sessions"))],
             "training_events": len(training),
             "latest_training_label": (
                 max(training, key=lambda row: _timestamp(row["label_available_at"]))["label_available_at"]
@@ -268,7 +288,7 @@ def walk_forward(rows: list[dict], min_training_events: int = 30) -> list[dict]:
 def _expected_calibration_error(rows: list[dict]) -> float | None:
     if not rows:
         return None
-    total = len(rows)
+    total = sum(row.get("event_weight", 1.0) for row in rows)
     error = 0.0
     for lower in (0.0, 0.2, 0.4, 0.6, 0.8):
         upper = lower + 0.2
@@ -278,9 +298,10 @@ def _expected_calibration_error(rows: list[dict]) -> float | None:
             or (upper == 1.0 and row["probability"] == 1.0)
         ]
         if bucket:
-            mean_probability = sum(row["probability"] for row in bucket) / len(bucket)
-            mean_outcome = sum(row["outcome"] for row in bucket) / len(bucket)
-            error += len(bucket) / total * abs(mean_probability - mean_outcome)
+            bucket_weight = sum(row.get("event_weight", 1.0) for row in bucket)
+            mean_probability = sum(row["probability"] * row.get("event_weight", 1.0) for row in bucket) / bucket_weight
+            mean_outcome = sum(row["outcome"] * row.get("event_weight", 1.0) for row in bucket) / bucket_weight
+            error += bucket_weight / total * abs(mean_probability - mean_outcome)
     return error
 
 
@@ -313,18 +334,23 @@ def validation_report(outcomes: list[dict], predictions: list[dict]) -> dict:
         report["release_blockers"].insert(0, "No eligible out-of-sample predictions are available.")
         return report
     epsilon = 1e-12
-    brier = sum((row["probability"] - row["outcome"]) ** 2 for row in scored) / len(scored)
-    base_brier = sum((row["base_probability"] - row["outcome"]) ** 2 for row in scored) / len(scored)
+    total_weight = sum(row.get("event_weight", 1.0) for row in scored)
+    brier = sum(row.get("event_weight", 1.0) * (row["probability"] - row["outcome"]) ** 2 for row in scored) / total_weight
+    base_brier = sum(row.get("event_weight", 1.0) * (row["base_probability"] - row["outcome"]) ** 2 for row in scored) / total_weight
     log_loss = -sum(
-        row["outcome"] * math.log(max(epsilon, min(1 - epsilon, row["probability"])))
-        + (1 - row["outcome"]) * math.log(max(epsilon, min(1 - epsilon, 1 - row["probability"])))
+        row.get("event_weight", 1.0) * (
+            row["outcome"] * math.log(max(epsilon, min(1 - epsilon, row["probability"])))
+            + (1 - row["outcome"]) * math.log(max(epsilon, min(1 - epsilon, 1 - row["probability"])))
+        )
         for row in scored
-    ) / len(scored)
+    ) / total_weight
     base_log_loss = -sum(
-        row["outcome"] * math.log(max(epsilon, min(1 - epsilon, row["base_probability"])))
-        + (1 - row["outcome"]) * math.log(max(epsilon, min(1 - epsilon, 1 - row["base_probability"])))
+        row.get("event_weight", 1.0) * (
+            row["outcome"] * math.log(max(epsilon, min(1 - epsilon, row["base_probability"])))
+            + (1 - row["outcome"]) * math.log(max(epsilon, min(1 - epsilon, 1 - row["base_probability"])))
+        )
         for row in scored
-    ) / len(scored)
+    ) / total_weight
     report.update({
         "brier": brier,
         "base_brier": base_brier,
@@ -357,13 +383,21 @@ def main(argv: list[str] | None = None) -> int:
 
     events, exclusions = normalize_events(_read_news(args.news))
     histories = json.loads(args.bars.read_text(encoding="utf-8")) if args.bars else {}
+    if not args.bars:
+        data_status = "missing-bars"
+    elif not isinstance(histories, dict):
+        data_status = "invalid-bars"
+    elif not _bars_by_date(histories.get("TASI")):
+        data_status = "empty-bars"
+    else:
+        data_status = "available"
     outcomes = []
-    if histories:
+    if data_status == "available":
         for horizon in (1, 5):
             outcomes.extend(event_outcomes(events, histories, horizon))
     predictions = walk_forward(outcomes)
     report = validation_report(outcomes, predictions)
-    report["data_status"] = "available" if histories else "missing-bars"
+    report["data_status"] = data_status
     payload = {
         "events": events,
         "exclusions": exclusions,

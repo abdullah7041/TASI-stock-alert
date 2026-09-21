@@ -40,16 +40,16 @@ def test_duplicates_keep_the_earliest_observation_for_one_symbol():
     assert rows[0]["observed_at"] == "2026-09-10T05:00:00+00:00"
 
 
-def test_reaction_uses_sessions_after_event_and_matched_benchmark_dates():
+def test_pre_open_event_uses_that_day_open_and_matched_benchmark_close():
     events, _ = normalize_events([event()])
     histories = {
-        "TASI": [{"date": "2026-09-10", "open": 100, "close": 100},
-                 {"date": "2026-09-13", "open": 100, "close": 101}],
-        "8200": [{"date": "2026-09-10", "open": 10, "close": 11},
-                 {"date": "2026-09-13", "open": 10, "close": 10.5}],
+        "TASI": [{"date": "2026-09-10", "open": 100, "close": 101},
+                 {"date": "2026-09-13", "open": 100, "close": 102}],
+        "8200": [{"date": "2026-09-10", "open": 10, "close": 10.5},
+                 {"date": "2026-09-13", "open": 10, "close": 11}],
     }
     row = event_outcomes(events, histories, horizon=1)[0]
-    assert row["entry_date"] == "2026-09-13"
+    assert row["entry_date"] == "2026-09-10"
     assert row["return_pct"] == 5.0
     assert round(row["excess_return_pct"], 6) == 4.0
     assert row["outcome"] == 1
@@ -88,8 +88,8 @@ def test_later_news_does_not_rewrite_an_unexplained_move():
     assert linked["causation"] == "not-proven"
 
 
-def complete(event_id, available, label_available, outcome, event_class="saudiexchange.sa"):
-    return {"event_id": event_id, "symbol": "8200", "event_class": event_class,
+def complete(event_id, available, label_available, outcome, event_class="saudiexchange.sa", symbol="8200"):
+    return {"event_id": event_id, "symbol": symbol, "event_class": event_class,
             "available_at": available, "label_available_at": label_available,
             "horizon_sessions": 5, "status": "complete", "outcome": outcome}
 
@@ -117,6 +117,19 @@ def test_walk_forward_compares_timestamp_instants_not_iso_text():
     assert prediction["training_events"] == 1
 
 
+def test_walk_forward_uses_every_related_stock_with_equal_event_weight():
+    rows = [
+        complete("training-event", "2026-01-01T00:00:00Z", "2026-01-10T00:00:00Z", 1, symbol="1111"),
+        complete("training-event", "2026-01-01T00:00:00Z", "2026-01-10T00:00:00Z", 0, symbol="2222"),
+        complete("test-event", "2026-02-01T00:00:00Z", "2026-02-10T00:00:00Z", 1),
+    ]
+
+    prediction = next(row for row in walk_forward(rows, 1) if row["event_id"] == "test-event")
+
+    assert prediction["training_events"] == 1
+    assert prediction["base_probability"] == 0.5
+
+
 def test_validation_report_never_enables_probability_release():
     report = validation_report([], [])
     assert report["status"] == "unavailable"
@@ -139,3 +152,16 @@ def test_cli_reports_legacy_archive_as_ineligible_instead_of_backdating(tmp_path
     assert payload["events"] == []
     assert payload["exclusions"] == {"missing precise timestamp": 1}
     assert payload["report"]["data_status"] == "missing-bars"
+
+
+def test_cli_labels_an_empty_benchmark_file_as_empty_not_available(tmp_path):
+    news_path = tmp_path / "events.jsonl"
+    bars_path = tmp_path / "bars.json"
+    output_path = tmp_path / "report.json"
+    news_path.write_text(json.dumps(event()) + "\n", encoding="utf-8")
+    bars_path.write_text(json.dumps({"TASI": []}), encoding="utf-8")
+
+    assert main(["--news", str(news_path), "--bars", str(bars_path), "--output", str(output_path)]) == 0
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["report"]["data_status"] == "empty-bars"

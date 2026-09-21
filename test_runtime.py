@@ -228,6 +228,7 @@ def test_ci_runs_event_outcome_validation_tests():
 
     assert "research/test_event_study.py" in pytest_command.split()
     assert "research/test_entry_forecast.py" in pytest_command.split()
+    assert "research/test_official_sources.py" in pytest_command.split()
 
 
 def test_discord_smoke_is_manual_only_and_cannot_be_scheduled():
