@@ -18,7 +18,7 @@
     "ACCESS_AUD": "e6dcbc30fc163c2164f181dc03f9d0d3e6abf5608e59c91df902a0127ce7926e",
     "AGENT_OWNER_EMAIL": "ronaldinho1415@gmail.com",
     "PORTFOLIO_OWNER_ID": "Gz2pavbAqhcgHPkX27Wt7RhMO7xJ4nhVkrBopvX8eVELmVtnmeLU7p",
-    "AGENT_CHAT_MODEL": "gpt-5.6-luna",
+    "AGENT_DEFAULT_MODEL": "deepseek/deepseek-v4.1-flash",
     "DISCORD_APP_PUBLIC_KEY": "f50c12a18c4975a33dd828f92343996a58b58d6ae5b73ebb06c138a8084e463d"
   }
 }

@@ -14,6 +14,13 @@ function portfolioLine(view: { cashSar: number; holdings: Array<{ code: string; 
   return `Confirmed ledger: ${view.cashSar.toFixed(2)} SAR cash; ${holdings}. This is a ledger view and never sends an order.`;
 }
 
+function assistantFailure(error: unknown) {
+  if (error instanceof Response && error.status === 429) {
+    return reply("The Discord assistant has reached its monthly AI budget. Try again next month. No ledger record was created.", 429);
+  }
+  return reply("The Discord assistant is temporarily unavailable. No ledger record was created.", 502);
+}
+
 export async function POST(request: Request) {
   const { env } = await import("cloudflare:workers");
   const publicKey = env.DISCORD_APP_PUBLIC_KEY;
@@ -46,11 +53,16 @@ export async function POST(request: Request) {
   const month = new Date().toISOString().slice(0, 7);
   try {
     if (command.kind === "ask") {
-      if (!env.OPENAI_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
-      const result = await answerPortfolioQuestion({ ownerId: env.PORTFOLIO_OWNER_ID, db: env.DB, openAiKey: env.OPENAI_API_KEY, chatModel: env.AGENT_CHAT_MODEL ?? "gpt-5.6-luna" }, command.question);
-      const draft = result.reply.draft;
-      const suffix = draft ? `\n\nDraft ${draft.action} for ${draft.symbol}: ${draft.conditions} Invalidation: ${draft.invalidation}. Use /decide to save it after reviewing.` : "";
-      return reply(`${result.reply.answer}${suffix}`);
+      if (!env.OPENROUTER_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
+      const chatModel = env.AGENT_DEFAULT_MODEL ?? env.AGENT_CHAT_MODEL ?? "deepseek/deepseek-v4.1-flash";
+      try {
+        const result = await answerPortfolioQuestion({ ownerId: env.PORTFOLIO_OWNER_ID, db: env.DB, apiKey: env.OPENROUTER_API_KEY, chatModel }, command.question);
+        const draft = result.reply.draft;
+        const suffix = draft ? `\n\nDraft ${draft.action} for ${draft.symbol}: ${draft.conditions} Invalidation: ${draft.invalidation}. Use /decide to save it after reviewing.` : "";
+        return reply(`${result.reply.answer}${suffix}`);
+      } catch (error) {
+        return assistantFailure(error);
+      }
     }
     if (command.kind === "decide") {
       const draft = parseDecision(command.draft);

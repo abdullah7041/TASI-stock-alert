@@ -10,7 +10,7 @@ import { AlertStore } from '@/app/lib/alert-store';
 
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();for(const key of Object.keys(env))delete env[key];});
 function setup() {
-  env.AGENT_OWNER_EMAIL='owner@example.test';env.OPENAI_API_KEY='test-only';env.DB={};
+  env.AGENT_OWNER_EMAIL='owner@example.test';env.OPENROUTER_API_KEY='test-only';env.AGENT_DEFAULT_MODEL='deepseek/deepseek-v4.1-flash';env.DB={};
   vi.spyOn(DashboardStore.prototype,'latest').mockResolvedValue(null);
   vi.spyOn(PortfolioStore.prototype,'view').mockResolvedValue({cashSar:200,holdings:[]} as never);
   vi.spyOn(MarketPulseStore.prototype,'latest').mockResolvedValue(null);
@@ -28,11 +28,16 @@ function request(body:unknown) {
 test('answers from the current ledger even without a daily snapshot and never confirms a model draft',async()=>{
   const {save,confirm,trade}=setup();
   const draft={symbol:'PORTFOLIO',action:'WATCH',conditions:'Wait for fresh data',invalidation:'Updated evidence changes the view'};
-  const fetcher=vi.fn(async()=>Response.json({output_text:JSON.stringify({answer:'Cash is 200 SAR. Market data is missing.',draft})}));
+  let fetched: { url: string; init?: RequestInit } | undefined;
+  const fetcher=vi.fn(async(url: RequestInfo | URL, init?: RequestInit)=>{fetched={url:String(url),init};return Response.json({output_text:JSON.stringify({answer:'Cash is 200 SAR. Market data is missing.',draft})});});
   vi.stubGlobal('fetch',fetcher);
   expect((await POST(request({operation:'ask',text:'Review my portfolio',language:'en'}))).status).toBe(200);
-  const options=(fetcher.mock.calls as unknown as [string,RequestInit][])[0][1];
+  const options=fetched?.init;
+  expect(fetched?.url).toBe('https://openrouter.ai/api/v1/responses');
+  if (!options) throw new Error('Expected the assistant request options to be captured.');
   const sent=JSON.parse(String(options.body));
+  expect(sent.model).toBe('deepseek/deepseek-v4.1-flash');
+  expect(sent.provider).toEqual({require_parameters:true});
   expect(JSON.parse(sent.input).evidence.portfolio.cashSar).toBe(200);
   expect(JSON.parse(sent.input).evidence.freshness).toBe('missing');
   expect(save.mock.calls[0][1].map(m=>m.role)).toEqual(['user','assistant']);
@@ -47,7 +52,7 @@ test('budget exhaustion prevents dispatch and conversation writes',async()=>{
   expect(fetcher).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();
 });
 test('confirmation works without an AI key and writes only the owner decision note',async()=>{
-  const {confirm,trade}=setup();delete env.OPENAI_API_KEY;
+  const {confirm,trade}=setup();delete env.OPENROUTER_API_KEY;
   const draft={symbol:'1303',action:'HOLD',conditions:'Evidence holds',invalidation:'Evidence deteriorates'};
   expect((await POST(request({operation:'confirm',confirmed:true,id:crypto.randomUUID(),draft}))).status).toBe(200);
   expect(confirm.mock.calls[0][0]).toBe('owner');expect(confirm.mock.calls[0][1].conditions).toBe('Evidence holds');
