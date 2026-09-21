@@ -145,7 +145,7 @@ def event_outcomes(events: list[dict], histories: dict[str, list[dict]], horizon
         entry_date = future_dates[0]
         exit_date = future_dates[horizon - 1]
         stock = _bars_by_date(histories.get(event["symbol"]))
-        if entry_date not in stock or exit_date not in stock:
+        if any(session_date not in stock for session_date in future_dates[:horizon]):
             outcomes.append(_censored(event, horizon, "unmatched stock dates"))
             continue
         try:

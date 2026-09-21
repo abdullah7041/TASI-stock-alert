@@ -62,6 +62,23 @@ def test_incomplete_reaction_window_is_censored_not_scored_negative():
     assert "outcome" not in row
 
 
+def test_reaction_window_is_censored_when_an_intermediate_stock_session_is_missing():
+    events, _ = normalize_events([event()])
+    dates = ["2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17"]
+    histories = {
+        "TASI": [{"date": day, "open": 100, "close": 101} for day in dates],
+        "8200": [
+            {"date": day, "open": 10, "close": 11}
+            for day in dates if day != "2026-09-15"
+        ],
+    }
+
+    row = event_outcomes(events, histories, horizon=5)[0]
+
+    assert row["status"] == "censored"
+    assert row["reason"] == "unmatched stock dates"
+
+
 def test_later_news_does_not_rewrite_an_unexplained_move():
     events, _ = normalize_events([event(observed="2026-09-10T07:00:00Z")])
     linked = link_anomaly("2026-09-10T06:00:00Z", "8200", events, "empty")
