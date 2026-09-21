@@ -37,6 +37,7 @@ test('answers from the current ledger even without a daily snapshot and never co
   if (!options) throw new Error('Expected the assistant request options to be captured.');
   const sent=JSON.parse(String(options.body));
   expect(sent.model).toBe('deepseek/deepseek-v4.1-flash');
+  expect(sent.provider).toEqual({require_parameters:true});
   expect(JSON.parse(sent.input).evidence.portfolio.cashSar).toBe(200);
   expect(JSON.parse(sent.input).evidence.freshness).toBe('missing');
   expect(save.mock.calls[0][1].map(m=>m.role)).toEqual(['user','assistant']);
