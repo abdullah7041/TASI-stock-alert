@@ -35,7 +35,7 @@ jobs:
       - name: Validate scheduled runtime modules
         run: python -m compileall -q main.py movement.py session_gate.py runtime research
       - name: Tests
-        run: python -m pytest test_core.py test_alert_names.py test_runtime.py research/test_base_rate.py -q
+        run: python -m pytest test_core.py test_alert_names.py test_runtime.py research/test_base_rate.py research/test_entry_forecast.py research/test_event_study.py -q
 
   web:
     runs-on: ubuntu-latest

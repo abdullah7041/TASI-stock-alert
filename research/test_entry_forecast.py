@@ -13,3 +13,12 @@ def test_release_gate_rejects_model_that_does_not_beat_base_rate():
     ok, reasons = release_gate({"brier_skill": -0.01, "log_loss_skill": 0.02, "ece": 0.03, "expectancy": 0.5, "stable": True, "sample_size": 500, "bootstrap_lower": 0.01}, False)
     assert not ok
     assert "Brier" in " ".join(reasons)
+
+
+def test_release_gate_rejects_non_finite_metrics():
+    metrics = {"brier_skill": float("nan"), "log_loss_skill": 0.02, "ece": 0.03,
+               "expectancy": 0.5, "stable": True, "sample_size": 500,
+               "bootstrap_lower": 0.01}
+    ok, reasons = release_gate(metrics, False)
+    assert not ok
+    assert "finite" in " ".join(reasons).lower()
