@@ -216,6 +216,21 @@ def test_google_cloud_dependencies_stay_out_of_the_github_fallback():
 
 
 # --- workflow split ---------------------------------------------------------
+def test_ci_runs_event_outcome_validation_tests():
+    """The release gate is unsafe if its point-in-time tests never run in CI."""
+    workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    commands = [
+        step.get("run", "")
+        for step in workflow["jobs"]["python"]["steps"]
+        if isinstance(step, dict)
+    ]
+    pytest_command = next(command for command in commands if "python -m pytest" in command)
+
+    assert "research/test_event_study.py" in pytest_command.split()
+    assert "research/test_entry_forecast.py" in pytest_command.split()
+    assert "research/test_official_sources.py" in pytest_command.split()
+
+
 def test_discord_smoke_is_manual_only_and_cannot_be_scheduled():
     manual = yaml.safe_load(Path(".github/workflows/manual-operations.yml").read_text(encoding="utf-8"))
     # PyYAML reads the bare `on:` key as the boolean True.

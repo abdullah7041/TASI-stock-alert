@@ -221,3 +221,23 @@ def write_review_queue(path: Path, announcements: list[OfficialAnnouncement], re
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     temporary.replace(path)
+
+
+def append_event_archive(path: Path, announcements: list[OfficialAnnouncement]) -> None:
+    """Persist directly verified announcements with their first observation time.
+
+    The review queue is deliberately replaceable; the event archive is append-only
+    so later validation cannot backdate when an announcement was first seen.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        for announcement in announcements:
+            if not (announcement.symbol and announcement.published_at):
+                continue
+            handle.write(json.dumps({
+                "title": announcement.title,
+                "url": announcement.url,
+                "symbol": announcement.symbol,
+                "published_at": announcement.published_at,
+                "observed_at": announcement.retrieved_at,
+            }, ensure_ascii=False) + "\n")

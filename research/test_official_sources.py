@@ -82,3 +82,46 @@ def test_collector_uses_the_session_scoped_official_feed_and_paginates():
     assert [post[1]["pageNumberDb"] for post in session.posts] == ["1", "2"]
     assert all(post[1]["datePeriod"] == "7 day" for post in session.posts)
     assert all("NJgetAnnouncementListData" in post[0] for post in session.posts)
+
+
+def test_official_announcements_are_appended_as_point_in_time_event_records(tmp_path):
+    archive = tmp_path / "event_archive.jsonl"
+    announcement = official_sources.OfficialAnnouncement(
+        title="Insurance regulation update",
+        url="https://www.saudiexchange.sa/wps/portal/saudiexchange/news/1",
+        symbol="8200",
+        published_at="2026-09-16T09:47:56+03:00",
+        retrieved_at="2026-09-16T10:00:00Z",
+    )
+
+    official_sources.append_event_archive(archive, [announcement])
+
+    import json
+    record = json.loads(archive.read_text(encoding="utf-8").strip())
+    assert record == {
+        "title": "Insurance regulation update",
+        "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/news/1",
+        "symbol": "8200",
+        "published_at": "2026-09-16T09:47:56+03:00",
+        "observed_at": "2026-09-16T10:00:00Z",
+    }
+
+
+def test_successful_collection_writes_a_durable_event_archive(monkeypatch, tmp_path):
+    queue = tmp_path / "evidence_queue.json"
+    archive = tmp_path / "event_archive.jsonl"
+    announcement = official_sources.OfficialAnnouncement(
+        title="Insurance regulation update",
+        url="https://www.saudiexchange.sa/wps/portal/saudiexchange/news/1",
+        symbol="8200",
+        published_at="2026-09-16T09:47:56+03:00",
+        retrieved_at="2026-09-16T10:00:00Z",
+    )
+    monkeypatch.setattr(main, "EVIDENCE_QUEUE_FILE", queue)
+    monkeypatch.setattr(main, "EVENT_ARCHIVE_FILE", archive)
+    monkeypatch.setattr(main.official_sources, "collect_official_announcements", lambda *_args, **_kwargs: [announcement])
+
+    assert main.mode_research_evidence() == 0
+
+    import json
+    assert json.loads(archive.read_text(encoding="utf-8").strip())["observed_at"].endswith("Z")

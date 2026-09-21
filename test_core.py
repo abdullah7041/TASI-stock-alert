@@ -1703,7 +1703,10 @@ def test_archive_headlines_writes_one_jsonl_line_per_headline():
     try:
         if path.exists():
             path.unlink()
-        news.archive_headlines("1234", result, archive_path=path)
+        news.archive_headlines(
+            "1234", result, archive_path=path,
+            observed_at="2026-09-21T04:00:00Z",
+        )
         lines = path.read_text(encoding="utf-8").splitlines()
         assert len(lines) == 1
         rec = json.loads(lines[0])
@@ -1711,6 +1714,7 @@ def test_archive_headlines_writes_one_jsonl_line_per_headline():
         assert rec["title"] == "Firm profit rises 12%"
         assert rec["matched_positive"] == ["profit"]
         assert rec["score"] == 0.5
+        assert rec["observed_at"] == "2026-09-21T04:00:00Z"
     finally:
         if path.exists():
             path.unlink()

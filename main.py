@@ -62,6 +62,7 @@ MARKET_PULSE_FILE = HERE / "market_pulse.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
 EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
+EVENT_ARCHIVE_FILE = HERE / "research" / "event_archive.jsonl"
 PROBE_FILE = HERE / "research" / "intraday_probe.json"
 
 
@@ -965,7 +966,8 @@ def mode_research_evidence() -> int:
         print(f"official evidence collection unavailable: {exc}")
         return 1
     official_sources.write_review_queue(EVIDENCE_QUEUE_FILE, announcements, retrieved_at)
-    print(f"official evidence review queue written: {len(announcements)} candidates; no Top 10 was changed.")
+    official_sources.append_event_archive(EVENT_ARCHIVE_FILE, announcements)
+    print(f"official evidence review queue and event archive written: {len(announcements)} candidates; no Top 10 was changed.")
     return 0
 
 

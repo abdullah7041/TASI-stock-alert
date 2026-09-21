@@ -21,6 +21,7 @@ import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 GOOGLE_NEWS_RSS = "https://news.google.com/rss/search"
@@ -175,7 +176,8 @@ def get_news(company_name: str, code: str, limit: int = 8) -> NewsResult:
 
 
 def archive_headlines(code: str, result: NewsResult,
-                      archive_path: Path = NEWS_ARCHIVE_FILE) -> None:
+                      archive_path: Path = NEWS_ARCHIVE_FILE,
+                      observed_at: str | None = None) -> None:
     """Append every fetched headline to a JSONL log, one line per headline.
 
     This is the only way news ever becomes testable against price outcomes:
@@ -187,12 +189,14 @@ def archive_headlines(code: str, result: NewsResult,
     if not result.headlines:
         return
     today = time.strftime("%Y-%m-%d")
+    observed_at = observed_at or datetime.now(timezone.utc).isoformat()
     matches = result.matches or [{"positive": [], "negative": []}] * len(result.headlines)
     with open(archive_path, "a", encoding="utf-8") as f:
         for h, m in zip(result.headlines, matches):
             f.write(json.dumps({
                 "date": today, "code": code, "title": h.get("title", ""),
                 "link": h.get("link", ""), "published": h.get("published", ""),
+                "observed_at": observed_at,
                 "score": result.score, "label": result.label,
                 "matched_positive": m.get("positive", []),
                 "matched_negative": m.get("negative", []),
