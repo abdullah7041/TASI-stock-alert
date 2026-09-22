@@ -27,4 +27,5 @@ top10_active.json
 .ingest-response.json
 .discord-receipt.json
 research/evidence.json
+research/forecast_metrics.json
 .evidence-current.json

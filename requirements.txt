@@ -8,3 +8,5 @@ pytest>=8.0
 PyYAML>=6.0
 # Digest charts (charts.py). Headless Agg backend; no display needed.
 matplotlib>=3.8
+# Offline purged forecast evaluator only; it never participates in live decisions.
+scikit-learn>=1.5
