@@ -38,6 +38,7 @@ import indicators as ind
 import history as histmod
 import disclosures as discl
 import session_gate
+import market_pulse
 from movement import detect_unusual_movement
 from research.company_evidence import load_evidence_records
 from research.entry_forecast import unavailable_forecast
@@ -62,6 +63,7 @@ EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
 EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
 PROBE_FILE = HERE / "research" / "intraday_probe.json"
+MARKET_PULSE_FILE = HERE / "market_pulse.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -1331,6 +1333,31 @@ def mode_intraday_probe() -> int:
     return 0
 
 
+def mode_market_pulse() -> int:
+    """Persist one delayed, observational five-minute pulse; it never notifies."""
+    active = _active_top10() or {}
+    top10_codes = [item.get("code") for item in active.get("entries", []) if isinstance(item, dict)]
+    tracked = list(dict.fromkeys(
+        [item["code"] for item in _holdings() if item.get("code")]
+        + [item["code"] for item in cfg.WATCHLIST if item.get("code")]
+        + [code for code in top10_codes if isinstance(code, str) and code]
+    ))
+    index_code = cfg.REGIME["index_code"]
+    frames = dat.get_intraday_histories([index_code, *tracked], interval="5m", period="5d")
+    daily_index = dat.get_qualified_index_history(index_code, min_bars=market_pulse.REGIME_HISTORY_BARS)
+    pulse = market_pulse.build_market_pulse(
+        frames, daily_index, tracked,
+        source=os.environ.get("MARKET_PULSE_SOURCE", "yahoo-probe"),
+        fetched_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        declared_delay_minutes=int(os.environ.get("MARKET_PULSE_DELAY_MINUTES", "15")),
+        prior=_load(MARKET_PULSE_FILE, None),
+    )
+    _save(MARKET_PULSE_FILE, pulse)
+    message = pulse.get("reason") or f"{pulse['coverage']['usable']} tracked names usable"
+    print(f"market pulse {pulse['status']}: {message}")
+    return 0
+
+
 MODES = {
     "heartbeat": mode_heartbeat,
     "discord-smoke": mode_discord_smoke,
@@ -1347,6 +1374,7 @@ MODES = {
     "features": mode_features,
     "backtest": mode_backtest,
     "intraday-probe": mode_intraday_probe,
+    "market-pulse": mode_market_pulse,
 }
 
 
@@ -1354,7 +1382,7 @@ MODES = {
 # session_gate's windows. Research and manual modes are deliberately absent:
 # you must be able to run a backtest or a smoke test on a Friday.
 GATED_MODES = {"digest": "digest", "digest-guard": "digest-backstop",
-               "run": "session", "reconcile": "reconcile"}
+               "run": "session", "market-pulse": "session", "reconcile": "reconcile"}
 MAX_SCHEDULE_LAG = {"digest": timedelta(minutes=60), "reconcile": timedelta(minutes=60)}
 # digest-guard is deliberately absent from both the lag table and the "digest"
 # window: it exists to run late. Gating it on the pre-open hour left it 50

@@ -239,6 +239,38 @@ def get_history(code: str, period: str = "1y") -> pd.DataFrame:
     return df
 
 
+def _clean_intraday_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize an intraday frame without collapsing its timestamps to dates."""
+    if df is None or df.empty:
+        return pd.DataFrame()
+    cleaned = _clean_ohlcv(df)
+    if cleaned.empty:
+        return cleaned
+    index = pd.to_datetime(cleaned.index, errors="coerce", utc=True)
+    cleaned = cleaned.copy()
+    cleaned.index = index
+    return cleaned[cleaned.index.notna()]
+
+
+def get_intraday_histories(codes: list, *, interval: str = "5m", period: str = "5d") -> dict:
+    """Return completed delayed intraday bars for a pulse source.
+
+    This is deliberately separate from daily history: silently normalizing the
+    index to a date would turn several five-minute bars into one daily row.
+    Empty frames are source failure data, not a fallback to daily prices.
+    """
+    import yfinance as yf
+
+    result = {}
+    for code in codes:
+        try:
+            frame = yf.Ticker(yahoo_symbol(code)).history(period=period, interval=interval, auto_adjust=False)
+            result[code] = _clean_intraday_ohlcv(frame)
+        except Exception:
+            result[code] = pd.DataFrame()
+    return result
+
+
 def get_quote(code: str, delayed_default: bool = True) -> Quote | None:
     """Latest price. Yahoo first (from the most recent daily bar), SAHMK fallback."""
     try:
@@ -328,3 +360,11 @@ def get_index_history(index_code: str, period: str = "6mo") -> pd.DataFrame:
         if val is not None:
             return pd.DataFrame({"Close": [float(val)]})
     return pd.DataFrame()
+
+
+def get_qualified_index_history(index_code: str, period: str = "6mo", *, min_bars: int = 52) -> pd.DataFrame:
+    """Return a genuine daily series, never the one-point index-summary fallback."""
+    frame = get_index_history(index_code, period)
+    if frame is None or frame.empty or "Close" not in frame or len(frame) < min_bars:
+        return pd.DataFrame()
+    return frame

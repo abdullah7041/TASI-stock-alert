@@ -200,6 +200,22 @@ def test_the_managed_runtime_ships_in_shadow_mode():
     assert SCHEDULER["job"]["env"]["TASI_DELIVERY_ENABLED"] == "false"
 
 
+def test_managed_runtime_records_market_pulse_health_without_delivery(monkeypatch):
+    """A five-minute pulse is observation-only even when the managed runner owns it."""
+    import main
+    from runtime import job
+
+    called = []
+    store = InMemoryStateStore()
+    monkeypatch.setattr(main, "mode_market_pulse", lambda: called.append("pulse") or 0)
+
+    now = datetime(2026, 9, 20, 7, 15, tzinfo=timezone.utc)  # Sunday 10:15 Riyadh
+    assert job.run("market-pulse", store=store, now=now) == 0
+    assert called == ["pulse"]
+    assert store.health[-1]["mode"] == "market-pulse"
+    assert store.health[-1]["deliveryEnabled"] is False
+
+
 def test_secrets_are_referenced_not_embedded():
     secrets = SCHEDULER["job"]["secrets"]
 

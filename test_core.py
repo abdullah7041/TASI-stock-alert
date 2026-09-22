@@ -3645,7 +3645,7 @@ def test_matplotlib_is_declared_as_a_runtime_dependency():
 
 def test_live_modes_are_bound_to_the_tadawul_calendar():
     assert main.GATED_MODES == {"digest": "digest", "digest-guard": "digest-backstop",
-                                "run": "session", "reconcile": "reconcile"}
+                                "run": "session", "market-pulse": "session", "reconcile": "reconcile"}
 
 
 def test_the_backstop_is_not_refused_for_the_lateness_it_exists_to_absorb():

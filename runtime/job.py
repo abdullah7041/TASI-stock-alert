@@ -27,7 +27,7 @@ from runtime.state import InMemoryStateStore, StateStore, event_id
 
 DISCORD = "discord"
 SITES = "sites"
-MODES = ("digest", "session", "reconcile")
+MODES = ("digest", "session", "market-pulse", "reconcile")
 
 
 def delivery_enabled() -> bool:
@@ -108,7 +108,7 @@ def run(mode: str, store: StateStore | None = None, now: datetime | None = None)
         log_event(mode=mode, status="rejected", reason="unknown mode", scheduledFor=scheduled_for, startedAt=started)
         return 2
 
-    blocked = session_gate.gate_reason(mode, now)
+    blocked = session_gate.gate_reason("session" if mode == "market-pulse" else mode, now)
     if blocked:
         store.record_health(mode, "skipped", {"reason": blocked, "scheduledFor": scheduled_for})
         log_event(mode=mode, status="skipped", reason=blocked, scheduledFor=scheduled_for, startedAt=started,
@@ -161,6 +161,11 @@ def _run_session(main, store: StateStore) -> int:
     return 0 if result["ok"] and ingest["ok"] else 1
 
 
+def _run_market_pulse(main, store: StateStore) -> int:
+    """Collect a pulse only; delivery remains impossible in shadow mode."""
+    return main.mode_market_pulse()
+
+
 def ingest_alerts(alerts: list[dict]) -> dict:
     """Push this job's own alerts into the Sites cockpit.
 
@@ -196,7 +201,7 @@ def _run_reconcile(main, store: StateStore) -> int:
     return main.mode_reconcile()
 
 
-_MODE_HANDLERS = {"digest": _run_digest, "session": _run_session, "reconcile": _run_reconcile}
+_MODE_HANDLERS = {"digest": _run_digest, "session": _run_session, "market-pulse": _run_market_pulse, "reconcile": _run_reconcile}
 
 
 def main_entry(argv: list[str] | None = None) -> int:
