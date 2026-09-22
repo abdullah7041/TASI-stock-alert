@@ -50,6 +50,22 @@ def test_market_pulse_keeps_the_last_valid_artifact_as_stale_on_source_failure()
     assert "index" in result["reason"].lower()
 
 
+def test_market_pulse_excludes_an_open_five_minute_bar_from_the_completed_observation():
+    """A bar stamped at fetch time is still forming, not evidence of a pulse."""
+    result = market_pulse.build_market_pulse(
+        {
+            "^TASI.SR": _bars([11000.0, 11010.0, 11030.0], ["2026-09-22T07:10:00Z", "2026-09-22T07:15:00Z", "2026-09-22T07:20:00Z"]),
+            "1303": _bars([15.0, 15.3, 15.6], ["2026-09-22T07:10:00Z", "2026-09-22T07:15:00Z", "2026-09-22T07:20:00Z"]),
+        },
+        _bars(range(100, 152), pd.date_range("2026-07-01", periods=52, freq="B", tz="UTC")), ["1303"],
+        source="yahoo-probe", fetched_at="2026-09-22T07:20:00Z", declared_delay_minutes=15,
+    )
+
+    assert result["status"] == "current"
+    assert result["index"]["latestBarAt"] == "2026-09-22T07:15:00Z"
+    assert result["observations"][0]["price"] == 15.3
+
+
 def test_market_pulse_does_not_fabricate_a_regime_from_one_index_point():
     """The SAHMK summary fallback is one point, not the 50-session series a regime needs."""
     result = market_pulse.build_market_pulse(

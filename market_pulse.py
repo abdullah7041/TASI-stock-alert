@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import timezone
-
 import pandas as pd
 
 import analyze as az
@@ -29,13 +27,22 @@ def _iso(value) -> str | None:
     return stamp.isoformat().replace("+00:00", "Z") if stamp is not None else None
 
 
-def _usable_bar(frame: pd.DataFrame, fetched_at: pd.Timestamp, max_age_minutes: int) -> tuple[pd.Timestamp, float, float] | None:
+def _usable_bar(frame: pd.DataFrame, fetched_at: pd.Timestamp, max_age_minutes: int,
+                interval_minutes: int) -> tuple[pd.Timestamp, float, float] | None:
     if frame is None or frame.empty or "Close" not in frame or len(frame) < 2:
         return None
+    completed = []
+    for position in range(len(frame)):
+        stamp = _timestamp(frame.index[position])
+        if stamp is not None and stamp + pd.Timedelta(minutes=interval_minutes) <= fetched_at:
+            completed.append(position)
+    if len(completed) < 2:
+        return None
+    latest_position, previous_position = completed[-1], completed[-2]
     try:
-        latest_at = _timestamp(frame.index[-1])
-        latest = float(frame["Close"].iloc[-1])
-        previous = float(frame["Close"].iloc[-2])
+        latest_at = _timestamp(frame.index[latest_position])
+        latest = float(frame["Close"].iloc[latest_position])
+        previous = float(frame["Close"].iloc[previous_position])
     except (IndexError, TypeError, ValueError):
         return None
     if latest_at is None or not pd.notna(latest) or not pd.notna(previous) or previous == 0:
@@ -83,10 +90,10 @@ def build_market_pulse(
     tracked = list(dict.fromkeys(str(code) for code in tracked_codes if str(code) and str(code) != INDEX_CODE))
     required = max(1, round(len(tracked) * coverage_threshold)) if tracked else 0
     max_age_minutes = declared_delay_minutes + interval_minutes * 2
-    index = _usable_bar(intraday.get(INDEX_CODE, pd.DataFrame()), fetched, max_age_minutes)
+    index = _usable_bar(intraday.get(INDEX_CODE, pd.DataFrame()), fetched, max_age_minutes, interval_minutes)
     observations = []
     for code in tracked:
-        usable = _usable_bar(intraday.get(code, pd.DataFrame()), fetched, max_age_minutes)
+        usable = _usable_bar(intraday.get(code, pd.DataFrame()), fetched, max_age_minutes, interval_minutes)
         if usable is None:
             continue
         observed_at, price, change_pct = usable
