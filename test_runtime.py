@@ -13,7 +13,7 @@ import pytest
 import yaml
 
 import session_gate
-from runtime.job import deliver_alerts, ingest_alerts, quote_age_seconds, run
+from runtime.job import deliver_alerts, ingest_alerts, ingest_market_pulse, quote_age_seconds, run
 from runtime.state import InMemoryStateStore, event_id
 
 RIYADH = timezone(timedelta(hours=3))
@@ -145,6 +145,17 @@ def test_shadow_mode_never_reaches_cockpit_ingestion(monkeypatch):
     assert ingest_alerts([alert()]) == {"ok": True, "status": "skipped: delivery disabled (shadow mode)"}
 
 
+def test_market_pulse_cannot_reach_the_cockpit_without_its_own_explicit_opt_in(monkeypatch):
+    """Pulse ingest has a separate switch, so delivery cutover cannot enable it by accident."""
+    monkeypatch.setenv("COCKPIT_PULSE_INGEST_URL", "https://example.invalid/api/market-pulse/ingest")
+    monkeypatch.setenv("COCKPIT_SIWC_BYPASS_TOKEN", "sites")
+    monkeypatch.setenv("COCKPIT_INGEST_TOKEN", "app")
+    monkeypatch.setenv("TASI_DELIVERY_ENABLED", "true")
+    monkeypatch.delenv("TASI_PULSE_INGEST_ENABLED", raising=False)
+
+    assert ingest_market_pulse({"status": "current"}) == {"ok": True, "status": "skipped: pulse ingest disabled (shadow mode)"}
+
+
 def test_a_job_that_owns_nothing_ingests_nothing(monkeypatch):
     monkeypatch.setenv("COCKPIT_ALERT_INGEST_URL", "https://example.invalid/api/alerts/ingest")
     monkeypatch.setenv("COCKPIT_SIWC_BYPASS_TOKEN", "sites")
@@ -198,6 +209,7 @@ def test_the_scheduled_modes_and_times_match_the_agreed_plan():
 
 def test_the_managed_runtime_ships_in_shadow_mode():
     assert SCHEDULER["job"]["env"]["TASI_DELIVERY_ENABLED"] == "false"
+    assert SCHEDULER["job"]["env"]["TASI_PULSE_INGEST_ENABLED"] == "false"
 
 
 def test_managed_runtime_records_market_pulse_health_without_delivery(monkeypatch):

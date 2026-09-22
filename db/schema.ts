@@ -49,4 +49,16 @@ export const researchSchemaStatements = [
     updated_at TEXT NOT NULL,
     PRIMARY KEY(artifact_id, destination)
   )`,
+  `CREATE TABLE IF NOT EXISTS market_pulses (
+    pulse_key TEXT PRIMARY KEY, pulse_json TEXT NOT NULL, status TEXT NOT NULL,
+    observed_at TEXT, updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS evidence_queue (
+    source_url TEXT PRIMARY KEY, announcement_json TEXT NOT NULL, collected_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS evidence_records (
+    revision_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, symbol TEXT NOT NULL,
+    report_period TEXT NOT NULL, evidence_json TEXT NOT NULL, reviewed_at TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS evidence_records_current ON evidence_records(symbol, report_period, reviewed_at DESC)`,
 ];

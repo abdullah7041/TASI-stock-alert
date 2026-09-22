@@ -1,7 +1,8 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { ActionCockpit } from "@/app/components/ActionCockpit";
+import { EvidenceReviewForm } from "@/app/components/EvidenceReviewForm";
 import type { DashboardPayload, DashboardSnapshotV2, DashboardSnapshotV3 } from "@/app/lib/dashboard-types";
 import type { MovementAlert } from "@/app/lib/evidence-types";
 
@@ -204,6 +205,7 @@ test("an empty Top 10 offers no approval controls", async () => {
   expect(screen.queryByRole("button", { name: "Approve Top 10" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Reject Top 10" })).toBeNull();
   expect(top10.textContent).toContain("nothing to approve or reject");
+  expect(within(top10).getByLabelText("Reviewed evidence JSON")).toBeTruthy();
 });
 
 test("a researched Top 10 draft does offer approval controls", async () => {
@@ -278,4 +280,20 @@ test("a failed manual refresh retains the last-good cockpit view", async () => {
 
   expect((await screen.findByRole("status")).textContent).toMatch(/Refresh failed/i);
   expect(screen.getByText("Today’s decisions, without the noise.")).toBeTruthy();
+});
+
+test("the owner evidence form submits a reviewed record against a queued primary source", async () => {
+  const queuedUrl = "https://www.saudiexchange.sa/issuer-announcement";
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ announcements: [{ title: "Issuer announcement", url: queuedUrl, retrieved_at: "2026-09-22T08:00:00Z" }] }), { headers: { "content-type": "application/json" } }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ revisionId: "r1" }), { status: 201, headers: { "content-type": "application/json" } }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(<EvidenceReviewForm />);
+
+  await screen.findByRole("option", { name: "Issuer announcement" });
+  fireEvent.change(screen.getByLabelText("Reviewed evidence JSON"), { target: { value: '{"symbol":"1150"}' } });
+  await userEvent.click(screen.getByRole("button", { name: "Save reviewed evidence" }));
+
+  expect(fetchMock).toHaveBeenLastCalledWith("/api/evidence/records", expect.objectContaining({ method: "POST", body: JSON.stringify({ symbol: "1150", sourceUrl: queuedUrl }) }));
+  expect((await screen.findByRole("status")).textContent).toContain("Evidence revision saved.");
 });

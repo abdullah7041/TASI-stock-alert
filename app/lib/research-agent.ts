@@ -13,21 +13,28 @@ type PrivateResearchContext = {
   chatModel: string;
 };
 
+export type PrivateOwnerContext = { ownerId: string; db: import("cloudflare:workers").D1Database };
+
+export async function getPrivateOwnerContext(request: Request): Promise<PrivateOwnerContext> {
+  const { env } = await import("cloudflare:workers");
+  const ownerId = request.headers.get("oai-authenticated-user-id");
+  const ownerEmail = request.headers.get("oai-authenticated-user-email");
+  if (!ownerId || !ownerEmail) throw new Response("Sign in is required.", { status: 401 });
+  if (!env.AGENT_OWNER_EMAIL || ownerEmail.toLowerCase() !== env.AGENT_OWNER_EMAIL.toLowerCase()) throw new Response("This private agent is unavailable for this account.", { status: 403 });
+  if (!env.DB) throw new Response("Owner storage is not configured yet.", { status: 503 });
+  return { ownerId, db: env.DB };
+}
+
 export async function getPrivateResearchContext(request: Request): Promise<PrivateResearchContext> {
   const { env } = await import("cloudflare:workers");
   // Sites authenticates private visitors before dispatch and supplies these
   // identity headers. Authorization remains server-side through the owner
   // allowlist below; machine ingestion uses its separate bearer token.
-  const ownerId = request.headers.get("oai-authenticated-user-id");
-  const ownerEmail = request.headers.get("oai-authenticated-user-email");
-  if (!ownerId || !ownerEmail) throw new Response("Sign in is required.", { status: 401 });
-  if (!env.AGENT_OWNER_EMAIL || ownerEmail.toLowerCase() !== env.AGENT_OWNER_EMAIL.toLowerCase()) {
-    throw new Response("This private agent is unavailable for this account.", { status: 403 });
-  }
-  if (!env.DB || !env.OPENAI_API_KEY) throw new Response("The research agent is not configured yet.", { status: 503 });
+  const owner = await getPrivateOwnerContext(request);
+  if (!env.OPENAI_API_KEY) throw new Response("The research agent is not configured yet.", { status: 503 });
   return {
-    ownerId,
-    store: new ResearchStore(env.DB),
+    ownerId: owner.ownerId,
+    store: new ResearchStore(owner.db),
     openAiKey: env.OPENAI_API_KEY,
     reportModel: env.AGENT_REPORT_MODEL ?? "gpt-5.6-terra",
     chatModel: env.AGENT_CHAT_MODEL ?? "gpt-5.6-luna",

@@ -18,6 +18,7 @@ on:
           - digest
           - digest-guard
           - intraday-probe
+          - market-pulse
           - heartbeat
           - discord-smoke
           - suggest
@@ -134,6 +135,35 @@ jobs:
               target.unlink()
           PY
 
+      - name: Load reviewed evidence for Top 10 drafting
+        if: steps.mode.outputs.mode == 'top10-draft'
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          rm -f research/evidence.json .evidence-current.json
+          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ]; then
+            echo "cockpit tokens absent; no reviewed evidence is available"
+            exit 0
+          fi
+          if ! curl --fail --silent --show-error \
+              -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
+              -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+              https://tasi-action-cockpit.busaud7041.chatgpt.site/api/evidence/current \
+              > .evidence-current.json; then
+            echo "reviewed evidence read failed; leaving Top 10 evidence unavailable"
+            rm -f .evidence-current.json
+            exit 0
+          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path(".evidence-current.json").read_text(encoding="utf-8"))
+          records = payload.get("records") if isinstance(payload, dict) else None
+          if isinstance(records, list):
+              Path("research/evidence.json").write_text(json.dumps(records, ensure_ascii=False), encoding="utf-8")
+          PY
+
       - name: Load the confirmed portfolio for producer
         # What you own and what you have spent are recorded by you, in the
         # cockpit ledger. Fetched the same fail-soft way as the Top 10: a failed
@@ -216,6 +246,23 @@ jobs:
               alerts = json.loads(Path("movement_alerts.json").read_text(encoding="utf-8"))
               print(f"movement_alert_count={len(alerts.get('alerts') or [])}")
           PY
+
+      - name: Persist official evidence review queue
+        if: steps.mode.outputs.mode == 'research-evidence' && steps.run.outcome == 'success'
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ] || [ ! -f research/evidence_queue.json ]; then
+            echo "review queue was not persisted because it was unavailable or unauthenticated"
+            exit 0
+          fi
+          curl --fail --silent --show-error -X POST \
+            -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
+            -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @research/evidence_queue.json \
+            https://tasi-action-cockpit.busaud7041.chatgpt.site/api/evidence/queue/ingest
 
       - name: Detect dashboard update
         id: dashboard

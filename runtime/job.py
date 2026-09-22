@@ -35,6 +35,11 @@ def delivery_enabled() -> bool:
     return os.environ.get("TASI_DELIVERY_ENABLED", "").strip().lower() == "true"
 
 
+def pulse_ingest_enabled() -> bool:
+    """Pulse storage is a second explicit cutover, independent of alerts."""
+    return os.environ.get("TASI_PULSE_INGEST_ENABLED", "").strip().lower() == "true"
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -162,8 +167,13 @@ def _run_session(main, store: StateStore) -> int:
 
 
 def _run_market_pulse(main, store: StateStore) -> int:
-    """Collect a pulse only; delivery remains impossible in shadow mode."""
-    return main.mode_market_pulse()
+    """Collect a pulse only; an explicit future switch permits cockpit storage."""
+    code = main.mode_market_pulse()
+    pulse = main._load(main.MARKET_PULSE_FILE, None) if code == 0 else None
+    ingest = ingest_market_pulse(pulse) if isinstance(pulse, dict) else {"ok": code == 0, "status": "skipped: no pulse artifact"}
+    log_event(mode="market-pulse", status="observed" if code == 0 else "failed", pulseStatus=pulse.get("status") if isinstance(pulse, dict) else None,
+              pulseIngestResult=ingest["status"])
+    return 0 if code == 0 and ingest["ok"] else 1
 
 
 def ingest_alerts(alerts: list[dict]) -> dict:
@@ -186,6 +196,35 @@ def ingest_alerts(alerts: list[dict]) -> dict:
 
     try:
         response = requests.post(endpoint, json={"alerts": alerts}, timeout=20, headers={
+            "OAI-Sites-Authorization": f"Bearer {sites_token}",
+            "Authorization": f"Bearer {app_token}",
+            "Content-Type": "application/json",
+        })
+    except Exception as exc:
+        return {"ok": False, "status": f"failed: {type(exc).__name__}"}
+    ok = 200 <= response.status_code < 300
+    return {"ok": ok, "status": f"http {response.status_code}"}
+
+
+def ingest_market_pulse(pulse: dict | None) -> dict:
+    """Store a completed observation only after a separately authorized cutover.
+
+    This path never shares the alert-delivery switch.  It sends no Discord
+    message and does not alter recommendations, sizing, or forecast inputs.
+    """
+    if not isinstance(pulse, dict):
+        return {"ok": True, "status": "skipped: no pulse artifact"}
+    if not pulse_ingest_enabled():
+        return {"ok": True, "status": "skipped: pulse ingest disabled (shadow mode)"}
+    endpoint = os.environ.get("COCKPIT_PULSE_INGEST_URL", "")
+    sites_token = os.environ.get("COCKPIT_SIWC_BYPASS_TOKEN", "")
+    app_token = os.environ.get("COCKPIT_INGEST_TOKEN", "")
+    if not endpoint or not sites_token or not app_token:
+        return {"ok": True, "status": "skipped: pulse cockpit ingestion is not configured"}
+    import requests
+
+    try:
+        response = requests.post(endpoint, json=pulse, timeout=20, headers={
             "OAI-Sites-Authorization": f"Bearer {sites_token}",
             "Authorization": f"Bearer {app_token}",
             "Content-Type": "application/json",

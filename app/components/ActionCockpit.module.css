@@ -246,6 +246,10 @@
 .researchButton:hover { color: #b9dcf8; text-decoration: underline; }
 .researchDisabled { margin: 12px 0 0; color: #8294b4; font-size: .8rem; }
 .researchLink { margin: 13px 2px 0; color: #8ea3c7; }
+.evidenceForm { display: grid; gap: 10px; }
+.evidenceForm label { display: grid; gap: 5px; color: #aebbd1; font-size: .82rem; }
+.evidenceForm select, .evidenceForm textarea { width: 100%; border: 1px solid #4a6289; border-radius: 7px; background: #0d1524; color: #e5edfa; font: inherit; padding: 8px; }
+.evidenceForm textarea { min-height: 116px; resize: vertical; }
 .footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid #263653; color: #788aa8; }
 
 @media (max-width: 720px) {

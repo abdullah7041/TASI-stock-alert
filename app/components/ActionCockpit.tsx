@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
+import { EvidenceReviewForm } from "./EvidenceReviewForm";
 import type { Candidate, DashboardPayload, DashboardSnapshotV2, DashboardSnapshotV3 } from "@/app/lib/dashboard-types";
 import { AlertBoard, formatCockpitTimestamp } from "./AlertBoard";
 import styles from "./ActionCockpit.module.css";
@@ -243,6 +244,7 @@ export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | nul
                 {/* Approval controls exist only when there is something to approve. */}
                 {top10Review?.status === "draft" && <div className={styles.actionList}><p className={styles.candidateNote}>{v2.top10.status === "approved" ? "A researched replacement is awaiting approval; the approved list remains active until then." : "Research draft awaiting approval."}</p><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("approved")} type="button">Approve Top 10</button><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("rejected")} type="button">Reject Top 10</button></div>}
               </>}
+            <EvidenceReviewForm />
           </StatusRow>}
 
           {v2 && <StatusRow
