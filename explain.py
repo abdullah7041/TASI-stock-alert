@@ -61,8 +61,8 @@ _VERDICTS = {
 
 LEGEND_TITLE = "What the colours mean"
 LEGEND_LINES = (
-    "🟢 **Green — nothing to do, you're fine.** You own it and it's behaving, "
-    "or a new name just qualified to buy.",
+    "🟢 **Green — check the label.** KEEP means no holding decision level crossed. "
+    "BUY means the rule checklist qualified a candidate; verify price and risk first.",
     "🟡 **Yellow — watching, no action.** On the list, not ready. The message "
     "says what would make it ready.",
     "🟠 **Orange — act, and it's good news.** Price reached your profit level.",
@@ -135,6 +135,11 @@ _RULE_PHRASES = {
 
 
 def _rule_phrase(rule: dict) -> str:
+    if rule.get("rule") == "rsi_band":
+        actual = _number(rule.get("actual"))
+        if actual is not None and actual > 60:
+            return "it is overbought and RSI must return to the recovery band"
+        return "RSI must return to the recovery band"
     return _RULE_PHRASES.get(str(rule.get("rule")), str(rule.get("plain") or "unknown"))
 
 

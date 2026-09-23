@@ -10,8 +10,10 @@ Run it during two separate Riyadh trading sessions through the managed job,
 without adding a Cloud Scheduler schedule. Keep both
 `TASI_DELIVERY_ENABLED` and `TASI_PULSE_INGEST_ENABLED` set to `false`.
 
-For each run, retain the structured managed-job log and the persisted
-`market_pulse.json` artifact. Verify that each artifact has all of the
+For each run, retain the structured managed-job log and the Firestore
+`runtimes/tasi/market_pulse_attempts` record. The container-local
+`market_pulse_v1.json` is transient and is not proof of persistence. Verify that
+each persisted artifact has all of the
 following:
 
 - `dataStatus` is `delayed-intraday`, and its source/delay are stated;

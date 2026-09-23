@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tasi-machine-gateway",
+  "account_id": "08a88686149b48264ce72d14678e9f00",
+  "main": "machine-gateway/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "services": [{ "binding": "COCKPIT", "service": "tasi-action-cockpit" }],
+  "triggers": { "crons": ["20 5 * * SUN-THU"] }
+}

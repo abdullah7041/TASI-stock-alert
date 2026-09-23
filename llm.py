@@ -61,20 +61,20 @@ BUDGET_FILE = HERE / "llm_budget.json"
 # so it carries its own keys and its own provider order. Every provider-specific
 # detail stays inside that provider's `_complete_*` function.
 #
-# Order is deliberate and overridable: OpenRouter first when it is configured
-# (one API across many models, so a retirement is a string change rather than an
-# outage), Gemini second because its free tier costs nothing to fall back to.
+# Blank Actions variables are equivalent to missing settings. Paid fallback
+# remains opt-in through an explicit provider order; never expand a budget.
 PROVIDER_ORDER = tuple(
     name.strip().lower()
-    for name in os.environ.get("TASI_LLM_PROVIDERS", "openrouter,gemini").split(",")
+    for name in (os.environ.get("TASI_LLM_PROVIDERS", "").strip() or "gemini").split(",")
     if name.strip()
 )
 
 # `gemini-flash-latest` is an alias Google hot-swaps to the current flash
 # release. It is used instead of a pinned ID precisely because a pinned ID is
 # what broke: `gemini-2.5-flash` began returning 404 while still being listed.
-GEMINI_MODEL = os.environ.get("TASI_LLM_MODEL_GEMINI",
-                              os.environ.get("TASI_LLM_MODEL", "gemini-flash-latest"))
+GEMINI_MODEL = (os.environ.get("TASI_LLM_MODEL_GEMINI", "").strip()
+                or os.environ.get("TASI_LLM_MODEL", "").strip()
+                or "gemini-flash-latest")
 
 # OpenRouter publishes no evergreen alias, so there is no safe default to hide
 # behind. Unset means the provider is skipped with that stated as the reason --

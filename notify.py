@@ -15,7 +15,8 @@ from email.utils import parsedate_to_datetime
 import explain
 
 
-COCKPIT_URL = "https://tasi-action-cockpit.busaud7041.chatgpt.site"
+# Human navigation must not inherit the machine-only ingestion gateway.
+COCKPIT_URL = os.getenv("COCKPIT_PUBLIC_URL", "").strip().rstrip("/") or "https://tasi-action-cockpit.ronaldinho1415.workers.dev"
 
 
 def _fmt_reads(rec: dict) -> str:
@@ -60,13 +61,15 @@ def _fmt_news(news: dict, *, today: date | None = None) -> list:
     0.0' line is exactly what made news look hardcoded."""
     if news.get("ok") is False:
         return ["   news: fetch failed"]
+    partial = "partial coverage; " if news.get("status") == "partial" else ""
     headlines = news.get("headlines") or []
     if not headlines:
-        return [f"   news: no headlines found ({news.get('label')}, score {news.get('score')})"]
+        return [f"   news: {partial}no headlines found ({news.get('label')}, score {news.get('score')})"]
     recent = _recent_headlines(news, today or date.today())
     if not recent:
-        return [f"   news: no recent headlines found ({news.get('label')}, score {news.get('score')})"]
-    lines = [f"   news: {news.get('label')} (score {news.get('score')}, {len(recent)} headlines)"]
+        return [f"   news: {partial}no recent headlines found ({news.get('label')}, score {news.get('score')})"]
+    partial = "partial coverage; " if news.get("status") == "partial" else ""
+    lines = [f"   news: {partial}{news.get('label')} (score {news.get('score')}, {len(recent)} headlines)"]
     for h in recent[:3]:
         title = h.get("title", "")
         published = h.get("published", "")
@@ -495,12 +498,19 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
     price = float(rec.get("price") or 0.0)
 
     label, tone = explain.verdict(rec)
+    decision = rec.get("decision") or {}
+    label = decision.get("label") or label
+    if label == "Watching":
+        tone = explain.WATCH
+    elif label == "Insufficient data":
+        tone = explain.NO_DATA
     color = explain.TONE_COLORS[tone]
 
     move = explain.move_phrase(rec)
     title_move = f"  ({move})" if move else ""
+    price_text = f"{price:.2f} SAR" if price > 0 else "price unavailable"
     embed = {
-        "title": _clip(f"{label} · {rec['code']} {rec['name']} — {price:.2f} SAR{title_move}",
+        "title": _clip(f"{label} · {rec['code']} {rec['name']} — {price_text}{title_move}",
                        EMBED_TITLE_LIMIT),
         "color": color,
         "fields": [],
@@ -508,7 +518,9 @@ def build_name_embed(rec: dict, *, levels: dict | None = None,
 
     # The decision, in three sentences: where you stand, what would move it,
     # and the engine's own stated reason.
-    lines = [explain.situation(rec)]
+    lines = [decision.get("reason") or explain.situation(rec)]
+    if decision and rec.get("kind") == "holding":
+        lines.append(explain.situation(rec))
     change = explain.what_would_change_it(rec, levels)
     if change:
         lines.append(change)

@@ -170,11 +170,30 @@ export function parseDashboardSnapshot(value) {
     ...(typeof leanStatus.errorCategory === "string" && leanStatus.errorCategory ? { errorCategory: leanStatus.errorCategory } : {}),
   };
   if (!parsedLeanStatus.ok && !parsedLeanStatus.reason) throw new Error("Unavailable leanStatus needs a reason.");
+  const rawCharts = list(value.charts, "charts");
+  const chartPriceDates = new Map(rawCharts.flatMap((chart) => {
+    const bars = chart && typeof chart === "object" && Array.isArray(chart.bars) ? chart.bars : [];
+    const latest = bars.at(-1);
+    return typeof chart?.code === "string" && typeof latest?.date === "string" ? [[chart.code, latest.date]] : [];
+  }));
   const digestRecords = list(value.digestRecords, "digestRecords").map((record) => {
     if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("digestRecords items must be objects.");
-    return { ...record, code: text(record, "code"), name: text(record, "name") };
+    const priceDate = typeof record.priceDate === "string" ? record.priceDate : chartPriceDates.get(record.code);
+    const chartPriceDate = chartPriceDates.get(record.code);
+    if (typeof record.priceDate === "string" && typeof chartPriceDate === "string" && record.priceDate !== chartPriceDate) {
+      throw new Error("priceDate must match the chart's final bar date.");
+    }
+    if (typeof record.price === "number" && Number.isFinite(record.price) && record.price > 0 && typeof priceDate !== "string") {
+      throw new Error("A priced digest record requires priceDate.");
+    }
+    return {
+      ...record,
+      code: text(record, "code"),
+      name: text(record, "name"),
+      ...(typeof priceDate === "string" ? { priceDate: tradeDate(priceDate) } : {}),
+    };
   });
-  const charts = list(value.charts, "charts").map((chart) => {
+  const charts = rawCharts.map((chart) => {
     if (!chart || typeof chart !== "object" || Array.isArray(chart)) throw new Error("charts items must be objects.");
     const commonChart = { code: text(chart, "code"), name: text(chart, "name"), status: enumValue(chart.status, "chart.status", ["available", "unavailable"]) };
     if (commonChart.status === "unavailable") return { ...commonChart, reason: text(chart, "reason") };

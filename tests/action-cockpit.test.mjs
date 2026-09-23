@@ -46,9 +46,12 @@ test("keeps dated evidence and the broker boundary visible for version-2 cockpit
 
 test("uses separate Sites and app credentials for private ingestion", () => {
   const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
+  const authHelper = readFileSync(new URL('../.github/cockpit-auth.sh', import.meta.url), 'utf8');
 
-  assert.match(workflow, /COCKPIT_SIWC_BYPASS_TOKEN/);
-  assert.match(workflow, /OAI-Sites-Authorization: Bearer/);
+  assert.match(workflow + authHelper, /COCKPIT_SIWC_BYPASS_TOKEN/);
+  assert.match(authHelper, /OAI-Sites-Authorization: Bearer/);
+  assert.match(authHelper, /Authorization: Bearer \$\{COCKPIT_INGEST_TOKEN:-\}/);
+  assert.doesNotMatch(workflow, /Authorization: Bearer \$\{COCKPIT_INGEST_TOKEN/);
 });
 
 test("ingestion stores a version-2 draft and alert history without approving it", () => {
@@ -78,17 +81,40 @@ test("composes independently ingested alerts into the dashboard response", () =>
   assert.match(route, /AlertStore/);
   assert.match(route, /latest\(20\)/);
   assert.match(route, /freshness: dashboardFreshness\(snapshot\), alerts/);
-  assert.match(cockpit, /summaryV1\?\.cards/);
-  assert.match(cockpit, /payload\.alerts/);
+  assert.match(cockpit, /alerts=\{data\.alerts\}/);
+});
+
+test("ingests the delayed market pulse separately and composes it into the cockpit", () => {
+  const route = readFileSync(new URL("../app/api/dashboard/route.ts", import.meta.url), "utf8");
+  const pulseIngest = readFileSync(new URL("../app/api/pulse/ingest/route.ts", import.meta.url), "utf8");
+  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
+
+  assert.match(route, /MarketPulseStore/);
+  assert.match(route, /marketPulse/);
+  assert.match(pulseIngest, /DASHBOARD_INGEST_TOKEN/);
+  assert.match(pulseIngest, /parseMarketPulse/);
+  assert.match(pulseIngest, /MarketPulseStore/);
+  assert.match(workflow, /\/api\/pulse\/ingest/);
+  assert.match(workflow, /--data-binary @market_pulse\.json/);
 });
 
 test("connects explicit approval and trade confirmation controls to their APIs", () => {
   const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
 
-  assert.match(source, /fetch\("\/api\/top10\/approve"/);
-  assert.match(source, /fetch\("\/api\/portfolio\/events"/);
-  assert.match(source, /Confirm trade/);
-  assert.match(source, /window\.confirm/);
+  const details = readFileSync(new URL('../app/components/CockpitDetails.tsx', import.meta.url), 'utf8');
+  assert.match(source, /fetch\(['"]\/api\/top10\/approve['"]/);
+  assert.match(details, /fetch\(['"]\/api\/portfolio\/events['"]/);
+  assert.match(details, /Executed shares/);
+  assert.match(details, /Execution price \(SAR\)/);
+});
+
+test("registers Discord assistant commands and routes them through the copilot service", () => {
+  const commands = readFileSync(new URL("../discord-interactions/src/commands.mjs", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../app/api/discord/interactions/route.ts", import.meta.url), "utf8");
+  assert.match(commands, /name: "ask"/);
+  assert.match(commands, /name: "decide"/);
+  assert.match(route, /answerPortfolioQuestion/);
+  assert.match(route, /No order was sent/);
 });
 
 test("lint ignores local worktrees and their generated output", () => {

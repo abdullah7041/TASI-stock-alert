@@ -59,11 +59,13 @@ TOP10_FILE = HERE / "top10_draft.json"
 TOP10_ACTIVE_FILE = HERE / "top10_active.json"
 MOVEMENT_STATE_FILE = HERE / "movement_state.json"
 ALERTS_FILE = HERE / "movement_alerts.json"
+MARKET_PULSE_FILE = HERE / "market_pulse.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
 EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
+EVENT_ARCHIVE_FILE = HERE / "research" / "event_archive.jsonl"
 PROBE_FILE = HERE / "research" / "intraday_probe.json"
-MARKET_PULSE_FILE = HERE / "market_pulse.json"
+MARKET_PULSE_V1_FILE = HERE / "market_pulse_v1.json"
 
 
 # --- small JSON helpers ----------------------------------------------------
@@ -112,12 +114,17 @@ def _portfolio_ledger() -> dict | None:
          "spentThisMonthSar": float, "month": "YYYY-MM"}
 
     None means the fetch did not happen or the file is unusable -- never that
-    the portfolio is empty. Callers fall back to config.py, so a bad deploy
-    cannot make your holdings vanish from the morning digest.
+    the portfolio is empty. Interactive/local runs may retain the legacy
+    fallback, while production decision workflows require the confirmed ledger.
     """
     value = _load(PORTFOLIO_FILE, None)
     if not isinstance(value, dict) or not isinstance(value.get("view"), dict):
+        if os.getenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "").lower() == "true":
+            raise RuntimeError("Confirmed portfolio ledger is required but unavailable.")
         return None
+    if (os.getenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "").lower() == "true"
+            and (type(value.get("eventCount")) is not int or value["eventCount"] <= 0)):
+        raise RuntimeError("Confirmed portfolio ledger requires an imported opening balance.")
     return value
 
 
@@ -131,7 +138,8 @@ def _holdings() -> list[dict]:
     """
     ledger = _portfolio_ledger()
     holdings = ((ledger or {}).get("view") or {}).get("holdings") or []
-    if not holdings:
+    event_count = (ledger or {}).get("eventCount", 0)
+    if not holdings and not event_count:
         return list(cfg.HOLDINGS)
     return [
         {"code": str(item["code"]), "name": str(item.get("name") or item["code"]),
@@ -529,7 +537,15 @@ _DATA_WARNING: str | None = None
 _LATE_WARNING: str | None = None
 
 
-def _collect_recs(include_news: bool, record_history: bool = False):
+def _completed_history(frame, before_date: str):
+    """Keep only fully completed daily bars before the snapshot trade date."""
+    if frame is None or frame.empty:
+        return frame
+    return frame.loc[[str(index)[:10] < before_date for index in frame.index]]
+
+
+def _collect_recs(include_news: bool, record_history: bool = False,
+                  completed_before: str | None = None):
     """Returns (regime, recs, budget_summary).
 
     Speed: one batched Yahoo download for every name PLUS the index (was 14
@@ -539,10 +555,15 @@ def _collect_recs(include_news: bool, record_history: bool = False):
     index_code = cfg.REGIME["index_code"]
     all_codes = [x["code"] for x in _holdings() + cfg.WATCHLIST] + [index_code]
     hist = dat.get_histories(all_codes, cfg.TECH["history_period"])
+    if completed_before:
+        hist = {code: _completed_history(frame, completed_before)
+                for code, frame in hist.items()}
 
     idx = hist.get(index_code)
     if idx is None or idx.empty:
         idx = dat.get_index_history(index_code)  # SAHMK fallback path.
+        if completed_before:
+            idx = _completed_history(idx, completed_before)
     regime = az.market_regime(idx, cfg.REGIME["index_ma"])
     # market_regime returns 'unknown' only when the index frame is empty or
     # too short. Left unsaid, that reads identically to a genuinely
@@ -610,6 +631,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
         disc = discl.match_company(all_disclosures, disclosures_ok, discl.aliases_for(h))
         rec = az.evaluate_holding(h, price, df, _levels_for(h["code"], stored_levels),
                                   cfg.HORIZON, cfg.TECH, news_by_code.get(h["code"]), disc)
+        rec["priceDate"] = str(df.index[-1])[:10]
         v = verify.get(h["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:
@@ -625,6 +647,7 @@ def _collect_recs(include_news: bool, record_history: bool = False):
         rec = az.evaluate_watchlist(w, price, df, _levels_for(w["code"], stored_levels),
                                     cfg.HORIZON, cfg.TECH,
                                     news_by_code.get(w["code"]), cfg.BUY_CRITERIA, disc)
+        rec["priceDate"] = str(df.index[-1])[:10]
         v = verify.get(w["code"], {})
         rec["verified"], rec["yahoo_name"] = v.get("verified", True), v.get("yahoo_name", "")
         if not rec["verified"]:
@@ -707,7 +730,7 @@ def _scanner_block(result: dict | None = None) -> str:
 CHART_DIR = HERE / ".charts"
 
 
-def _chart_bundle(recs: list) -> tuple[dict, dict, list[dict]]:
+def _chart_bundle(recs: list, completed_before: str | None = None) -> tuple[dict, dict, list[dict]]:
     """Render one candlestick+volume chart per name for the pre-open digest.
 
     Returns ({code: filename}, {filename: Path}) -- the first for the embeds,
@@ -725,6 +748,9 @@ def _chart_bundle(recs: list) -> tuple[dict, dict, list[dict]]:
     stored_levels = _load(LEVELS_FILE, {})
     try:
         frames = dat.get_histories(codes, cfg.TECH["history_period"])
+        if completed_before:
+            frames = {code: _completed_history(frame, completed_before)
+                      for code, frame in frames.items()}
     except Exception as exc:
         print(f"charts: history fetch failed ({type(exc).__name__}) — sending text only")
         return {}, {}, artifacts.chart_artifacts(recs, {}, stored_levels)
@@ -861,6 +887,9 @@ def mode_digest_guard() -> int:
     snapshot written by some other mode is not a digest anybody read. On a
     normal day this exits without touching the network.
     """
+    if os.environ.get("TASI_PRODUCTION_DELIVERED", "").strip().lower() == "true":
+        print(f"production confirms today's artifact reached Cockpit and Discord; nothing to do.")
+        return 0
     delivered = _delivered_digest_today()
     today = _today()
     if delivered is not None:
@@ -878,7 +907,12 @@ def mode_digest_guard() -> int:
 
 
 def mode_digest() -> int:
-    regime, recs, budget = _collect_recs(include_news=True, record_history=True)
+    scheduled = artifacts.timestamp_or_none(os.environ.get("SCHEDULED_FOR"))
+    regime, recs, budget = _collect_recs(
+        include_news=True,
+        record_history=True,
+        completed_before=(scheduled or _today())[:10],
+    )
     scanner_result = _scanner_result()
     snapshot = _dashboard_snapshot(
         regime, recs, budget, scanner_result,
@@ -891,7 +925,8 @@ def mode_digest() -> int:
     lean_status = _attach_leans(recs)
     _persist_attached_leans(recs)
 
-    charts_by_code, chart_files, chart_data = _chart_bundle(recs)
+    charts_by_code, chart_files, chart_data = _chart_bundle(
+        recs, completed_before=(scheduled or _today())[:10])
     artifact = artifacts.build_digest_artifact(
         snapshot, recs=recs, lean_status=lean_status, charts=chart_data,
         scheduled_for=os.environ.get("SCHEDULED_FOR"),
@@ -922,18 +957,19 @@ def mode_digest() -> int:
 
 def mode_research_evidence() -> int:
     """Collect official announcement links into a human-review queue only."""
-    import requests
+    from curl_cffi import requests
 
     retrieved_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     try:
         announcements = official_sources.collect_official_announcements(
-            requests.Session(), retrieved_at, lookback_days=7
+            requests.Session(impersonate="chrome"), retrieved_at, lookback_days=7
         )
     except Exception as exc:
         print(f"official evidence collection unavailable: {exc}")
         return 1
     official_sources.write_review_queue(EVIDENCE_QUEUE_FILE, announcements, retrieved_at)
-    print(f"official evidence review queue written: {len(announcements)} candidates; no Top 10 was changed.")
+    official_sources.append_event_archive(EVENT_ARCHIVE_FILE, announcements)
+    print(f"official evidence review queue and event archive written: {len(announcements)} candidates; no Top 10 was changed.")
     return 0
 
 
@@ -978,32 +1014,16 @@ def mode_top10_draft(today: date | None = None) -> int:
 
 
 def mode_cockpit_refresh() -> int:
-    """Generate a safe dashboard payload without Discord, broker, or state-changing trade actions.
+    """Validate the canonical artifact for an idempotent workflow replay.
 
-    Never over the digest that already went out today. Rebuilding here produces
-    a digest-shaped artifact with no charts and no lean, and saving it would
-    take the morning's charts and Gemini read off the cockpit AND re-identify
-    the day's artifact, orphaning the Discord delivery receipt keyed to the old
-    ID. The reconcile job runs this at 15:15 Riyadh, so that was every afternoon.
+    The workflow performs the authenticated D1 replay. This mode deliberately
+    does not collect market data, invoke AI, send Discord, or rewrite identity.
     """
-    delivered = _delivered_digest_today()
-    if delivered is not None:
-        print(f"today's delivered digest ({delivered.get('asOf')}) is the canonical "
-              f"artifact; cockpit refresh left it unchanged.")
-        return 0
-    regime, recs, budget = _collect_recs(include_news=True, record_history=False)
-    scanner_result = _scanner_result()
-    snapshot = _dashboard_snapshot(
-        regime, recs, budget, scanner_result,
-        top10=_active_top10() or _load(TOP10_FILE, _unavailable_top10(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))),
-        top10_review=_load(TOP10_FILE, None), scheduled_for=os.environ.get("SCHEDULED_FOR"),
-    )
-    _save(DASHBOARD_FILE, artifacts.build_digest_artifact(
-        snapshot, recs=recs,
-        lean_status={"ok": False, "provider": "gemini", "reason": "Gemini is only generated for the pre-open digest."},
-        charts=[], scheduled_for=os.environ.get("SCHEDULED_FOR"),
-    ))
-    print("cockpit refresh written; no Discord message or order was sent.")
+    artifact = _load(DASHBOARD_FILE, None)
+    if not isinstance(artifact, dict) or artifact.get("schemaVersion") != 3 or not artifact.get("artifactId"):
+        print("cockpit refresh unavailable: no canonical schema-v3 artifact exists.")
+        return 1
+    print(f"cockpit refresh will replay {artifact['artifactId']}; no data was regenerated or sent to Discord.")
     return 0
 
 
@@ -1136,6 +1156,11 @@ def _movement_alerts(recs: list, received_at: str | None = None, state: dict | N
 
 
 def mode_run() -> int:
+    import market_pulse
+    pulse_items = _holdings() + cfg.WATCHLIST + [{"code": cfg.REGIME["index_code"], "name": "TASI"}]
+    pulse = market_pulse.collect(pulse_items)
+    _save(MARKET_PULSE_FILE, pulse)
+    print(f"market pulse: {pulse['status']} | quotes: {len(pulse['quotes'])}/{len(pulse['requested'])}")
     _regime, recs, _budget = _collect_recs(include_news=False, record_history=False)
     movement_alerts = _movement_alerts(recs)
     as_of = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -1333,7 +1358,10 @@ def mode_intraday_probe() -> int:
     return 0
 
 
-def mode_market_pulse() -> int:
+_LOCAL_PULSE_PRIOR = object()
+
+
+def mode_market_pulse(*, prior: dict | None | object = _LOCAL_PULSE_PRIOR) -> int:
     """Persist one delayed, observational five-minute pulse; it never notifies."""
     active = _active_top10() or {}
     top10_codes = [item.get("code") for item in active.get("entries", []) if isinstance(item, dict)]
@@ -1343,16 +1371,18 @@ def mode_market_pulse() -> int:
         + [code for code in top10_codes if isinstance(code, str) and code]
     ))
     index_code = cfg.REGIME["index_code"]
-    frames = dat.get_intraday_histories([index_code, *tracked], interval="5m", period="5d")
+    batch = dat.get_intraday_histories([index_code, *tracked], interval="5m", period="5d")
     daily_index = dat.get_qualified_index_history(index_code, min_bars=market_pulse.REGIME_HISTORY_BARS)
     pulse = market_pulse.build_market_pulse(
-        frames, daily_index, tracked,
-        source=os.environ.get("MARKET_PULSE_SOURCE", "yahoo-probe"),
+        batch.frames, daily_index, tracked,
+        # Only the Yahoo adapter is wired. A label override cannot qualify an
+        # unprovisioned provider or make delayed data appear licensed.
+        source="yahoo-probe",
         fetched_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        declared_delay_minutes=int(os.environ.get("MARKET_PULSE_DELAY_MINUTES", "15")),
-        prior=_load(MARKET_PULSE_FILE, None),
+        declared_delay_minutes=15,
+        prior=_load(MARKET_PULSE_V1_FILE, None) if prior is _LOCAL_PULSE_PRIOR else prior,
     )
-    _save(MARKET_PULSE_FILE, pulse)
+    _save(MARKET_PULSE_V1_FILE, pulse)
     message = pulse.get("reason") or f"{pulse['coverage']['usable']} tracked names usable"
     print(f"market pulse {pulse['status']}: {message}")
     return 0

@@ -23,7 +23,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-from runtime.state import InMemoryStateStore, StateStore, event_id
+from runtime.state import FirestoreStateStore, InMemoryStateStore, StateStore, event_id
 
 DISCORD = "discord"
 SITES = "sites"
@@ -168,8 +168,10 @@ def _run_session(main, store: StateStore) -> int:
 
 def _run_market_pulse(main, store: StateStore) -> int:
     """Collect a pulse only; an explicit future switch permits cockpit storage."""
-    code = main.mode_market_pulse()
-    pulse = main._load(main.MARKET_PULSE_FILE, None) if code == 0 else None
+    code = main.mode_market_pulse(prior=store.latest_market_pulse())
+    pulse = main._load(main.MARKET_PULSE_V1_FILE, None) if code == 0 else None
+    if isinstance(pulse, dict):
+        store.save_market_pulse(pulse)
     ingest = ingest_market_pulse(pulse) if isinstance(pulse, dict) else {"ok": code == 0, "status": "skipped: no pulse artifact"}
     log_event(mode="market-pulse", status="observed" if code == 0 else "failed", pulseStatus=pulse.get("status") if isinstance(pulse, dict) else None,
               pulseIngestResult=ingest["status"])
@@ -245,7 +247,10 @@ _MODE_HANDLERS = {"digest": _run_digest, "session": _run_session, "market-pulse"
 
 def main_entry(argv: list[str] | None = None) -> int:
     arguments = argv if argv is not None else sys.argv[1:]
-    return run(arguments[0] if arguments else os.environ.get("MODE", "session"))
+    mode = arguments[0] if arguments else os.environ.get("MODE", "session")
+    # Cloud Run has ephemeral disk. Only the new pulse mode opts into durable
+    # shadow state here; existing managed modes keep their prior behavior.
+    return run(mode, store=FirestoreStateStore() if mode == "market-pulse" else None)
 
 
 if __name__ == "__main__":

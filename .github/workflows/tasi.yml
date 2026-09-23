@@ -61,7 +61,7 @@ concurrency:
   # backstop decides from the dashboard.json the digest commits in its last
   # step, so letting them overlap means the backstop reads a stale trade date
   # while the real digest is still running -- and sends the whole thing twice.
-  group: tasi-${{ (github.event.schedule == '30 5 * * 0,1,2,3,4' || github.event.schedule == '10 6 * * 0,1,2,3,4') && 'pre-open' || github.event.schedule || github.event.inputs.mode || 'manual' }}
+  group: tasi-${{ (github.event.schedule == '30 5 * * 0,1,2,3,4' || github.event.schedule == '10 6 * * 0,1,2,3,4' || github.event.inputs.mode == 'digest-guard') && 'pre-open' || github.event.schedule || github.event.inputs.mode || 'manual' }}
   cancel-in-progress: false
 
 jobs:
@@ -86,9 +86,9 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
-            echo "scheduled_for=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+            echo "scheduled_for=manual" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "30 5 * * 0,1,2,3,4" ]; then
-            echo "mode=digest" >> "$GITHUB_OUTPUT"
+            echo "mode=digest-guard" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T05:30:00Z" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.schedule }}" = "10 6 * * 0,1,2,3,4" ]; then
             echo "mode=digest-guard" >> "$GITHUB_OUTPUT"
@@ -108,19 +108,58 @@ jobs:
           fi
           echo "actual_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
+      - name: Refresh canonical state for a queued guard
+        if: steps.mode.outputs.mode == 'digest-guard'
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+
+      - name: Check production delivery guard
+        id: delivery_guard
+        if: steps.mode.outputs.mode == 'digest-guard'
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
+        run: |
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            -o .guard-dashboard.json -w '%{http_code}' \
+            "${COCKPIT_AUTH_HEADERS[@]}" "$COCKPIT_ORIGIN/api/dashboard")
+          case "$STATUS" in
+            2??) ;;
+            *) echo "::error::production delivery authority returned HTTP $STATUS"; exit 1;;
+          esac
+          GUARD_STATE=$(node scripts/delivery-guard.mjs .guard-dashboard.json "$(date -u +%F)")
+          if [ "$GUARD_STATE" = "unknown" ]; then
+            echo "::error::production delivery authority returned an invalid response"
+            exit 1
+          fi
+          DELIVERED=false
+          if [ "$GUARD_STATE" = "delivered" ]; then DELIVERED=true; fi
+          echo "delivered=$DELIVERED" >> "$GITHUB_OUTPUT"
+          echo "production_delivery_guard_state=$GUARD_STATE" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Load approved Top 10 for producer
         if: contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
         run: |
+          source .github/cockpit-auth.sh
           # Fail soft. This step used to hard-assert both secrets with no
           # continue-on-error, so a missing secret killed the digest before
           # python ever ran -- the day's analysis lost to an optional preload.
-          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ]; then
+          if ! cockpit_auth_ready; then
             echo "cockpit tokens absent; continuing without an approved Top 10"
             printf '%s\n' '{"approved":null}' > .top10-current.json
-          elif ! curl --fail --silent --show-error -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" https://tasi-action-cockpit.busaud7041.chatgpt.site/api/top10/current > .top10-current.json; then
+          elif ! curl --fail --silent --show-error "${COCKPIT_AUTH_HEADERS[@]}" "$COCKPIT_ORIGIN/api/top10/current" > .top10-current.json; then
             printf '%s\n' '{"approved":null}' > .top10-current.json
           fi
           python - <<'PY'
@@ -166,34 +205,35 @@ jobs:
 
       - name: Load the confirmed portfolio for producer
         # What you own and what you have spent are recorded by you, in the
-        # cockpit ledger. Fetched the same fail-soft way as the Top 10: a failed
-        # read leaves no file, and main.py falls back to config.py rather than
-        # reporting that you own nothing.
-        if: contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        # cockpit ledger. Decision-producing workflows fail closed when that
+        # authority cannot be read; stale config holdings must not drive advice.
+        if: contains('run,digest,digest-guard,suggest,autolevels,top10-draft,intraday-probe', steps.mode.outputs.mode)
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
         run: |
+          source .github/cockpit-auth.sh
           rm -f portfolio_active.json
-          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ]; then
-            echo "cockpit tokens absent; using config.py holdings"
-            exit 0
-          fi
-          if ! curl --fail --silent --show-error \
-              -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
-              -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
-              https://tasi-action-cockpit.busaud7041.chatgpt.site/api/portfolio/current \
-              > .portfolio-current.json; then
-            echo "portfolio read failed; using config.py holdings"
-            exit 0
-          fi
+          cockpit_auth_ready
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            "${COCKPIT_AUTH_HEADERS[@]}" \
+            "$COCKPIT_ORIGIN/api/portfolio/current" \
+            > .portfolio-current.json
           python - <<'PY'
           import json
           from pathlib import Path
           payload = json.loads(Path(".portfolio-current.json").read_text(encoding="utf-8"))
-          if isinstance(payload, dict) and isinstance(payload.get("view"), dict):
-              Path("portfolio_active.json").write_text(
-                  json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+          if not isinstance(payload, dict) or not isinstance(payload.get("view"), dict):
+              raise RuntimeError("Confirmed portfolio ledger response is invalid.")
+          if (isinstance(payload.get("eventCount"), bool)
+                  or not isinstance(payload.get("eventCount"), int)
+                  or payload["eventCount"] <= 0):
+              raise RuntimeError("Confirmed portfolio ledger requires an imported opening balance.")
+          Path("portfolio_active.json").write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
           PY
 
       - name: Run
@@ -203,6 +243,8 @@ jobs:
         continue-on-error: true
         env:
           MODE: ${{ steps.mode.outputs.mode }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_PUBLIC_URL: ${{ vars.COCKPIT_PUBLIC_URL }}
           SCHEDULED_FOR: ${{ steps.mode.outputs.scheduled_for }}
           SAHMK_API_KEY: ${{ secrets.SAHMK_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -213,6 +255,8 @@ jobs:
           TASI_LLM_PROVIDERS: ${{ vars.TASI_LLM_PROVIDERS }}
           TASI_LLM_MODEL_OPENROUTER: ${{ vars.TASI_LLM_MODEL_OPENROUTER }}
           TASI_LLM_MODEL_GEMINI: ${{ vars.TASI_LLM_MODEL_GEMINI }}
+          TASI_PRODUCTION_DELIVERED: ${{ steps.delivery_guard.outputs.delivered }}
+          TASI_REQUIRE_PORTFOLIO_LEDGER: ${{ contains('run,digest,digest-guard,suggest,autolevels,top10-draft,intraday-probe', steps.mode.outputs.mode) && 'true' || 'false' }}
         run: python main.py
 
       - name: Record job telemetry
@@ -264,32 +308,52 @@ jobs:
             --data-binary @research/evidence_queue.json \
             https://tasi-action-cockpit.busaud7041.chatgpt.site/api/evidence/queue/ingest
 
-      - name: Detect dashboard update
+      - name: Compare canonical dashboard with production
         id: dashboard
-        if: always()
-        run: |
-          if git diff --quiet -- dashboard.json; then
-            echo "updated=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "updated=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Update private cockpit
-        if: steps.dashboard.outputs.updated == 'true' && contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        if: always() && steps.delivery_guard.outputs.delivered != 'true' && contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
         env:
+          MODE: ${{ steps.mode.outputs.mode }}
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
         run: |
-          test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
-          test -n "$COCKPIT_INGEST_TOKEN"
+          source .github/cockpit-auth.sh
+          printf '%s\n' '{}' > .remote-dashboard.json
+          if cockpit_auth_ready; then
+            curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+              "${COCKPIT_AUTH_HEADERS[@]}" "$COCKPIT_ORIGIN/api/dashboard" \
+              > .remote-dashboard.json || printf '%s\n' '{}' > .remote-dashboard.json
+          fi
+          NEEDED=$(node scripts/dashboard-replay.mjs "$MODE" dashboard.json .remote-dashboard.json)
+          echo "needed=$NEEDED" >> "$GITHUB_OUTPUT"
+          echo "dashboard_replay_needed=$NEEDED" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update private cockpit
+        if: steps.dashboard.outputs.needed == 'true'
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
+        run: |
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          REPLAY_HEADERS=()
+          if [ "$MODE" = "cockpit-refresh" ]; then
+            REPLAY_HEADERS=(-H "x-tasi-replay-only: true")
+          fi
           # --fail-with-body captured the reason into a variable and then aborted
           # under `set -e` before anything echoed it, so every 4xx read as a bare
           # "exit code 22". Capture the status separately and always print the body.
-          STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 \
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
             -o .ingest-response.json -w '%{http_code}' \
-            -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest \
-            -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
-            -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+            -X POST "$COCKPIT_ORIGIN/api/dashboard/ingest" \
+            "${COCKPIT_AUTH_HEADERS[@]}" \
+            "${REPLAY_HEADERS[@]}" \
             -H "Content-Type: application/json" \
             --data-binary @dashboard.json)
           BODY=$(cat .ingest-response.json)
@@ -302,14 +366,16 @@ jobs:
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
         run: |
-          test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
-          test -n "$COCKPIT_INGEST_TOKEN"
-          STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 \
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
             -o .ingest-response.json -w '%{http_code}' \
-            -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/alerts/ingest \
-            -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
-            -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+            -X POST "$COCKPIT_ORIGIN/api/alerts/ingest" \
+            "${COCKPIT_AUTH_HEADERS[@]}" \
             -H "Content-Type: application/json" \
             --data-binary @movement_alerts.json)
           BODY=$(cat .ingest-response.json)
@@ -317,21 +383,58 @@ jobs:
           printf 'mode=run\ncommit=%s\nalert_ingest_status=%s\nalert_ingest_body=%s\n' "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
           case "$STATUS" in 2??) ;; *) echo "::error::alert ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
 
-      - name: Record confirmed Discord delivery
-        if: steps.run.outcome == 'success' && contains('digest,digest-guard', steps.mode.outputs.mode)
+      - name: Update delayed market pulse
+        if: always() && steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
         run: |
-          test -n "$COCKPIT_SIWC_BYPASS_TOKEN"
-          test -n "$COCKPIT_INGEST_TOKEN"
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            -o .pulse-ingest-response.json -w '%{http_code}' \
+            -X POST "$COCKPIT_ORIGIN/api/pulse/ingest" \
+            "${COCKPIT_AUTH_HEADERS[@]}" \
+            -H "Content-Type: application/json" \
+            --data-binary @market_pulse.json)
+          BODY=$(cat .pulse-ingest-response.json)
+          echo "HTTP $STATUS: $BODY"
+          printf 'mode=run\ncommit=%s\npulse_ingest_status=%s\npulse_ingest_body=%s\n' "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
+          case "$STATUS" in 2??) ;; *) echo "::error::market pulse ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
+
+      - name: Record confirmed Discord delivery
+        if: always() && steps.delivery_guard.outputs.delivered != 'true' && contains('digest,digest-guard,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
+        run: |
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          set +e
           python - <<'PY' > .discord-receipt.json
           import json, time
           from pathlib import Path
           payload = json.loads(Path("dashboard.json").read_text(encoding="utf-8"))
+          discord = (payload.get("deliveries") or {}).get("discord") or {}
+          if discord.get("status") != "success":
+              raise SystemExit(78)
           print(json.dumps({"artifactId": payload["artifactId"], "destination": "discord", "status": "success", "attemptedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}))
           PY
-          curl --fail --silent --show-error -X POST https://tasi-action-cockpit.busaud7041.chatgpt.site/api/deliveries/ingest -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" -H "Content-Type: application/json" --data-binary @.discord-receipt.json >/dev/null
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -eq 78 ]; then
+            echo "canonical artifact has no confirmed Discord delivery to recover" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            -X POST "$COCKPIT_ORIGIN/api/deliveries/ingest" "${COCKPIT_AUTH_HEADERS[@]}" \
+            -H "Content-Type: application/json" --data-binary @.discord-receipt.json >/dev/null
 
       - name: Commit state
         if: always()
@@ -342,7 +445,7 @@ jobs:
           # the cockpit each run and DELETED when that read fails, so committing
           # it would land a transient outage in the repo as a deletion of the
           # approved list. Same reasoning as portfolio_active.json in .gitignore.
-          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json market_pulse.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi

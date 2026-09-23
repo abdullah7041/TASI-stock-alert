@@ -15,6 +15,7 @@ protocol, not Firestore's client library.
 from __future__ import annotations
 
 import os
+from uuid import uuid4
 from dataclasses import dataclass, field
 from hashlib import sha256
 from typing import Protocol
@@ -26,6 +27,8 @@ COOLDOWN = "movement_cooldown"
 DELIVERIES = "delivery_attempts"
 SNAPSHOTS = "daily_snapshots"
 HEALTH = "health_transitions"
+MARKET_PULSE_ATTEMPTS = "market_pulse_attempts"
+MARKET_PULSE_LATEST = "market_pulse_latest"
 
 
 def event_id(code: str, direction: str, observed_at: str) -> str:
@@ -47,6 +50,8 @@ class StateStore(Protocol):
     def save_movement_state(self, state: dict) -> None: ...
     def save_snapshot(self, trade_date: str, snapshot: dict) -> None: ...
     def latest_snapshot(self) -> dict | None: ...
+    def save_market_pulse(self, pulse: dict) -> None: ...
+    def latest_market_pulse(self) -> dict | None: ...
     def record_health(self, mode: str, status: str, detail: dict) -> None: ...
 
 
@@ -59,6 +64,7 @@ class InMemoryStateStore:
     cooldowns: dict[str, dict] = field(default_factory=dict)
     snapshots: dict[str, dict] = field(default_factory=dict)
     health: list[dict] = field(default_factory=list)
+    pulse_attempts: list[dict] = field(default_factory=list)
 
     def claim_event(self, identifier: str, payload: dict) -> bool:
         if identifier in self.events:
@@ -91,6 +97,12 @@ class InMemoryStateStore:
         if not self.snapshots:
             return None
         return self.snapshots[max(self.snapshots)]
+
+    def save_market_pulse(self, pulse: dict) -> None:
+        self.pulse_attempts.append(dict(pulse))
+
+    def latest_market_pulse(self) -> dict | None:
+        return dict(self.pulse_attempts[-1]) if self.pulse_attempts else None
 
     def record_health(self, mode: str, status: str, detail: dict) -> None:
         self.health.append({"mode": mode, "status": status, **detail})
@@ -151,6 +163,21 @@ class FirestoreStateStore:
     def latest_snapshot(self) -> dict | None:
         rows = list(self._root.collection(SNAPSHOTS).order_by("tradeDate", direction="DESCENDING").limit(1).stream())
         return rows[0].to_dict().get("snapshot") if rows else None
+
+    def save_market_pulse(self, pulse: dict) -> None:
+        """Keep every shadow attempt plus a latest pointer across containers."""
+        batch = self._client.batch()
+        batch.set(self._doc(MARKET_PULSE_ATTEMPTS, uuid4().hex), {
+            "pulse": dict(pulse), "recordedAt": self._firestore.SERVER_TIMESTAMP,
+        })
+        batch.set(self._doc(MARKET_PULSE_LATEST, "latest"), {
+            "pulse": dict(pulse), "updatedAt": self._firestore.SERVER_TIMESTAMP,
+        })
+        batch.commit()
+
+    def latest_market_pulse(self) -> dict | None:
+        snapshot = self._doc(MARKET_PULSE_LATEST, "latest").get()
+        return snapshot.to_dict().get("pulse") if snapshot.exists else None
 
     def record_health(self, mode: str, status: str, detail: dict) -> None:
         self._root.collection(HEALTH).add({

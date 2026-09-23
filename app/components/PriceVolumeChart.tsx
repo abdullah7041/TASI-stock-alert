@@ -8,8 +8,8 @@ function levelText(levels: Record<string, number>) {
   return ["stop", "trim", "target"].flatMap((key) => typeof levels[key] === "number" ? [`${key[0].toUpperCase()}${key.slice(1)} ${levels[key].toFixed(2)}`] : []).join(" · ");
 }
 
-export function PriceVolumeChart({ chart }: { chart: MarketChart }) {
-  const [expanded, setExpanded] = useState(false);
+export function PriceVolumeChart({ chart, initiallyExpanded = false }: { chart: MarketChart; initiallyExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const panelId = useId();
   if (chart.status === "unavailable") {
     return <article className={styles.chartUnavailable} aria-label={`${chart.name} chart unavailable`}><strong>{chart.name}</strong><span>{chart.reason}</span></article>;
@@ -45,7 +45,7 @@ export function PriceVolumeChart({ chart }: { chart: MarketChart }) {
         {[0, 0.5, 1].map((ratio) => <line key={ratio} x1={left} x2={left + width} y1={priceBottom - ratio * (priceBottom - priceTop)} y2={priceBottom - ratio * (priceBottom - priceTop)} className={styles.chartGridLine} />)}
         {Object.entries(levels).map(([name, value]) => <g key={name}><line x1={left} x2={left + width} y1={y(value)} y2={y(value)} className={`${styles.chartLevel} ${styles[`chartLevel${name[0].toUpperCase()}${name.slice(1)}`] ?? ""}`} /><text x={left + width - 2} y={y(value) - 3} textAnchor="end" className={styles.chartLabel}>{name} {value.toFixed(2)}</text></g>)}
         <polyline fill="none" points={points} className={styles.chartLine} />
-        {bars.map((bar, index) => <rect key={bar.date} x={x(index) - Math.max(1, 260 / bars.length)} y={volumeBottom - (bar.Volume / maxVolume) * (volumeBottom - volumeTop)} width={Math.max(2, 430 / bars.length)} height={(bar.Volume / maxVolume) * (volumeBottom - volumeTop)} className={bar.Close >= bar.Open ? styles.chartVolumeUp : styles.chartVolumeDown} />)}
+        {bars.map((bar, index) => <g key={bar.date}><rect x={x(index) - Math.max(1, 260 / bars.length)} y={volumeBottom - (bar.Volume / maxVolume) * (volumeBottom - volumeTop)} width={Math.max(2, 430 / bars.length)} height={(bar.Volume / maxVolume) * (volumeBottom - volumeTop)} className={bar.Close >= bar.Open ? styles.chartVolumeUp : styles.chartVolumeDown} /><circle cx={x(index)} cy={y(bar.Close)} r="5" fill="transparent"><title>{bar.date}: close {bar.Close.toFixed(2)} SAR · volume {bar.Volume.toLocaleString()}</title></circle></g>)}
         <text x={left} y="228" className={styles.chartAxis}>{bars[0].date}</text><text x={left + width} y="228" textAnchor="end" className={styles.chartAxis}>{bars[bars.length - 1].date}</text>
       </svg>
       <p className={styles.chartCaption}>Delayed daily OHLCV. Volume is shown below price; confirm real-time values in your broker app.</p>

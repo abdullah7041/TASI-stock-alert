@@ -39,6 +39,7 @@ export function validateEvidenceRecord(value, issuerHosts = []) {
   const publishedAt = timestamp(value.publishedAt, "publishedAt");
   const retrievedAt = timestamp(value.retrievedAt, "retrievedAt");
   if (Date.parse(publishedAt) > Date.parse(retrievedAt)) throw new Error("publishedAt cannot be after retrievedAt.");
+  if (Date.parse(retrievedAt) > Date.now()) throw new Error("retrievedAt cannot be in the future.");
   const metrics = value.metrics;
   if (!metrics || typeof metrics !== "object" || Array.isArray(metrics)) throw new Error("metrics are required.");
   const required = [...REQUIRED[kind], ...COMMON];

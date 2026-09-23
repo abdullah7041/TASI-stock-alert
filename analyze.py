@@ -180,6 +180,8 @@ def news_summary(news) -> dict | None:
         "label": news.label,
         "score": news.score,
         "headlines": news.headlines,
+        "status": news.status,
+        "errors": news.errors,
     }
 
 
@@ -220,12 +222,30 @@ def evaluate_holding(holding: dict, price: float, df: pd.DataFrame, levels: dict
     pnl_pct = round((price - holding["avg_cost"]) / holding["avg_cost"] * 100, 1) \
         if holding.get("avg_cost") else None
 
+    rules = []
+    for rule, level, comparator, label in (
+        ("stop_level", stop, "<=", "Protective stop"),
+        ("trim_level", trim, ">=", "Trim level"),
+        ("target_level", target, ">=", "Profit target"),
+    ):
+        if level is None:
+            rules.append({"rule": rule, "available": False, "passed": False,
+                          "actual": round(price, 2), "required": None,
+                          "plain": f"{label} unavailable."})
+            continue
+        triggered = price <= level if comparator == "<=" else price >= level
+        state = "crossed" if triggered else "not crossed"
+        rules.append({"rule": rule, "available": True, "passed": triggered,
+                      "actual": round(price, 2), "required": f"{comparator} {level:.2f}",
+                      "plain": f"{label} {level:.2f} {state} at {price:.2f}."})
+
     return {
         "kind": "holding",
         "code": code, "name": holding.get("name", code),
         "price": round(price, 2), "action": action, "reason": reason,
         "unrealized_pct": pnl_pct,
         "short_term": short, "long_term": long,
+        "rules": rules,
         "volume": volume_read(df),
         "news": news_summary(news),
         "disclosures": disclosures_summary(disclosures),

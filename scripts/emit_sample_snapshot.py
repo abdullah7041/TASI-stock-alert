@@ -22,6 +22,7 @@ import main  # noqa: E402
 
 RECORD = {
     "kind": "holding", "code": "1303", "name": "EIC", "price": 14.83,
+    "priceDate": "2026-08-24",
     "action": "HOLD", "reason": ["above stop"], "unrealized_pct": 19.5,
     "short_term": {"momentum_pct": -1.3, "rsi": 50.1},
     "long_term": {"trend": "up", "momentum_pct": 8.4, "rsi": 52.3},
@@ -32,6 +33,38 @@ RECORD = {
     "trend_streak": {"days": 14, "started": "2026-08-05"},
     "news": {"ok": True, "headlines": [], "label": "neutral", "score": 0.0},
     "verified": True,
+    "rules": [
+        {
+            "rule": "stop_level",
+            "available": True,
+            "passed": False,
+            "plain": "Protective stop not crossed.",
+        }
+    ],
+}
+
+CHART = {
+    "code": "1303",
+    "name": "EIC",
+    "status": "available",
+    "levels": {},
+    "bars": [
+        {
+            "date": day,
+            "Open": 14.7,
+            "High": 15.0,
+            "Low": 14.5,
+            "Close": 14.83,
+            "Volume": 1_000_000.0,
+        }
+        for day in (
+            "2026-08-18",
+            "2026-08-19",
+            "2026-08-20",
+            "2026-08-23",
+            "2026-08-24",
+        )
+    ],
 }
 
 SCAN = {
@@ -59,7 +92,7 @@ def main_entry(destination: str) -> int:
         snapshot, recs=[RECORD],
         lean_status={"ok": False, "provider": "openrouter",
                      "reason": "no OPENROUTER_API_KEY configured"},
-        charts=[], scheduled_for=generated_at)
+        charts=[CHART], scheduled_for=generated_at)
     Path(destination).write_text(
         json.dumps(artifact, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"wrote {destination} (schemaVersion {artifact['schemaVersion']})")

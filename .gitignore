@@ -28,4 +28,5 @@ top10_active.json
 .discord-receipt.json
 research/evidence.json
 research/forecast_metrics.json
+market_pulse_v1.json
 .evidence-current.json

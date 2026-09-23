@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -19,22 +21,51 @@ OUTCOMES = ("target", "stop", "neither")
 PURGE_SESSIONS = 60
 
 
+def _finite_number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(float(value))
+
+
 def release_gate(metrics: dict, survivorship_limited: bool) -> tuple[bool, list[str]]:
     reasons = []
-    if metrics.get("brier_skill", 0) <= 0: reasons.append("Brier score did not beat the base rate.")
-    if metrics.get("log_loss_skill", 0) <= 0: reasons.append("Log loss did not beat the base rate.")
-    if metrics.get("ece", 1) > 0.05: reasons.append("Calibration error exceeds 0.05.")
-    if metrics.get("expectancy", 0) <= 0: reasons.append("After-cost expectancy is not positive.")
+    numeric_keys = ("brier_skill", "log_loss_skill", "ece", "expectancy", "sample_size", "bootstrap_lower")
+    if not all(_finite_number(metrics.get(key)) for key in numeric_keys):
+        reasons.append("Validation metrics must be finite numbers.")
+    else:
+        if metrics["brier_skill"] <= 0: reasons.append("Brier score did not beat the base rate.")
+        if metrics["log_loss_skill"] <= 0: reasons.append("Log loss did not beat the base rate.")
+        if metrics["ece"] > 0.05: reasons.append("Calibration error exceeds 0.05.")
+        if metrics["expectancy"] <= 0: reasons.append("After-cost expectancy is not positive.")
+        if metrics["sample_size"] < 300: reasons.append("Sample size is inadequate.")
+        if metrics["bootstrap_lower"] <= 0: reasons.append("Bootstrap uncertainty includes zero skill.")
     if not metrics.get("stable", False): reasons.append("Out-of-sample skill is not stable across periods and regimes.")
-    if metrics.get("sample_size", 0) < 300: reasons.append("Sample size is inadequate.")
-    if metrics.get("bootstrap_lower", 0) <= 0: reasons.append("Bootstrap uncertainty includes zero skill.")
-    if survivorship_limited: reasons.append("Dataset is survivorship-limited.")
+    purge = metrics.get("purge_sessions")
+    if metrics.get("evaluation") != "purged-rolling" or not _finite_number(purge) or purge < PURGE_SESSIONS:
+        reasons.append("A 60-session purged rolling evaluation is required.")
+    calibrated_folds, folds = metrics.get("calibrated_folds"), metrics.get("folds")
+    if (metrics.get("calibration_method") != "purged-sigmoid" or not _finite_number(calibrated_folds)
+            or not _finite_number(folds) or folds < 3 or calibrated_folds < folds):
+        reasons.append("Chronologically purged calibration is incomplete.")
+    cost = metrics.get("transaction_cost_pct")
+    selected = metrics.get("selected_count")
+    if not _finite_number(cost) or cost <= 0 or not _finite_number(selected) or selected <= 0:
+        reasons.append("Measured selected-trade returns and explicit transaction cost are required.")
+    regimes = metrics.get("regime_skills")
+    if (not isinstance(regimes, dict) or not regimes or any(
+            not isinstance(values, list) or not values or any(not _finite_number(value) or value <= 0 for value in values)
+            for values in regimes.values())):
+        reasons.append("Positive skill across observed regimes is required.")
+    if (survivorship_limited or metrics.get("survivorship_limited", True)
+            or metrics.get("membership_provenance") != "official-historical-snapshots"):
+        reasons.append("Dataset is survivorship-limited or lacks reviewed historical membership provenance.")
     return not reasons, reasons
 
 def unavailable_forecast(as_of: str, metrics: dict, survivorship_limited: bool) -> dict:
     ok, reasons = release_gate(metrics, survivorship_limited)
     if not ok: return {"status": "unavailable", "asOf": as_of, "reason": " ".join(reasons)}
-    return {"status": "available", "asOf": as_of, "target": metrics["target"], "stop": metrics["stop"], "horizonSessions": 60, "targetFirstPct": metrics["target_first_pct"], "confidence": metrics["confidence"], "modelVersion": metrics["model_version"]}
+    # Offline validation is not a point-in-time forecast for the current setup.
+    # No live forecast generator is released; passing research metrics alone
+    # must never fabricate actionable probabilities or price levels.
+    return {"status": "unavailable", "asOf": as_of, "reason": "No validated point-in-time forecast for the current setup."}
 
 
 def purged_time_splits(frame: pd.DataFrame, *, n_splits: int = 3,
@@ -65,10 +96,9 @@ def build_point_in_time_dataset(features: pd.DataFrame, histories: dict[str, pd.
                                 memberships: pd.DataFrame, *, max_hold: int = PURGE_SESSIONS) -> pd.DataFrame:
     """Label only setups whose issuer was a recorded member on that date.
 
-    ``memberships`` is a required historical constituent ledger with code,
-    startDate and endDate. Passing the current listing as that ledger is allowed
-    only for experimentation and must be marked survivorship-limited by the
-    caller; it can never pass ``release_gate``.
+    ``memberships`` has code/startDate/endDate. Only rows backed by an official
+    historical snapshot published by the decision date can remove the
+    survivorship flag; a current listing remains experimentation-only.
     """
     required = {"code", "startDate", "endDate"}
     if missing := required - set(memberships.columns):
@@ -81,6 +111,7 @@ def build_point_in_time_dataset(features: pd.DataFrame, histories: dict[str, pd.
     active["startDate"] = pd.to_datetime(active["startDate"], errors="raise")
     active["endDate"] = pd.to_datetime(active["endDate"], errors="raise")
     rows = []
+    verified_rows = []
     for _, feature in features.iterrows():
         code, decision_at = str(feature["code"]), pd.Timestamp(feature["date"])
         listed = active[(active["code"] == code) & (active["startDate"] <= decision_at) & (active["endDate"] >= decision_at)]
@@ -93,9 +124,26 @@ def build_point_in_time_dataset(features: pd.DataFrame, histories: dict[str, pd.
             outcome = label_entry_outcome(history, int(feature["t"]), float(feature["atr"]), max_hold=max_hold)
         except (IndexError, KeyError, TypeError, ValueError):
             continue
+        if outcome is None:
+            continue
+        verified = False
+        if {"sourceUrl", "sourcePublishedAt", "sourceKind"}.issubset(listed.columns):
+            for _, membership in listed.iterrows():
+                source = urlparse(str(membership["sourceUrl"]))
+                try:
+                    published = pd.Timestamp(membership["sourcePublishedAt"]).tz_localize(None)
+                except (TypeError, ValueError):
+                    continue
+                if (source.scheme == "https" and source.hostname in {"saudiexchange.sa", "www.saudiexchange.sa"}
+                        and membership["sourceKind"] == "historical-snapshot" and published <= decision_at):
+                    verified = True
+                    break
+        verified_rows.append(verified)
         rows.append({**feature.to_dict(), "code": code, "date": decision_at, "outcome": outcome["outcome"],
                      "return_pct": (outcome["exit"] - outcome["entry"]) / outcome["entry"] * 100})
-    return pd.DataFrame(rows)
+    dataset = pd.DataFrame(rows)
+    dataset.attrs["historical_membership_verified"] = bool(verified_rows) and all(verified_rows)
+    return dataset
 
 
 def _design_matrix(frame: pd.DataFrame, feature_columns: list[str]) -> pd.DataFrame:
@@ -145,17 +193,21 @@ def _ece(y: np.ndarray, probabilities: np.ndarray, bins: int = 10) -> float:
     return float(error)
 
 
-def _bootstrap_lower(skill_by_observation: np.ndarray, *, samples: int = 1000) -> float:
+def _bootstrap_lower(skill_by_observation: np.ndarray, session_ids: np.ndarray, *, samples: int = 1000) -> float:
     if not len(skill_by_observation):
         return 0.0
+    # The same session can contribute several issuers. Resample sessions,
+    # not correlated issuer rows, to avoid overconfident intervals.
+    block_means = pd.DataFrame({"session": session_ids, "skill": skill_by_observation}).groupby("session")["skill"].mean().to_numpy()
     rng = np.random.default_rng(0)
-    means = [float(rng.choice(skill_by_observation, len(skill_by_observation), replace=True).mean()) for _ in range(samples)]
+    means = [float(rng.choice(block_means, len(block_means), replace=True).mean()) for _ in range(samples)]
     return float(np.quantile(means, 0.05))
 
 
 def evaluate_forecast_dataset(frame: pd.DataFrame, feature_columns: list[str], *,
                               survivorship_limited: bool, n_splits: int = 3,
-                              purge_sessions: int = PURGE_SESSIONS) -> dict:
+                              purge_sessions: int = PURGE_SESSIONS,
+                              transaction_cost_pct: float | None = None) -> dict:
     """Evaluate a point-in-time dataset versus its training-period base rate.
 
     The baseline is calibrated: every class probability is the class frequency
@@ -167,42 +219,69 @@ def evaluate_forecast_dataset(frame: pd.DataFrame, feature_columns: list[str], *
         raise ValueError("cannot evaluate an empty dataset")
     if not set(frame["outcome"].astype(str)).issubset(OUTCOMES):
         raise ValueError("outcomes must be target, stop, or neither")
+    if "return_pct" not in frame or not np.isfinite(pd.to_numeric(frame["return_pct"], errors="coerce").to_numpy()).all():
+        raise ValueError("return_pct must contain measured finite exit returns for every observation")
+    if not _finite_number(transaction_cost_pct) or transaction_cost_pct <= 0:
+        raise ValueError("transaction_cost_pct must be an explicit positive finite cost assumption")
     from sklearn.linear_model import LogisticRegression
+    from sklearn.calibration import CalibratedClassifierCV
 
     ordered = frame.copy()
     ordered["date"] = pd.to_datetime(ordered["date"], errors="raise")
     ordered = ordered.sort_values(["date", "code" if "code" in ordered else "date"]).reset_index(drop=True)
     matrix = _design_matrix(ordered, feature_columns)
     labels = ordered["outcome"].astype(str).to_numpy()
-    brier_skill, log_skill, all_brier_difference, eces, expectancy = [], [], [], [], []
+    brier_skill, log_skill, all_brier_difference, all_sessions, eces, expectancy = [], [], [], [], [], []
+    regime_skills: dict[str, list[float]] = {}
+    calibrated_folds = 0
     for train, test in purged_time_splits(ordered, n_splits=n_splits, purge_sessions=purge_sessions):
         train_labels, test_labels = labels[train], labels[test]
         baseline = _probability_table(pd.Series(train_labels))
         baseline_probabilities = np.tile(baseline, (len(test), 1))
-        if len(set(train_labels)) < 2:
+        train_dates = pd.DatetimeIndex(ordered.iloc[train]["date"].drop_duplicates().sort_values())
+        calibration_width = max(10, len(train_dates) // 5)
+        fit_end = len(train_dates) - calibration_width - purge_sessions
+        fit_rows = np.flatnonzero(ordered.iloc[train]["date"].isin(train_dates[:max(0, fit_end)]))
+        calibration_rows = np.flatnonzero(ordered.iloc[train]["date"].isin(train_dates[-calibration_width:]))
+        if len(fit_rows) < 10 or len(calibration_rows) < 10 or len(set(train_labels[fit_rows])) < 2:
             model_probabilities = baseline_probabilities.copy()
         else:
-            model = LogisticRegression(max_iter=1_000, random_state=0)
+            model = CalibratedClassifierCV(
+                LogisticRegression(max_iter=1_000, random_state=0),
+                method="sigmoid", cv=[(fit_rows, calibration_rows)], ensemble=True,
+            )
             model.fit(matrix.iloc[train], train_labels)
             model_probabilities = _align_probabilities(model.predict_proba(matrix.iloc[test]), model.classes_)
+            calibrated_folds += 1
         model_brier, base_brier = _brier(test_labels, model_probabilities), _brier(test_labels, baseline_probabilities)
         model_log, base_log = _log_loss(test_labels, model_probabilities), _log_loss(test_labels, baseline_probabilities)
         brier_skill.append(float(1 - model_brier.mean() / base_brier.mean()) if base_brier.mean() else 0.0)
         log_skill.append(float(1 - model_log.mean() / base_log.mean()) if base_log.mean() else 0.0)
         all_brier_difference.extend(base_brier - model_brier)
+        all_sessions.extend(ordered.iloc[test]["date"].astype(str).tolist())
         eces.append(_ece(test_labels, model_probabilities))
-        if "return_pct" in ordered:
-            expectancy.extend(ordered.iloc[test]["return_pct"].astype(float).tolist())
-        else:
-            expectancy.extend([3.0 if label == "target" else -1.5 if label == "stop" else 0.0 for label in test_labels])
+        selected = model_probabilities[:, OUTCOMES.index("target")] > baseline[OUTCOMES.index("target")]
+        expectancy.extend((ordered.iloc[test]["return_pct"].to_numpy(dtype=float)[selected] - transaction_cost_pct).tolist())
+        if "regime" in ordered:
+            for regime in ordered.iloc[test]["regime"].dropna().astype(str).unique():
+                mask = ordered.iloc[test]["regime"].astype(str).to_numpy() == regime
+                if mask.sum() >= 10 and base_brier[mask].mean() > 0:
+                    regime_skills.setdefault(regime, []).append(float(1 - model_brier[mask].mean() / base_brier[mask].mean()))
+                else:
+                    regime_skills.setdefault(regime, []).append(0.0)
+    regime_stable = bool(regime_skills) and all(all(skill > 0 for skill in skills) for skills in regime_skills.values())
     return {
-        "model_version": "offline-logistic-v1", "evaluation": "purged-rolling", "purge_sessions": purge_sessions,
+        "model_version": "offline-logistic-v2", "evaluation": "purged-rolling", "purge_sessions": purge_sessions,
+        "calibration_method": "purged-sigmoid", "calibrated_folds": calibrated_folds,
+        "transaction_cost_pct": transaction_cost_pct, "selected_count": len(expectancy),
         "sample_size": int(len(ordered)), "folds": len(brier_skill),
         "brier_skill": round(float(np.mean(brier_skill)), 6), "log_loss_skill": round(float(np.mean(log_skill)), 6),
-        "ece": round(float(np.mean(eces)), 6), "expectancy": round(float(np.mean(expectancy)), 6),
-        "stable": bool(all(value > 0 for value in brier_skill) and all(value > 0 for value in log_skill)),
-        "bootstrap_lower": round(_bootstrap_lower(np.asarray(all_brier_difference)), 6),
-        "survivorship_limited": bool(survivorship_limited),
+        "ece": round(float(np.mean(eces)), 6), "expectancy": round(float(np.mean(expectancy)), 6) if expectancy else 0.0,
+        "stable": bool(calibrated_folds == n_splits and regime_stable and all(value > 0 for value in brier_skill) and all(value > 0 for value in log_skill)),
+        "regime_skills": {key: [round(value, 6) for value in values] for key, values in regime_skills.items()},
+        "bootstrap_lower": round(_bootstrap_lower(np.asarray(all_brier_difference), np.asarray(all_sessions)), 6),
+        "survivorship_limited": bool(survivorship_limited or not frame.attrs.get("historical_membership_verified", False)),
+        "membership_provenance": "official-historical-snapshots" if frame.attrs.get("historical_membership_verified", False) else "unverified",
     }
 
 
@@ -219,11 +298,13 @@ def _main() -> int:
     parser.add_argument("dataset", type=Path, help="CSV with date, code, outcome and selected feature columns")
     parser.add_argument("--features", required=True, help="Comma-separated point-in-time feature columns")
     parser.add_argument("--output", type=Path, default=Path(__file__).with_name("forecast_metrics.json"))
-    parser.add_argument("--point-in-time-constituents", action="store_true", help="Required to remove the survivorship block")
+    parser.add_argument("--transaction-cost-pct", required=True, type=float, help="Explicit round-trip cost in percentage points")
     args = parser.parse_args()
     dataset = pd.read_csv(args.dataset, parse_dates=["date"])
+    # A CSV cannot establish historical index membership provenance. This CLI
+    # is research-only and always retains the survivorship release block.
     metrics = evaluate_forecast_dataset(dataset, [item.strip() for item in args.features.split(",") if item.strip()],
-                                        survivorship_limited=not args.point_in_time_constituents)
+                                        survivorship_limited=True, transaction_cost_pct=args.transaction_cost_pct)
     write_forecast_metrics(args.output, metrics)
     print(json.dumps({"output": str(args.output), "release": release_gate(metrics, metrics["survivorship_limited"])[0]}, sort_keys=True))
     return 0

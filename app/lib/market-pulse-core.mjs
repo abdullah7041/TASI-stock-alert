@@ -1,60 +1,65 @@
-const states = ["current", "stale", "unavailable"];
+const ARTIFACT_ID = /^sha256:[a-f0-9]{64}$/;
+const STATUSES = new Set(["available", "partial", "empty", "failed"]);
 
-function text(value, field) {
-  if (typeof value !== "string" || !value.trim()) throw new Error(`${field} is required.`);
-  return value;
-}
-
-function timestamp(value, field) {
-  const result = text(value, field);
-  if (!Number.isFinite(Date.parse(result))) throw new Error(`${field} must be a valid timestamp.`);
-  return result;
-}
-
-function number(value, field, minimum = -Infinity) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < minimum) throw new Error(`${field} is invalid.`);
-  return value;
-}
-
-function coverage(value) {
-  if (!value || typeof value !== "object") throw new Error("coverage is required.");
-  const tracked = number(value.tracked, "coverage.tracked", 0);
-  const usable = number(value.usable, "coverage.usable", 0);
-  const required = number(value.required, "coverage.required", 0);
-  if (!Number.isInteger(tracked) || !Number.isInteger(usable) || !Number.isInteger(required) || usable > tracked || required > tracked) {
-    throw new Error("coverage is invalid.");
+function record(value, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object.`);
   }
-  return { tracked, usable, required };
+  return value;
 }
 
-function observation(value) {
-  if (!value || typeof value !== "object") throw new Error("observation is invalid.");
-  return {
-    code: text(value.code, "observation.code"), price: number(value.price, "observation.price", 0),
-    changePct: number(value.changePct, "observation.changePct"), latestBarAt: timestamp(value.latestBarAt, "latestBarAt"),
-  };
+function nonEmptyString(value, label) {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`${label} must be a non-empty string.`);
+  return value;
+}
+
+function timestamp(value, label) {
+  nonEmptyString(value, label);
+  if (Number.isNaN(Date.parse(value))) throw new Error(`${label} must be a valid timestamp.`);
+  return value;
+}
+
+function optionalFinite(value, label, { minimum = -Infinity } = {}) {
+  if (value === null) return value;
+  if (!Number.isFinite(value) || value < minimum) throw new Error(`${label} must be null or a finite number.`);
+  return value;
 }
 
 export function parseMarketPulse(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Market pulse must be an object.");
-  if (value.schemaVersion !== 1 || value.artifactKind !== "market-pulse") throw new Error("Unsupported market pulse version.");
-  const status = states.includes(value.status) ? value.status : (() => { throw new Error("market pulse status is invalid."); })();
-  const common = {
-    schemaVersion: 1, artifactKind: "market-pulse", status, source: text(value.source, "source"),
-    dataStatus: value.dataStatus === "delayed-intraday" ? value.dataStatus : (() => { throw new Error("Market pulse must be delayed-intraday."); })(),
-    intervalMinutes: number(value.intervalMinutes, "intervalMinutes", 1),
-    declaredDelayMinutes: number(value.declaredDelayMinutes, "declaredDelayMinutes", 0),
-    fetchedAt: timestamp(value.fetchedAt, "fetchedAt"), coverage: coverage(value.coverage),
-    observations: Array.isArray(value.observations) ? value.observations.map(observation) : (() => { throw new Error("observations must be a list."); })(),
-  };
-  const regime = value.regime;
-  if (!regime || typeof regime !== "object" || !["available", "unavailable"].includes(regime.status)) throw new Error("regime is invalid.");
-  const parsedRegime = regime.status === "available"
-    ? { status: "available", label: ["ok", "breakdown", "unknown"].includes(regime.label) ? regime.label : (() => { throw new Error("regime label is invalid."); })(), bars: number(regime.bars, "regime.bars", 52) }
-    : { status: "unavailable", reason: text(regime.reason, "regime.reason") };
-  if (status === "unavailable") return { ...common, reason: text(value.reason, "reason"), regime: parsedRegime };
-  if (!value.index || typeof value.index !== "object") throw new Error("current market pulse needs an index.");
-  const index = { code: text(value.index.code, "index.code"), price: number(value.index.price, "index.price", 0), changePct: number(value.index.changePct, "index.changePct"), latestBarAt: timestamp(value.index.latestBarAt, "latestBarAt") };
-  if (status === "stale") return { ...common, reason: text(value.reason, "reason"), lastValidAt: timestamp(value.lastValidAt, "lastValidAt"), index, regime: parsedRegime };
-  return { ...common, observedAt: timestamp(value.observedAt, "observedAt"), index, regime: parsedRegime };
+  const pulse = record(value, "Market pulse");
+  if (pulse.schemaVersion !== 1 || pulse.artifactKind !== "market-pulse") {
+    throw new Error("Unsupported market pulse schema.");
+  }
+  if (typeof pulse.artifactId !== "string" || !ARTIFACT_ID.test(pulse.artifactId)) {
+    throw new Error("Market pulse needs a valid artifactId.");
+  }
+  timestamp(pulse.asOf, "Market pulse asOf");
+  if (pulse.dataStatus !== "delayed-intraday" || pulse.source !== "yahoo") {
+    throw new Error("Market pulse must use the delayed Yahoo source contract.");
+  }
+  if (!STATUSES.has(pulse.status)) throw new Error("Unsupported market pulse status.");
+  if (!Array.isArray(pulse.requested) || !pulse.requested.every((code) => typeof code === "string" && code.trim())) {
+    throw new Error("Market pulse requested must be a string array.");
+  }
+  if (!Array.isArray(pulse.errors) || !pulse.errors.every((error) => typeof error === "string")) {
+    throw new Error("Market pulse errors must be a string array.");
+  }
+  if (!Array.isArray(pulse.quotes)) throw new Error("Market pulse quotes must be an array.");
+  for (const rawQuote of pulse.quotes) {
+    const quote = record(rawQuote, "Market pulse quote");
+    nonEmptyString(quote.code, "Quote code");
+    nonEmptyString(quote.name, "Quote name");
+    if (!Number.isFinite(quote.price) || quote.price <= 0) throw new Error("Quote price must be positive and finite.");
+    optionalFinite(quote.changePct, "Quote changePct");
+    optionalFinite(quote.sessionVolume, "Quote sessionVolume", { minimum: 0 });
+    timestamp(quote.observedAt, "Quote observedAt");
+    if (quote.latency !== "delayed-intraday") throw new Error("Quote latency must be delayed-intraday.");
+  }
+  if ((pulse.status === "failed" || pulse.status === "empty") && pulse.quotes.length) {
+    throw new Error(`${pulse.status} market pulse cannot contain quotes.`);
+  }
+  if (pulse.status === "available" && pulse.quotes.length === 0) {
+    throw new Error("Available market pulse must contain quotes.");
+  }
+  return value;
 }

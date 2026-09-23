@@ -219,13 +219,54 @@ def test_managed_runtime_records_market_pulse_health_without_delivery(monkeypatc
 
     called = []
     store = InMemoryStateStore()
-    monkeypatch.setattr(main, "mode_market_pulse", lambda: called.append("pulse") or 0)
+    monkeypatch.setattr(main, "mode_market_pulse", lambda *, prior=None: called.append(prior) or 0)
 
     now = datetime(2026, 9, 20, 7, 15, tzinfo=timezone.utc)  # Sunday 10:15 Riyadh
     assert job.run("market-pulse", store=store, now=now) == 0
-    assert called == ["pulse"]
+    assert called == [None]
     assert store.health[-1]["mode"] == "market-pulse"
     assert store.health[-1]["deliveryEnabled"] is False
+
+
+def test_managed_pulse_reads_and_saves_durable_shadow_attempts(monkeypatch, tmp_path):
+    """Ephemeral containers must not lose the valid pulse or two-day audit trail."""
+    import main
+    from runtime import job
+
+    store = InMemoryStateStore()
+    observed = []
+    pulses = [
+        {"status": "current", "fetchedAt": "2026-09-20T07:15:00Z"},
+        {"status": "stale", "fetchedAt": "2026-09-20T07:20:00Z", "lastValidAt": "2026-09-20T07:15:00Z"},
+    ]
+    monkeypatch.setattr(main, "MARKET_PULSE_V1_FILE", tmp_path / "market_pulse_v1.json")
+
+    def collect(*, prior=None):
+        observed.append(prior)
+        main._save(main.MARKET_PULSE_V1_FILE, pulses.pop(0))
+        return 0
+
+    monkeypatch.setattr(main, "mode_market_pulse", collect)
+    now = datetime(2026, 9, 20, 7, 15, tzinfo=timezone.utc)
+    assert job.run("market-pulse", store=store, now=now) == 0
+    assert job.run("market-pulse", store=store, now=now) == 0
+    assert observed[0] is None
+    assert observed[1]["status"] == "current"
+    assert store.latest_market_pulse()["status"] == "stale"
+    assert len(store.pulse_attempts) == 2
+
+
+def test_managed_pulse_entrypoint_selects_firestore_without_changing_other_modes(monkeypatch):
+    """The container entrypoint must not silently fall back to process memory."""
+    from runtime import job
+
+    store = InMemoryStateStore()
+    calls = []
+    monkeypatch.setattr(job, "FirestoreStateStore", lambda: store)
+    monkeypatch.setattr(job, "run", lambda mode, store=None: calls.append((mode, store)) or 0)
+    assert job.main_entry(["market-pulse"]) == 0
+    assert job.main_entry(["digest"]) == 0
+    assert calls == [("market-pulse", store), ("digest", None)]
 
 
 def test_secrets_are_referenced_not_embedded():
@@ -244,6 +285,21 @@ def test_google_cloud_dependencies_stay_out_of_the_github_fallback():
 
 
 # --- workflow split ---------------------------------------------------------
+def test_ci_runs_event_outcome_validation_tests():
+    """The release gate is unsafe if its point-in-time tests never run in CI."""
+    workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    commands = [
+        step.get("run", "")
+        for step in workflow["jobs"]["python"]["steps"]
+        if isinstance(step, dict)
+    ]
+    pytest_command = next(command for command in commands if "python -m pytest" in command)
+
+    assert "research/test_event_study.py" in pytest_command.split()
+    assert "research/test_entry_forecast.py" in pytest_command.split()
+    assert "research/test_official_sources.py" in pytest_command.split()
+
+
 def test_discord_smoke_is_manual_only_and_cannot_be_scheduled():
     manual = yaml.safe_load(Path(".github/workflows/manual-operations.yml").read_text(encoding="utf-8"))
     # PyYAML reads the bare `on:` key as the boolean True.

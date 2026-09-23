@@ -1,277 +1,107 @@
 "use client";
+import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Candidate, DashboardPayload } from '@/app/lib/dashboard-types';
+import { buildDecisionView } from '@/app/lib/decision-view.mjs';
+import type { StockDecision } from '@/app/lib/decision-view.mjs';
+import { AlertBoard, formatCockpitTimestamp } from './AlertBoard';
+import { ResearchWorkspace } from './ResearchWorkspace';
+import { DetailDialog, ExecutedTradeForm, StockDetails } from './CockpitDetails';
+import { IntelligenceBoard } from './IntelligenceBoard';
+import { MarketPulse } from './MarketPulse';
+import { CopilotRail } from './CopilotRail';
+import { EvidenceReviewForm } from './EvidenceReviewForm';
+import styles from './FriendlyCockpit.module.css';
 
-import { useCallback, useEffect, useId, useState } from "react";
-import type { ReactNode } from "react";
-import { EvidenceReviewForm } from "./EvidenceReviewForm";
-import type { Candidate, DashboardPayload, DashboardSnapshotV2, DashboardSnapshotV3 } from "@/app/lib/dashboard-types";
-import { AlertBoard, formatCockpitTimestamp } from "./AlertBoard";
-import styles from "./ActionCockpit.module.css";
-import { ResearchWorkspace } from "./ResearchWorkspace";
-import { PriceVolumeChart } from "./PriceVolumeChart";
+const signed=(n:number|null)=>n===null?'—':`${n>0?'+':''}${n.toFixed(1)}%`;
+const price=(n:number|null)=>n===null?'—':n.toLocaleString('en-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-type DashboardState =
-  | { kind: "loading" }
-  | { kind: "unavailable"; message: string }
-  | { kind: "ready"; payload: DashboardPayload };
-
-function formatPrice(price: number) {
-  return `${price.toFixed(2)} SAR`;
+function Sparkline({stock}:{stock:StockDecision}) {
+  const bars=stock.chart?.status==='available'?stock.chart.bars.slice(-30):[];
+  if(bars.length<2)return <div className={styles.noChart}>Price history unavailable</div>;
+  const values=bars.map(b=>b.Close),min=Math.min(...values),span=Math.max(...values)-min||1;
+  const points=values.map((v,i)=>`${i*240/(values.length-1)},${48-(v-min)/span*38}`).join(' ');
+  return <svg className={styles.sparkline} viewBox="0 0 240 56" aria-label={`${stock.name} recent daily prices`} role="img"><title>{stock.name}: last {bars.length} daily closes</title><path d={`M0,56 L${points.replaceAll(' ',' L')} L240,56 Z`} fill="currentColor" opacity=".08"/><polyline points={points} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>{bars.map((bar,i)=><circle key={bar.date} cx={i*240/(values.length-1)} cy={48-(bar.Close-min)/span*38} r="5" fill="transparent"><title>{bar.date}: {bar.Close.toFixed(2)} SAR</title></circle>)}</svg>;
 }
 
-const formatTimestamp = formatCockpitTimestamp;
-
-function LoadingCockpit() {
-  return <main className={styles.cockpit}><p className={styles.subtitle}>Loading the latest saved daily digest…</p></main>;
+function StockCard({stock,onOpen}:{stock:StockDecision;onOpen:()=>void}) {
+  return <button className={styles.stockCard} onClick={onOpen} aria-label={`View ${stock.name} details`} data-tone={stock.needsAttention?'warning':stock.unavailable?'muted':'normal'}>
+    <span className={styles.cardHeader}><span className={styles.monogram} aria-hidden="true">{stock.name.split(' ').map(s=>s[0]).slice(0,2).join('')}</span><span><strong className={styles.stockName}>{stock.name}</strong><span className={styles.code}>{stock.code}{stock.shares!==null?` · ${stock.shares} shares`:''}</span></span><span className={styles.cardArrow} aria-hidden="true">↗</span></span>
+    <span className={styles.priceRow}><strong>{price(stock.price)} <small>SAR</small></strong><span data-direction={(stock.dailyChange??0)<0?'down':'up'}>{signed(stock.dailyChange)}<small>last session</small></span></span>
+    <Sparkline stock={stock}/>
+    <span className={styles.cardMeta}><span className={styles.pill} data-tone={stock.needsAttention?'warning':stock.unavailable?'muted':stock.owned?'green':'blue'}>{stock.label}</span>{stock.owned&&<span className={styles.pnl}>P/L <strong>{signed(stock.pnl)}</strong></span>}</span>
+    <span className={styles.cardReason}>{stock.reason}</span>
+    {!stock.owned&&stock.conditionsTotal!==null&&<span className={styles.conditions}><progress value={stock.conditionsMet??0} max={stock.conditionsTotal||1}/>{stock.conditionsMet??0} of {stock.conditionsTotal} conditions met</span>}
+    <span className={styles.priceDate}>Price date {stock.priceDate??'unavailable'}{stock.unavailable?' · Check current data':''}</span>
+  </button>;
 }
 
-function UnavailableCockpit({ message }: { message: string }) {
-  return <main className={styles.cockpit}><p className={styles.brand}>TASI ACTION COCKPIT</p><h1>No verified daily snapshot is available.</h1><p className={styles.subtitle}>{message} The cockpit will show data after the next successful pre-open digest.</p></main>;
-}
-
-function isV2(snapshot: DashboardPayload["snapshot"]): snapshot is DashboardSnapshotV2 | DashboardSnapshotV3 {
-  return snapshot.schemaVersion === 2 || snapshot.schemaVersion === 3;
-}
-
-function isV3(snapshot: DashboardPayload["snapshot"]): snapshot is DashboardSnapshotV3 {
-  return snapshot.schemaVersion === 3;
-}
-
-/**
- * One compact line per supporting surface. The cockpit used to render a full
- * empty section for every one of these; a reader then had to scroll past four
- * "nothing here" panels to reach the alerts that actually changed.
- */
-function StatusRow({ children, label, state, summary }: { children?: ReactNode; label: string; state: string; summary: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const detailsId = useId();
-  const expandable = Boolean(children);
-
-  return (
-    <div className={styles.statusRow} data-label={label}>
-      {expandable ? (
-        <button aria-controls={detailsId} aria-expanded={expanded} className={styles.statusToggle} onClick={() => setExpanded((open) => !open)} type="button">
-          <span className={styles.statusLabel}>{label}</span>
-          <span className={styles.statusState}>{state}</span>
-          <span className={styles.statusSummary}>{summary}</span>
-        </button>
-      ) : (
-        <p className={styles.statusStatic}>
-          <span className={styles.statusLabel}>{label}</span>
-          <span className={styles.statusState}>{state}</span>
-          <span className={styles.statusSummary}>{summary}</span>
-        </p>
-      )}
-      {expandable && expanded && <div className={styles.statusDetails} id={detailsId}>{children}</div>}
-    </div>
-  );
-}
-
-export function ActionCockpit({ dashboard }: { dashboard: DashboardPayload | null }) {
-  const [state, setState] = useState<DashboardState>(() => dashboard ? { kind: "ready", payload: dashboard } : { kind: "loading" });
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [actionStatus, setActionStatus] = useState<string | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [refreshBusy, setRefreshBusy] = useState(false);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
-
-  const loadDashboard = useCallback(async () => {
-    setRefreshBusy(true);
-    try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
-      const payload = await response.json() as DashboardPayload & { error?: string };
-      if (!response.ok || !payload.snapshot) throw new Error(payload.error ?? "No verified daily snapshot is available.");
-      setState({ kind: "ready", payload });
-      setRefreshError(null);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "The daily dashboard could not be loaded.";
-      setState((current) => current.kind === "ready" ? current : { kind: "unavailable", message });
-      setRefreshError(`Refresh failed: ${message}. Showing the last good view.`);
-    } finally {
-      setRefreshBusy(false);
+export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
+  const [data,setData]=useState(dashboard),[error,setError]=useState<string|null>(null),[busy,setBusy]=useState(false);
+  const [refreshStatus,setRefreshStatus]=useState('');
+  const dataRef=useRef(dashboard);
+  const [selected,setSelected]=useState<StockDecision|null>(null),[panel,setPanel]=useState<'status'|'trade'|'watchlist'|null>(null);
+  const [candidate,setCandidate]=useState<Candidate|null>(null),[all,setAll]=useState(false);
+  const [actionStatus,setActionStatus]=useState(''),[actionBusy,setActionBusy]=useState(false);
+  const refresh=useCallback(async(announce=false)=>{
+    setBusy(true);if(announce)setRefreshStatus('Checking for the latest saved snapshot…');
+    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15_000);
+    try{
+      const r=await fetch('/api/dashboard',{cache:'no-store',signal:controller.signal});const next=await r.json();
+      if(!r.ok||!next.snapshot)throw new Error(next.error??'Snapshot unavailable');
+      const previous=dataRef.current?.snapshot;
+      const priorKey=previous?.schemaVersion===3?previous.artifactId:previous?`${previous.schemaVersion}:${previous.tradeDate}:${previous.asOf}`:null;
+      const nextKey=next.snapshot.schemaVersion===3?next.snapshot.artifactId:`${next.snapshot.schemaVersion}:${next.snapshot.tradeDate}:${next.snapshot.asOf}`;
+      dataRef.current=next;setData(next);setError(null);
+      if(announce)setRefreshStatus(next.freshness==='stale'
+        ?`Latest saved snapshot is still stale (${next.snapshot.tradeDate}).`
+        :priorKey===nextKey?'Already showing the latest saved daily snapshot.':`Updated to daily snapshot for ${next.snapshot.tradeDate}.`);
     }
-  }, []);
-
-  useEffect(() => {
-    // Schedule after paint: the existing server/last-good payload stays visible
-    // while the client confirms it, instead of causing a synchronous effect update.
-    const initialRefresh = window.setTimeout(() => { void loadDashboard(); }, 0);
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") void loadDashboard();
-    };
-    const interval = window.setInterval(refreshWhenVisible, 60_000);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-    return () => {
-      window.clearTimeout(initialRefresh);
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [loadDashboard]);
-
-  if (selectedCandidate) return <ResearchWorkspace candidate={selectedCandidate} onClose={() => setSelectedCandidate(null)} />;
-  if (state.kind === "loading") return <LoadingCockpit />;
-  if (state.kind === "unavailable") return <UnavailableCockpit message={state.message} />;
-
-  const { snapshot, freshness } = state.payload;
-  const alerts = state.payload.alerts;
-  const qualified = snapshot.qualified.slice(0, 3);
-  const researchEnabled = freshness === "current" && import.meta.env.VITE_AGENT_ENABLED !== "false";
-  const v2 = isV2(snapshot) ? snapshot : null;
-  const v3 = isV3(snapshot) ? snapshot : null;
-  const top10Review = v3?.top10Review ?? (v2?.top10.status === "draft" ? v2.top10 : null);
-  const delivery = state.payload.delivery ?? { producer: { status: "confirmed" as const, attemptedAt: snapshot.asOf }, discord: { status: "unknown" as const }, cockpit: { status: "unknown" as const } };
-  const decidedCount = snapshot.urgent.length + snapshot.changed.length;
-
-  async function decideTop10(decision: "approved" | "rejected") {
-    if (!top10Review || top10Review.status !== "draft" || top10Review.entries.length === 0 || actionBusy) return;
-    setActionBusy(true);
-    setActionStatus(null);
-    try {
-      const response = await fetch("/api/top10/approve", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ proposalId: top10Review.proposalId, decision, decidedAt: new Date().toISOString() }) });
-      const payload = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Top 10 decision could not be saved.");
-      setActionStatus(`Top 10 ${decision}.`);
-    } catch (error) {
-      setActionStatus(error instanceof Error ? error.message : "Top 10 decision could not be saved.");
-    } finally {
-      setActionBusy(false);
-    }
+    catch{setError('Refresh failed. Showing the last good view. Try again shortly.');if(announce)setRefreshStatus('Refresh failed; the last good snapshot remains visible.');}
+    finally{clearTimeout(timeout);setBusy(false);}
+  },[]);
+  useEffect(()=>{const initial=setTimeout(()=>void refresh(),0);const visible=()=>{if(document.visibilityState==='visible')void refresh();};const interval=setInterval(visible,60_000);document.addEventListener('visibilitychange',visible);return()=>{clearTimeout(initial);clearInterval(interval);document.removeEventListener('visibilitychange',visible);};},[refresh]);
+  if(candidate)return <ResearchWorkspace candidate={candidate} onClose={()=>setCandidate(null)}/>;
+  if(!data)return <main className={styles.page}><p className={styles.brand}>TASI Action Cockpit</p><h1>{error?'No verified daily snapshot is available.':'Loading the latest saved daily digest…'}</h1>{error&&<button onClick={()=>void refresh(true)}>Try again</button>}</main>;
+  const {snapshot,freshness}=data,v2=snapshot.schemaVersion===1?null:snapshot,v3=snapshot.schemaVersion===3?snapshot:null;
+  const view=buildDecisionView(snapshot,freshness),candidates=all?view.candidates:view.candidates.slice(0,3);
+  const priceDateLabel=view.priceDates.length===0?'Prices unavailable'
+    :view.priceDates.length===1?`Prices from previous close ${view.priceDates[0]}`
+    :`Latest available prices dated ${view.priceDates[0]} to ${view.priceDates.at(-1)}`;
+  const researchEnabled=freshness==='current'&&import.meta.env.VITE_AGENT_ENABLED!=='false';
+  const delivery=data.delivery,review=v3?.top10Review??(v2?.top10.status==='draft'?v2.top10:null);
+  const close=()=>{setSelected(null);setPanel(null);};
+  const warning=snapshot.warnings.find(w=>/late|price|market|stale/i.test(w));
+  async function decide(decision:'approved'|'rejected'){
+    if(!review?.entries.length||actionBusy)return;setActionBusy(true);setActionStatus('');
+    try{const response=await fetch('/api/top10/approve',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({proposalId:review.proposalId,decision,decidedAt:new Date().toISOString()})});const body=await response.json();if(!response.ok)throw new Error(body.error??'Could not save decision');setActionStatus(`Top 10 ${decision}.`);await refresh();}
+    catch(e){setActionStatus(e instanceof Error?e.message:'Could not save decision');}finally{setActionBusy(false);}
   }
-
-  async function confirmTrade() {
-    const proposal = v2?.portfolio.proposal;
-    if (!v2 || !proposal || !proposal.code || !proposal.shares || actionBusy) return;
-    const kind = proposal.action === "buy" || proposal.action === "add" ? "buy" : proposal.action === "trim" || proposal.action === "sell" ? "sell" : null;
-    const marketAction = snapshot.urgent.find((item) => item.code === proposal.code);
-    const priceSar = kind === "buy" ? (proposal.estimatedSpendSar ?? 0) / proposal.shares : marketAction?.price;
-    const name = v2.top10.entries.find((item) => item.code === proposal.code)?.name ?? v2.portfolio.holdings.find((item) => item.code === proposal.code)?.name ?? marketAction?.name;
-    if (!kind || !name || !Number.isFinite(priceSar) || !priceSar || !window.confirm(`Record ${kind} of ${proposal.shares} ${proposal.code} at the broker-confirmed price? This records your decision only; it never sends an order.`)) return;
-    setActionBusy(true);
-    setActionStatus(null);
-    try {
-      const response = await fetch("/api/portfolio/events", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operationId: crypto.randomUUID(), kind, code: proposal.code, name, shares: proposal.shares, priceSar, reason: proposal.reason, confirmedAt: new Date().toISOString() }) });
-      const payload = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Trade confirmation could not be recorded.");
-      setActionStatus("Broker-confirmed trade recorded. No order was sent by this cockpit.");
-    } catch (error) {
-      setActionStatus(error instanceof Error ? error.message : "Trade confirmation could not be recorded.");
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  const portfolioSummary = v2
-    ? `${v2.portfolio.cashSar.toFixed(2)} SAR cash · ${decidedCount === 0 ? "no holding crossed a decision level" : `${decidedCount} holding update${decidedCount === 1 ? "" : "s"}`}`
-    : decidedCount === 0 ? "No holding crossed a decision level in this daily snapshot." : `${decidedCount} holding updates`;
-
-  return (
-    <main className={styles.cockpit}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.brand}>TASI ACTION COCKPIT</p>
-          <h1>Today’s decisions, without the noise.</h1>
-          <p className={styles.subtitle}>Review a clear proposal, understand why it exists, then decide what to do.</p>
-        </div>
-        <div className={styles.statusPanel}>
-          <span className={styles.preview}>Delayed/daily data</span>
-          <span className={styles.asOf}>Market observed <time dateTime={snapshot.asOf}>{formatTimestamp(snapshot.asOf)}</time></span>
-          <button aria-label="Refresh cockpit" className={styles.refreshButton} disabled={refreshBusy} onClick={() => void loadDashboard()} type="button">{refreshBusy ? "Refreshing…" : "Refresh"}</button>
-        </div>
-      </header>
-
-      {refreshError && <section className={styles.staleNote} aria-live="polite" role="status"><p>{refreshError}</p></section>}
-      {freshness === "stale" && <section className={styles.staleNote} aria-label="Stale data warning"><p>This is the last successful daily snapshot. The expected pre-open refresh did not arrive, so research is disabled.</p></section>}
-      {snapshot.warnings.map((warning) => <section className={styles.staleNote} aria-label="Data quality warning" key={warning}><p>{warning}</p></section>)}
-      <section className={styles.safetyNote} aria-label="Trading safety notice">
-        <span className={styles.safetyDot} aria-hidden="true" />
-        <p>Broker app handles real-time price alerts. This cockpit provides delayed analysis and never sends an order.</p>
-      </section>
-
-      {/* The alert board leads: it is the only surface that changes during a
-          session, so it must not sit below four mostly-empty panels. */}
-      <AlertBoard alerts={alerts} tradeDate={snapshot.tradeDate} />
-
-      {v2 && (
-        <section className={styles.section} aria-labelledby="summary-heading">
-          <div className={styles.sectionHeading}><div><p className={styles.kicker}>DISCORD-STYLE DIGEST</p><h2 id="summary-heading">Today&apos;s summary</h2></div></div>
-          <ul className={styles.changeList}>{v2.summaryV1?.cards ? v2.summaryV1.cards.map((card) => <li className={styles.changeCard} key={`${card.kind}-${card.state}`}>{card.text}</li>) : v2.summary.map((line) => <li className={styles.changeCard} key={line}>{line}</li>)}</ul>
-        </section>
-      )}
-
-      {v3 && <section className={styles.section} aria-labelledby="charts-heading">
-        <div className={styles.sectionHeading}><div><p className={styles.kicker}>CANONICAL ARTIFACT</p><h2 id="charts-heading">Three-month charts</h2></div></div>
-        <div className={styles.chartGrid}>{v3.charts.map((chart) => <PriceVolumeChart chart={chart} key={chart.code} />)}</div>
-      </section>}
-
-      <section className={styles.section} aria-labelledby="status-rail-heading">
-        <div className={styles.sectionHeading}><div><p className={styles.kicker}>SUPPORTING STATE</p><h2 id="status-rail-heading">Everything else, in one line each</h2></div></div>
-        <div className={styles.statusRail}>
-          <StatusRow label="Delivery" state={delivery.discord.status === "confirmed" && delivery.cockpit.status === "confirmed" ? "confirmed" : "pending"} summary={`Producer ${delivery.producer.status} · Discord ${delivery.discord.status} · Cockpit ${delivery.cockpit.status}`}>
-            <p className={styles.quiet}>Artifact {v3?.artifactId ?? "legacy snapshot"}. Discord is confirmed only by an authenticated receipt, not by a green workflow.</p>
-          </StatusRow>
-          {v3 && <StatusRow label="Gemini lean" state={v3.leanStatus.ok ? "available" : "unavailable"} summary={v3.leanStatus.ok ? `${v3.leanStatus.model ?? "Gemini"} · optional model judgement` : v3.leanStatus.reason ?? "No Gemini lean was produced."}>
-            <p className={styles.quiet}>{v3.leanStatus.ok ? `Provider: ${v3.leanStatus.provider}. Model judgement is scored daily and never gates a buy.` : `Gemini unavailable: ${v3.leanStatus.reason}`}</p>
-          </StatusRow>}
-          <StatusRow
-            label="Portfolio"
-            state={decidedCount === 0 ? "quiet" : "updated"}
-            summary={portfolioSummary}
-          >
-            {v2 && <p className={styles.quiet}>Confirmed <time dateTime={v2.portfolio.confirmedAt}>{formatTimestamp(v2.portfolio.confirmedAt)}</time>. Monthly contribution: {v2.portfolio.contributionMonth ?? "not yet confirmed"}.</p>}
-            {snapshot.urgent.length === 0 ? <p className={styles.quiet}>No holding action crossed a decision level in this daily snapshot.</p> : <div className={styles.actionList}>{snapshot.urgent.map((action) => (
-              <article className={styles.actionCard} data-state="urgent" key={action.code}>
-                <div className={styles.cardTopline}><span className={styles.actionLabel}>{action.action}</span><span className={styles.price}>{formatPrice(action.price)}</span></div>
-                <div className={styles.cardBody}><div><h3 className={styles.companyName}>{action.name}</h3><p className={styles.symbol}>({action.code})</p></div><div className={styles.loss}><span>Unrealized P/L</span><strong>{action.pnlPct.toFixed(1)}%</strong></div></div>
-                <p className={styles.reason}>{action.reason}</p>
-              </article>
-            ))}</div>}
-            {snapshot.changed.length === 0 ? <p className={styles.quiet}>No other holding crossed a decision level in this daily snapshot.</p> : <div className={styles.changeList}>{snapshot.changed.map((change) => <article className={styles.changeCard} data-state="changed" key={change.code}><div><h3 className={styles.companyName}>{change.name}</h3><p className={styles.symbol}>({change.code})</p></div><div><p className={styles.changeStatus}>{change.status}</p><p className={styles.changeReason}>{change.reason}</p></div></article>)}</div>}
-            {v2?.portfolio.proposal
-              ? <article className={styles.actionCard}><p className={styles.actionLabel}>PROPOSAL</p><h3>{v2.portfolio.proposal.action.toUpperCase()} {v2.portfolio.proposal.code ?? ""}</h3><p>{v2.portfolio.proposal.reason}</p><button className={styles.researchButton} disabled={actionBusy} onClick={confirmTrade} type="button">Confirm trade</button></article>
-              : <p className={styles.quiet}>No trade proposal is awaiting confirmation.</p>}
-            {actionStatus && <p className={styles.quiet} role="status">{actionStatus}</p>}
-          </StatusRow>
-
-          {v2 && <StatusRow
-            label="Top 10"
-            state={v2.top10.entries.length === 0 ? "evidence pending" : v2.top10.status}
-            summary={v2.top10.entries.length === 0 ? "No researched Top 10 draft is available." : `${v2.top10.entries.length} researched names · evidence reviewed ${formatTimestamp(v2.top10.researchedAt)}`}
-          >
-            <p className={styles.candidateNote}>Evidence reviewed <time dateTime={v2.top10.researchedAt}>{formatTimestamp(v2.top10.researchedAt)}</time></p>
-            {v2.top10.entries.length === 0
-              ? <p className={styles.quiet}>No researched Top 10 draft is available, so there is nothing to approve or reject.</p>
-              : <>
-                <div className={styles.qualifiedGrid}>{v2.top10.entries.map((entry) => <article className={styles.qualifiedCard} key={entry.code}><h3 className={styles.companyName}>{entry.name}</h3><p className={styles.symbol}>({entry.code}){entry.owned ? " · Owned" : ""}</p><p>{entry.sector} · score <strong>{entry.totalScore.toFixed(1)}</strong></p><p className={styles.reason}>{entry.reasons.join(" ")}</p></article>)}</div>
-                {/* Approval controls exist only when there is something to approve. */}
-                {top10Review?.status === "draft" && <div className={styles.actionList}><p className={styles.candidateNote}>{v2.top10.status === "approved" ? "A researched replacement is awaiting approval; the approved list remains active until then." : "Research draft awaiting approval."}</p><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("approved")} type="button">Approve Top 10</button><button className={styles.researchButton} disabled={actionBusy} onClick={() => void decideTop10("rejected")} type="button">Reject Top 10</button></div>}
-              </>}
-            <EvidenceReviewForm />
-          </StatusRow>}
-
-          {v2 && <StatusRow
-            label="Forecast"
-            state={v2.forecast.status}
-            summary={v2.forecast.status === "unavailable" ? `Forecast unavailable: ${v2.forecast.reason}` : `${v2.forecast.targetFirstPct.toFixed(1)}% target-first probability over ${v2.forecast.horizonSessions} sessions.`}
-          >
-            {v2.forecast.status === "unavailable"
-              ? <p className={styles.quiet}>Forecast unavailable: {v2.forecast.reason}</p>
-              : <p className={styles.quiet}>{v2.forecast.targetFirstPct.toFixed(1)}% target-first probability over {v2.forecast.horizonSessions} sessions. Target {formatPrice(v2.forecast.target)} · stop {formatPrice(v2.forecast.stop)}.</p>}
-          </StatusRow>}
-
-          <StatusRow
-            label="Scanner"
-            state={qualified.length === 0 ? "no candidates" : "candidates"}
-            summary={qualified.length === 0 ? "No scanner candidates met both research conditions in this daily snapshot." : `${qualified.length} qualified · ${snapshot.researchCount} one-condition names withheld`}
-          >
-            <p className={styles.candidateNote}>Candidates, not trade instructions</p>
-            {qualified.length === 0
-              ? <p className={styles.quiet}>No scanner candidates met both research conditions in this daily snapshot.</p>
-              : <div className={styles.qualifiedGrid}>{qualified.map((candidate) => <article className={styles.qualifiedCard} data-state="qualified" key={candidate.code}><div className={styles.qualifiedHeader}><span className={styles.symbol}>({candidate.code})</span>{candidate.squeeze && <span className={styles.squeeze}>Squeeze</span>}</div><h3 className={styles.companyName}>{candidate.name}</h3><p>Relative strength <strong>+{candidate.relativeStrengthPct.toFixed(1)}%</strong></p>{researchEnabled ? <button aria-label={`Research ${candidate.name}`} className={styles.researchButton} onClick={() => setSelectedCandidate(candidate)} type="button">Research this idea →</button> : <p className={styles.researchDisabled}>{freshness === "stale" ? "Research waits for a fresh daily snapshot." : "Research is temporarily disabled."}</p>}</article>)}</div>}
-            <p className={styles.researchLink}>Scanner research · {snapshot.researchCount} one-condition names withheld from Home</p>
-          </StatusRow>
-        </div>
-      </section>
-
-      <footer className={styles.footer}>Automates your rules. Not financial advice. You execute every trade.</footer>
-    </main>
-  );
+  return <main className={styles.page}>
+    <header className={styles.header}><Link className={styles.brand} href="/" aria-label="TASI home"><span className={styles.logo} aria-hidden="true">↗</span>TASI <span>daily cockpit</span></Link><div className={styles.toolbar}><span className={styles.liveDot}>Delayed/daily data</span><button className={styles.secondaryButton} onClick={()=>setPanel('status')}>Data status <span aria-hidden="true">◉</span></button><button className={styles.iconButton} aria-label="Refresh cockpit" disabled={busy} onClick={()=>void refresh(true)}>{busy?'…':'↻'}</button></div></header>
+    {error&&<p className={styles.notice} role="status">{error}</p>}
+    {refreshStatus&&<p className={styles.refreshStatus} role="status" aria-live="polite">{refreshStatus}</p>}
+    <section className={styles.today} aria-label="Daily freshness"><div className={styles.briefing}><p className={styles.eyebrow}>YOUR DAILY CHECK-IN</p><h1 id="today-heading">A little clarity.<br/><span>A better next step.</span></h1><p className={styles.takeaway}>{view.attention?`${view.attention} holding${view.attention===1?' needs':'s need'} your review.`:view.incomplete?'Some checks unavailable':'No holding needs a rule-based action.'}</p><p className={styles.muted}>{view.attention?'Review the highlighted holdings below.':view.incomplete?'Your saved holdings are here. Check the data notes before making a decision.':'Your holdings are below, with the next levels to watch.'}</p><p className={styles.date}>Daily snapshot for {snapshot.tradeDate}</p><p className={styles.date}>{priceDateLabel} <span>· Saved {formatCockpitTimestamp(snapshot.asOf)}</span></p></div><div className={styles.attention}><span className={styles.orbit} aria-hidden="true">{view.attention?'!':'↗'}</span><strong>{view.attention}</strong><span>{view.attention===1?'holding needs':'holdings need'} action</span><small>{view.holdings.length} holdings tracked</small></div></section>
+    {freshness==='stale'?<p className={styles.notice} aria-label="Stale data warning">The expected pre-open refresh did not arrive. This is the last successful daily snapshot; research is disabled.</p>:warning&&<p className={styles.notice} aria-label="Data quality warning">{warning}</p>}
+    <div className={styles.cockpitLayout}><div className={styles.mainColumn}>
+    <MarketPulse pulse={data.marketPulse}/>
+    <IntelligenceBoard snapshot={snapshot} alerts={data.alerts} marketPulse={data.marketPulse}/>
+    <section className={styles.section} aria-label="My holdings"><div className={styles.sectionHead}><div><p className={styles.eyebrow}>YOUR PORTFOLIO</p><h2>My holdings <span>{view.holdings.length}</span></h2></div><div className={styles.toolbar}>{v2&&<span className={styles.cash}>{price(v2.portfolio.cashSar)} SAR cash</span>}{v2&&<button className={styles.textButton} onClick={()=>setPanel('trade')}>Record a trade ↗</button>}</div></div>{view.holdings.length?<div className={styles.grid}>{view.holdings.map(stock=><StockCard key={stock.code} stock={stock} onOpen={()=>setSelected(stock)}/>)}</div>:<div className={styles.empty}><span aria-hidden="true">◎</span><h3>Your portfolio starts here</h3><p>No confirmed holdings are available. Record an executed trade to start your ledger.</p></div>}</section>
+    <section className={styles.section} aria-label="Worth watching"><div className={styles.sectionHead}><div><p className={styles.eyebrow}>ROOM FOR RESEARCH</p><h2>Worth watching</h2></div><div className={styles.toolbar}>{view.watchlist.length>0&&<button className={styles.textButton} onClick={()=>setPanel('watchlist')}>Your watchlist ({view.watchlist.length})</button>}{view.candidates.length>3&&<button className={styles.textButton} aria-expanded={all} onClick={()=>setAll(!all)}>{all?'Show less':`View all (${view.candidates.length})`}</button>}</div></div><p className={styles.sectionNote}>Screening ideas, not buy instructions. Get to know a company before deciding.</p>{candidates.length?<div className={styles.grid}>{candidates.map((c,i)=><article className={styles.ideaCard} key={c.code}><span className={styles.ideaNumber}>0{i+1}</span><span className={styles.pill} data-tone="blue">Research candidate</span><h3>{c.name}</h3><p className={styles.code}>{c.code}</p><p>Relative strength <strong>+{c.relativeStrengthPct.toFixed(1)}%</strong></p><p className={styles.cardReason}>{c.squeeze?'Relative strength and quiet trading met the scanner conditions.':'Two research conditions met.'} Entry, valuation and risk still need review.</p><div className={styles.conditions}><progress value={2} max={2}/>2 of 2 screening conditions</div><button className={styles.secondaryButton} disabled={!researchEnabled} onClick={()=>setCandidate(c)}>{researchEnabled?'Explore company ↗':'Waiting for fresh data'}</button></article>)}</div>:<div className={styles.empty}><span aria-hidden="true">⌕</span><h3>Nothing new on the shortlist</h3><p>No scanner candidates met both research conditions in this daily snapshot.</p></div>}</section>
+    {data.alerts.length>0&&<details className={styles.movement}><summary>Delayed movement history <span>{data.alerts.length} observations</span></summary><AlertBoard alerts={data.alerts} tradeDate={snapshot.tradeDate}/></details>}
+    </div><CopilotRail/></div>
+    <footer className={styles.footer}><span>Made for a clearer daily check-in.</span><p>Broker app handles real-time price alerts. This cockpit provides delayed analysis and never sends an order.</p></footer>
+    {selected&&<DetailDialog title={selected.name} onClose={close}><StockDetails stock={selected}/></DetailDialog>}
+    {!selected&&panel==='watchlist'&&<DetailDialog title="Your watchlist" onClose={close}><p className={styles.muted}>Entry conditions for the companies you follow. These are not owned holdings.</p><div className={styles.dialogGrid}>{view.watchlist.map(stock=><StockCard key={stock.code} stock={stock} onOpen={()=>setSelected(stock)}/>)}</div></DetailDialog>}
+    {!selected&&panel==='trade'&&v2&&<DetailDialog title="Record an executed trade" onClose={close}><ExecutedTradeForm portfolio={v2.portfolio} onSaved={()=>void refresh()}/></DetailDialog>}
+    {!selected&&panel==='status'&&<DetailDialog title="Data status" onClose={close}>
+      <p className={styles.muted}>What is available, what is missing, and why.</p><section><h3>Today’s summary</h3><ul>{v2?.summary.map(line=><li key={line}>{line}</li>)}</ul></section>
+      <section data-label="Delivery"><h3>Delivery</h3><p>Producer {delivery?.producer.status??'unknown'} · Discord {delivery?.discord.status??'unknown'} · Cockpit {delivery?.cockpit.status??'unknown'}</p><small>Discord is confirmed only by an authenticated receipt.</small></section>
+      <section data-label="AI perspective"><h3>AI perspective</h3><p>{v3?.leanStatus.ok?`Available · ${v3.leanStatus.provider} · ${v3.leanStatus.model??''}`:'Unavailable — the dashboard still shows deterministic facts.'}</p>{v3?.leanStatus.reason&&<details><summary>Technical details</summary><p>{v3.leanStatus.reason}</p></details>}</section>
+      <section><h3>News and disclosures</h3><p>{v3?.digestRecords.filter(r=>r.news?.ok===false).length??0} stocks with news retrieval failures. Individual stocks show their available sources.</p></section>
+      {v2&&<section data-label="Top 10"><h3>Top 10 research</h3><p>Evidence reviewed {formatCockpitTimestamp((review??v2.top10).researchedAt)}</p>{(review??v2.top10).entries.length?<><p>{review?'Research draft awaiting your review.':'Your approved research list.'}</p><ul className={styles.detailList}>{(review??v2.top10).entries.map(entry=><li key={entry.code}><div><strong>{entry.name}</strong><p>{entry.reasons.join(' ')}</p><small>{entry.evidence.source} · {entry.evidence.observedAt}</small>{entry.evidence.url?.startsWith('https://')&&<a href={entry.evidence.url} target="_blank" rel="noreferrer">Read source ↗</a>}</div></li>)}</ul>{review?.status==='draft'&&<div className={styles.toolbar}><button className={styles.primaryButton} disabled={actionBusy} onClick={()=>void decide('approved')}>Approve Top 10</button><button className={styles.secondaryButton} disabled={actionBusy} onClick={()=>void decide('rejected')}>Reject Top 10</button></div>}</>:<p>No researched Top 10 draft is available, so there is nothing to approve or reject. Issuer evidence must be collected and reviewed first.</p>}<p role="status">{actionStatus}</p><EvidenceReviewForm /></section>}
+      {v2&&<section data-label="Forecast"><h3>Forecast</h3>{v2.forecast.status==='unavailable'?<><p>Forecast unavailable: validation gates have not passed.</p><details><summary>Validation details</summary><p>{v2.forecast.reason}</p></details></>:<p>{v2.forecast.targetFirstPct.toFixed(1)}% target-first probability over {v2.forecast.horizonSessions} sessions. Target {price(v2.forecast.target)} · stop {price(v2.forecast.stop)}.</p>}</section>}
+      {snapshot.warnings.length>0&&<section><h3>Data notes</h3><ul>{snapshot.warnings.map(w=><li key={w}>{w}</li>)}</ul></section>}
+    </DetailDialog>}
+  </main>;
 }

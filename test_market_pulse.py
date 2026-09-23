@@ -49,6 +49,24 @@ def test_market_pulse_keeps_the_last_valid_artifact_as_stale_on_source_failure()
     assert result["observations"] == [{"code": "1303", "price": 15.3}]
     assert "index" in result["reason"].lower()
 
+    repeated = market_pulse.build_market_pulse(
+        {"^TASI.SR": pd.DataFrame(), "1303": pd.DataFrame()}, pd.DataFrame(), ["1303"],
+        source="yahoo-probe", fetched_at="2026-09-22T07:30:00Z", declared_delay_minutes=15, prior=result,
+    )
+    assert repeated["lastValidAt"] == "2026-09-22T07:20:00Z"
+
+
+def test_three_tracked_names_require_all_three_for_seventy_percent_coverage():
+    """Two of three is 66.7%, not a passing 70% pulse."""
+    bars = _bars([10.0, 10.2], ["2026-09-22T07:10:00Z", "2026-09-22T07:15:00Z"])
+    result = market_pulse.build_market_pulse(
+        {"^TASI.SR": bars, "1303": bars, "2320": bars}, pd.DataFrame(),
+        ["1303", "2320", "4164"], source="yahoo-probe", fetched_at="2026-09-22T07:20:00Z",
+        declared_delay_minutes=15,
+    )
+    assert result["status"] == "unavailable"
+    assert result["coverage"]["required"] == 3
+
 
 def test_market_pulse_excludes_an_open_five_minute_bar_from_the_completed_observation():
     """A bar stamped at fetch time is still forming, not evidence of a pulse."""
@@ -81,6 +99,20 @@ def test_market_pulse_does_not_fabricate_a_regime_from_one_index_point():
     assert result["regime"] == {"status": "unavailable", "reason": "Market regime unavailable: the index returned 1 usable daily bars; 50 are required."}
 
 
+def test_market_regime_excludes_todays_unfinished_daily_index_bar():
+    """A live partial daily candle cannot complete the required history."""
+    intraday = _bars([11000.0, 11010.0], ["2026-09-22T07:10:00Z", "2026-09-22T07:15:00Z"])
+    dates = list(pd.date_range("2026-07-10", periods=51, freq="B", tz="Asia/Riyadh"))
+    dates.append(pd.Timestamp("2026-09-22", tz="Asia/Riyadh"))
+    daily = _bars(range(100, 152), dates)
+    result = market_pulse.build_market_pulse(
+        {"^TASI.SR": intraday, "1303": intraday}, daily, ["1303"], source="yahoo-probe",
+        fetched_at="2026-09-22T07:20:00Z", declared_delay_minutes=15,
+    )
+    assert result["regime"]["status"] == "unavailable"
+    assert "51 usable daily bars" in result["regime"]["reason"]
+
+
 def test_market_pulse_mode_writes_an_observation_without_notifying_or_deciding(monkeypatch, tmp_path):
     """The five-minute path is a stored observation, never a hidden alert path."""
     pulse_path = tmp_path / "market_pulse.json"
@@ -89,11 +121,14 @@ def test_market_pulse_mode_writes_an_observation_without_notifying_or_deciding(m
         "1303": _bars([15.0, 15.3], ["2026-09-22T07:10:00Z", "2026-09-22T07:15:00Z"]),
     }
     daily = _bars(range(100, 152), pd.date_range("2026-07-01", periods=52, freq="B", tz="UTC"))
-    monkeypatch.setattr(main, "MARKET_PULSE_FILE", pulse_path)
+    monkeypatch.setattr(main, "MARKET_PULSE_V1_FILE", pulse_path)
+    monkeypatch.setenv("MARKET_PULSE_SOURCE", "unapproved-provider")
+    monkeypatch.setenv("MARKET_PULSE_DELAY_MINUTES", "0")
     monkeypatch.setattr(main, "_holdings", lambda: [{"code": "1303"}])
     monkeypatch.setattr(main.cfg, "WATCHLIST", [])
     monkeypatch.setattr(main, "_active_top10", lambda: None)
-    monkeypatch.setattr(main.dat, "get_intraday_histories", lambda codes, **_kwargs: {code: frames[code] for code in codes})
+    monkeypatch.setattr(main.dat, "get_intraday_histories", lambda codes, **_kwargs: main.dat.IntradayBatch(
+        status="available", frames={code: frames[code] for code in codes}, errors=[]))
     monkeypatch.setattr(main.dat, "get_qualified_index_history", lambda *_args, **_kwargs: daily)
     monkeypatch.setattr(main.nt, "send_discord", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("pulse must not notify")))
     monkeypatch.setattr(main.time, "strftime", lambda *_args, **_kwargs: "2026-09-22T07:20:00Z")
@@ -101,4 +136,6 @@ def test_market_pulse_mode_writes_an_observation_without_notifying_or_deciding(m
     assert main.mode_market_pulse() == 0
     saved = main._load(pulse_path, {})
     assert saved["status"] == "current"
+    assert saved["source"] == "yahoo-probe"
+    assert saved["declaredDelayMinutes"] == 15
     assert saved["observations"][0]["code"] == "1303"

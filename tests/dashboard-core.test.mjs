@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { dashboardFreshness, parseDashboardSnapshot } from "../app/lib/dashboard-core.mjs";
 import { dashboardSnapshotKey, dashboardSnapshotReadKeys } from "../app/lib/dashboard-storage-core.mjs";
@@ -80,7 +81,7 @@ test("accepts a canonical v3 artifact with shared lean and chart content", () =>
     artifactId: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     scheduledFor: "2026-08-09T06:45:00Z",
     producer: { generatedAt: "2026-08-09T06:45:00Z" },
-    digestRecords: [{ code: "1150", name: "Alinma Bank", lean: { unavailable: "no GEMINI_API_KEY configured" } }],
+    digestRecords: [{ code: "1150", name: "Alinma Bank", price: 11.8, lean: { unavailable: "no GEMINI_API_KEY configured" } }],
     leanStatus: { ok: false, provider: "gemini", reason: "no GEMINI_API_KEY configured" },
     charts: [{
       code: "1150", name: "Alinma Bank", status: "available",
@@ -100,6 +101,7 @@ test("accepts a canonical v3 artifact with shared lean and chart content", () =>
   });
   assert.equal(snapshot.schemaVersion, 3);
   assert.equal(snapshot.artifactKind, "digest");
+  assert.equal(snapshot.digestRecords[0].priceDate, "2026-08-09");
   assert.equal(snapshot.charts[0].bars.length, 5);
 });
 
@@ -142,6 +144,33 @@ test("preserves safe diagnostics for an unavailable Gemini lean", () => {
 
 test("rejects a v3 artifact without a SHA-256 identity", () => {
   assert.throws(() => parseDashboardSnapshot({ ...validSnapshot, schemaVersion: 3, artifactKind: "digest", artifactId: "not-an-id" }), /artifactId/i);
+});
+
+test("rejects a priced v3 decision record without its actual market date", () => {
+  assert.throws(() => parseDashboardSnapshot({
+    ...validSnapshot,
+    schemaVersion: 3,
+    artifactKind: "digest",
+    artifactId: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    scheduledFor: "2026-08-09T06:45:00Z",
+    producer: { generatedAt: "2026-08-09T06:45:00Z" },
+    digestRecords: [{ code: "1150", name: "Alinma Bank", price: 11.8, action: "WATCH", verified: true }],
+    leanStatus: { ok: false, provider: "gemini", reason: "not run" },
+    charts: [],
+    summary: ["legacy line"],
+    top10: { proposalId: "top10-2026-08-09", status: "draft", researchedAt: "2026-08-09T06:45:00Z", entries: [] },
+    portfolio: { confirmedAt: "2026-08-09T06:45:00Z", cashSar: 0, contributionMonth: null, holdings: [], proposal: null },
+    alerts: [],
+    forecast: { status: "unavailable", asOf: "2026-08-09", reason: "Validation gates not passed." },
+  }), /priceDate/i);
+});
+
+test("rejects a price date that disagrees with the chart's final bar", () => {
+  const malformed=JSON.parse(readFileSync(new URL("../dashboard.json",import.meta.url),"utf8"));
+  const chart=malformed.charts.find((item)=>item.status==="available");
+  const record=malformed.digestRecords.find((item)=>item.code===chart.code);
+  record.priceDate="1999-01-01";
+  assert.throws(()=>parseDashboardSnapshot(malformed),/priceDate.*chart/i);
 });
 
 test("rejects a dashboard snapshot that exposes a one-condition candidate", () => {

@@ -30,3 +30,9 @@ test("admits only configured first-party hosts into the review queue", () => {
   assert.equal(isAllowedOfficialUrl("https://www.saudiexchange.sa/announcement", []), true);
   assert.equal(isAllowedOfficialUrl("https://untrusted.example/announcement", []), false);
 });
+
+test("rejects a retrieved date in the future", () => {
+  const record = operatingRecord();
+  record.retrievedAt = "2100-01-01T00:00:00Z";
+  assert.throws(() => validateEvidenceRecord(record, ["issuer.example.sa"]), /future/i);
+});

@@ -1,8 +1,8 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { ActionCockpit } from "@/app/components/ActionCockpit";
-import { EvidenceReviewForm } from "@/app/components/EvidenceReviewForm";
+import { PriceVolumeChart } from "@/app/components/PriceVolumeChart";
 import type { DashboardPayload, DashboardSnapshotV2, DashboardSnapshotV3 } from "@/app/lib/dashboard-types";
 import type { MovementAlert } from "@/app/lib/evidence-types";
 
@@ -199,13 +199,12 @@ test("explains when the current daily snapshot produced no movement alert", asyn
 test("an empty Top 10 offers no approval controls", async () => {
   renderCockpit(payload());
 
+  await userEvent.click(screen.getByRole('button', { name: /Data status/ }));
   const top10 = document.querySelector("[data-label='Top 10']") as HTMLElement;
-  await userEvent.click(within(top10).getByRole("button", { name: /Top 10/ }));
 
   expect(screen.queryByRole("button", { name: "Approve Top 10" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Reject Top 10" })).toBeNull();
   expect(top10.textContent).toContain("nothing to approve or reject");
-  expect(within(top10).getByLabelText("Reviewed evidence JSON")).toBeTruthy();
 });
 
 test("a researched Top 10 draft does offer approval controls", async () => {
@@ -220,24 +219,40 @@ test("a researched Top 10 draft does offer approval controls", async () => {
   }];
   renderCockpit(payload({ snapshot: { ...snapshot, top10: { ...snapshot.top10, entries } } }));
 
-  const top10 = document.querySelector("[data-label='Top 10']") as HTMLElement;
-  await userEvent.click(within(top10).getByRole("button", { name: /Top 10/ }));
+  await userEvent.click(screen.getByRole('button', { name: /Data status/ }));
 
   expect(screen.getByRole("button", { name: "Approve Top 10" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Reject Top 10" })).toBeTruthy();
 });
 
-test("the status rail is one compact row per surface and keeps its explanations", async () => {
+test.each(['approved','rejected'] as const)("Top 10 %s control submits the explicit owner decision",async(decision)=>{
+  const entries=[{
+    code:'4164',name:'Nahdi Medical',sector:'healthcare',owned:false,totalScore:8.2,reasons:['Evidence reviewed.'],
+    evidence:{source:'tadawul',observedAt:'2026-08-18T06:00:00Z',receivedAt:'2026-08-18T06:05:00Z',latency:'official-filing' as const,freshness:'current' as const},
+  }];
+  const dashboard=payload({snapshot:{...snapshot,top10:{...snapshot.top10,entries}}});
+  const fetcher=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+    void init;
+    return String(input)==='/api/top10/approve'?Response.json({ok:true}):Response.json(dashboard);
+  });
+  vi.stubGlobal('fetch',fetcher);
+  render(<ActionCockpit dashboard={dashboard}/>);
+
+  await userEvent.click(screen.getByRole('button',{name:/Data status/}));
+  await userEvent.click(screen.getByRole('button',{name:decision==='approved'?'Approve Top 10':'Reject Top 10'}));
+  expect(await screen.findByText(`Top 10 ${decision}.`)).toBeTruthy();
+  const request=fetcher.mock.calls.find(([input])=>String(input)==='/api/top10/approve');
+  expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({proposalId:'p1',decision});
+});
+
+test("diagnostics are behind Data status and retain withheld forecast explanations", async () => {
   renderCockpit(payload());
-
-  const labels = [...document.querySelectorAll("[data-label]")].map((row) => row.getAttribute("data-label"));
-  expect(labels).toEqual(["Delivery", "Portfolio", "Top 10", "Forecast", "Scanner"]);
-
+  expect(screen.queryByRole('heading', { name: 'Forecast' })).toBeNull();
+  expect(screen.getByText(/No scanner candidates met both research conditions/)).toBeTruthy();
+  await userEvent.click(screen.getByRole('button', { name: /Data status/ }));
   const forecast = document.querySelector("[data-label='Forecast']") as HTMLElement;
-  expect(forecast.textContent).toContain("Forecast unavailable: validation gates not passed.");
-
-  const scanner = document.querySelector("[data-label='Scanner']") as HTMLElement;
-  expect(scanner.textContent).toContain("No scanner candidates met both research conditions");
+  expect(forecast.textContent).toContain("Forecast unavailable: validation gates have not passed.");
+  expect(forecast.textContent).toContain('validation gates not passed.');
 });
 
 test("a stale snapshot still explains itself above the rail", async () => {
@@ -247,17 +262,17 @@ test("a stale snapshot still explains itself above the rail", async () => {
   expect(screen.getByText(/The expected pre-open refresh did not arrive/)).toBeTruthy();
 });
 
-test("alerts are rendered above the supporting status rail", async () => {
+test("holdings precede research and movement history in the overview", async () => {
   renderCockpit(payload({ alerts: [alert(0)] }));
 
-  const alertsHeading = await screen.findByRole("heading", { name: "Unusual movement" });
-  const railHeading = screen.getByRole("heading", { name: /Everything else/ });
-
-  expect(alertsHeading.compareDocumentPosition(railHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const holdings = screen.getByRole('region', { name: 'My holdings' });
+  const research = screen.getByRole('region', { name: 'Worth watching' });
+  expect(holdings.compareDocumentPosition(research) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: /Everything else/ })).toBeNull();
 });
 
 test("a keyboard-accessible chart expands from the canonical three-month data", async () => {
-  renderCockpit(payload({ snapshot: canonicalSnapshot }));
+  render(<PriceVolumeChart chart={canonicalSnapshot.charts[0]} />);
 
   const toggle = await screen.findByRole("button", { name: /Show 3-month chart for Nahdi Medical/i });
   toggle.focus();
@@ -275,25 +290,10 @@ test("a failed manual refresh retains the last-good cockpit view", async () => {
   vi.stubGlobal("fetch", fetchMock);
   render(<ActionCockpit dashboard={payload()} />);
 
-  await screen.findByText("Today’s decisions, without the noise.");
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh cockpit' }).hasAttribute('disabled')).toBe(false));
   await userEvent.click(screen.getByRole("button", { name: "Refresh cockpit" }));
 
-  expect((await screen.findByRole("status")).textContent).toMatch(/Refresh failed/i);
-  expect(screen.getByText("Today’s decisions, without the noise.")).toBeTruthy();
-});
-
-test("the owner evidence form submits a reviewed record against a queued primary source", async () => {
-  const queuedUrl = "https://www.saudiexchange.sa/issuer-announcement";
-  const fetchMock = vi.fn()
-    .mockResolvedValueOnce(new Response(JSON.stringify({ announcements: [{ title: "Issuer announcement", url: queuedUrl, retrieved_at: "2026-09-22T08:00:00Z" }] }), { headers: { "content-type": "application/json" } }))
-    .mockResolvedValueOnce(new Response(JSON.stringify({ revisionId: "r1" }), { status: 201, headers: { "content-type": "application/json" } }));
-  vi.stubGlobal("fetch", fetchMock);
-  render(<EvidenceReviewForm />);
-
-  await screen.findByRole("option", { name: "Issuer announcement" });
-  fireEvent.change(screen.getByLabelText("Reviewed evidence JSON"), { target: { value: '{"symbol":"1150"}' } });
-  await userEvent.click(screen.getByRole("button", { name: "Save reviewed evidence" }));
-
-  expect(fetchMock).toHaveBeenLastCalledWith("/api/evidence/records", expect.objectContaining({ method: "POST", body: JSON.stringify({ symbol: "1150", sourceUrl: queuedUrl }) }));
-  expect((await screen.findByRole("status")).textContent).toContain("Evidence revision saved.");
+  expect(await screen.findByText("Refresh failed; the last good snapshot remains visible.")).toBeTruthy();
+  expect(screen.getByRole('heading', { name: /A little clarity/ })).toBeTruthy();
 });

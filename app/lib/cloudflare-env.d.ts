@@ -18,15 +18,24 @@ declare module "cloudflare:workers" {
   }
 
   export const env: {
+    AUTH_MODE?: string;
+    MIGRATION_EXPORT_TOKEN?: string;
+    MIGRATION_EXPORT_UNTIL?: string;
+    MIGRATION_READ_ONLY?: string;
+    MACHINE_RELAY_SECRET?: string;
+    ACCESS_ISSUER?: string;
+    ACCESS_AUD?: string;
     DB?: D1Database;
-    OPENAI_API_KEY?: string;
+    OPENROUTER_API_KEY?: string;
     AGENT_OWNER_EMAIL?: string;
+    AGENT_DEFAULT_MODEL?: string;
     AGENT_REPORT_MODEL?: string;
     AGENT_CHAT_MODEL?: string;
     DASHBOARD_INGEST_TOKEN?: string;
     EVIDENCE_OFFICIAL_HOSTS?: string;
     PORTFOLIO_OWNER_ID?: string;
     DISCORD_APP_PUBLIC_KEY?: string;
+    DISCORD_OWNER_USER_ID?: string;
     DEPLOYED_COMMIT_SHA?: string;
   };
 }
@@ -40,6 +49,7 @@ interface Fetcher {
 }
 
 interface ExecutionContext {
+  access?: { aud?: string; getIdentity(): Promise<unknown> };
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
 }

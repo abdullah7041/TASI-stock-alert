@@ -1,5 +1,6 @@
 import { buildDeterministicSections, estimateOperationCostSar, extractAnnotatedCitations, extractResponseText, reportResponseFormat } from "@/app/lib/research-core.mjs";
 import { ResearchStore } from "@/app/lib/research-store";
+import { getOwnerContext } from "@/app/lib/owner-context";
 
 const allowedDomains = ["saudiexchange.sa", "cma.org.sa", "argaam.com", "reuters.com", "bloomberg.com"];
 
@@ -8,7 +9,7 @@ type Candidate = { code: string; name: string; relativeStrengthPct: number; sque
 type PrivateResearchContext = {
   ownerId: string;
   store: ResearchStore;
-  openAiKey: string;
+  apiKey: string;
   reportModel: string;
   chatModel: string;
 };
@@ -17,27 +18,22 @@ export type PrivateOwnerContext = { ownerId: string; db: import("cloudflare:work
 
 export async function getPrivateOwnerContext(request: Request): Promise<PrivateOwnerContext> {
   const { env } = await import("cloudflare:workers");
-  const ownerId = request.headers.get("oai-authenticated-user-id");
-  const ownerEmail = request.headers.get("oai-authenticated-user-email");
-  if (!ownerId || !ownerEmail) throw new Response("Sign in is required.", { status: 401 });
-  if (!env.AGENT_OWNER_EMAIL || ownerEmail.toLowerCase() !== env.AGENT_OWNER_EMAIL.toLowerCase()) throw new Response("This private agent is unavailable for this account.", { status: 403 });
+  const { ownerId } = await getOwnerContext(request);
   if (!env.DB) throw new Response("Owner storage is not configured yet.", { status: 503 });
   return { ownerId, db: env.DB };
 }
 
 export async function getPrivateResearchContext(request: Request): Promise<PrivateResearchContext> {
   const { env } = await import("cloudflare:workers");
-  // Sites authenticates private visitors before dispatch and supplies these
-  // identity headers. Authorization remains server-side through the owner
-  // allowlist below; machine ingestion uses its separate bearer token.
-  const owner = await getPrivateOwnerContext(request);
-  if (!env.OPENAI_API_KEY) throw new Response("The research agent is not configured yet.", { status: 503 });
+  const { ownerId } = await getOwnerContext(request);
+  if (!env.DB || !env.OPENROUTER_API_KEY) throw new Response("The research agent is not configured yet.", { status: 503 });
+  const defaultModel = env.AGENT_DEFAULT_MODEL;
   return {
-    ownerId: owner.ownerId,
-    store: new ResearchStore(owner.db),
-    openAiKey: env.OPENAI_API_KEY,
-    reportModel: env.AGENT_REPORT_MODEL ?? "gpt-5.6-terra",
-    chatModel: env.AGENT_CHAT_MODEL ?? "gpt-5.6-luna",
+    ownerId,
+    store: new ResearchStore(env.DB),
+    apiKey: env.OPENROUTER_API_KEY,
+    reportModel: defaultModel ?? env.AGENT_REPORT_MODEL ?? "deepseek/deepseek-v4.1-flash",
+    chatModel: defaultModel ?? env.AGENT_CHAT_MODEL ?? "deepseek/deepseek-v4.1-flash",
   };
 }
 
@@ -49,23 +45,23 @@ function monthKey(date: string) {
   return date.slice(0, 7);
 }
 
-async function openAiResponse(context: PrivateResearchContext, input: string, useWebSearch: boolean) {
+async function openRouterResponse(context: PrivateResearchContext, input: string, useWebSearch: boolean) {
   const body: Record<string, unknown> = {
     model: useWebSearch ? context.reportModel : context.chatModel,
     input,
   };
   if (useWebSearch) {
     body.text = { format: reportResponseFormat() };
-    body.tools = [{ type: "web_search", search_context_size: "medium", filters: { allowed_domains: allowedDomains } }];
+    body.tools = [{ type: "openrouter:web_search", parameters: { engine: "exa", max_results: 5, max_total_results: 20, search_context_size: "medium", allowed_domains: allowedDomains } }];
     body.tool_choice = "required";
-    body.include = ["web_search_call.action.sources"];
+    body.provider = { require_parameters: true };
   }
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await fetch("https://openrouter.ai/api/v1/responses", {
     method: "POST",
-    headers: { Authorization: `Bearer ${context.openAiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${context.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`OpenAI request failed (${response.status}).`);
+  if (!response.ok) throw new Error(`OpenRouter request failed (${response.status}).`);
   return response.json() as Promise<{ output_text?: string; output?: unknown[] }>;
 }
 
@@ -92,7 +88,7 @@ export async function createOrReuseReport(context: PrivateResearchContext, candi
 
   const deterministicSections = buildDeterministicSections(candidate, snapshot);
   try {
-    const modelResponse = await openAiResponse(context,
+    const modelResponse = await openRouterResponse(context,
       `Research ${candidate.code} ${candidate.name} for a private Saudi-market decision workspace. Return only JSON: {"companyNews":"short cited factual summary","risks":"short cited risks","verdict":"RESEARCH|WAIT|SKIP"}. Official disclosures first. Do not give a buy instruction, entry price, stop, target, or portfolio advice.`,
       true,
     );
@@ -130,7 +126,7 @@ export async function answerStockQuestion(context: PrivateResearchContext, candi
   }
   try {
     const priceNote = Number.isFinite(manualPrice) ? ` User-supplied broker price: ${manualPrice} SAR; label it as unverified.` : "";
-    const modelResponse = await openAiResponse(context, `Answer only from this saved report and its deterministic sections: ${JSON.stringify(existing.report)}\n\nQuestion: ${text}.${priceNote} Do not browse, create a trade instruction, invent levels, or give a buy verdict.`, false);
+    const modelResponse = await openRouterResponse(context, `Answer only from this saved report and its deterministic sections: ${JSON.stringify(existing.report)}\n\nQuestion: ${text}.${priceNote} Do not browse, create a trade instruction, invent levels, or give a buy verdict.`, false);
     const reply = extractResponseText(modelResponse).trim();
     if (!reply) throw new Error("The agent returned no answer.");
     const message = { id: crypto.randomUUID(), role: "assistant", text: reply, createdAt: new Date().toISOString(), citations: (existing.report as { sections?: Array<{ citations?: unknown[] }> }).sections?.flatMap((section) => section.citations ?? []) ?? [] };

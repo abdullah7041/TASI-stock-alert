@@ -1,6 +1,9 @@
 import { DashboardStore } from "@/app/lib/dashboard-store";
 import { discordMessage, parseDiscordInteraction, verifyDiscordSignature } from "@/app/lib/discord-interactions.mjs";
 import { PortfolioStore } from "@/app/lib/portfolio-store";
+import { CopilotStore } from "@/app/lib/copilot-store";
+import { answerPortfolioQuestion } from "@/app/lib/copilot-service";
+import { parseDecision } from "@/app/lib/copilot-core";
 
 function reply(content: string, status = 200) {
   return Response.json(discordMessage(content), { status });
@@ -9,6 +12,13 @@ function reply(content: string, status = 200) {
 function portfolioLine(view: { cashSar: number; holdings: Array<{ code: string; shares: number }> }) {
   const holdings = view.holdings.length ? view.holdings.map((item) => `${item.code}: ${item.shares} shares`).join(", ") : "no confirmed holdings";
   return `Confirmed ledger: ${view.cashSar.toFixed(2)} SAR cash; ${holdings}. This is a ledger view and never sends an order.`;
+}
+
+function assistantFailure(error: unknown) {
+  if (error instanceof Response && error.status === 429) {
+    return reply("The Discord assistant has reached its monthly AI budget. Try again next month. No ledger record was created.", 429);
+  }
+  return reply("The Discord assistant is temporarily unavailable. No ledger record was created.", 502);
 }
 
 export async function POST(request: Request) {
@@ -23,9 +33,16 @@ export async function POST(request: Request) {
   let interaction: unknown;
   try { interaction = JSON.parse(raw); }
   catch { return reply("Invalid interaction payload. No ledger record was created.", 400); }
+  const actorId = (interaction as {member?: {user?: {id?: string}}; user?: {id?: string}}).member?.user?.id
+    ?? (interaction as {user?: {id?: string}}).user?.id;
+  if (!env.DISCORD_OWNER_USER_ID || actorId !== env.DISCORD_OWNER_USER_ID) {
+    return reply("This private assistant is restricted to the portfolio owner.", 403);
+  }
   const command = parseDiscordInteraction(interaction) as
     | { kind: "ping" }
     | { kind: "portfolio" | "budget" }
+    | { kind: "ask"; question: string }
+    | { kind: "decide"; id: string; draft: unknown }
     | { kind: "unknown" | "invalid"; message: string }
     | { kind: "record"; operationId: string; event: { kind: "buy" | "sell"; code: string; shares: number; priceSar: number } };
   if (command.kind === "ping") return Response.json({ type: 1 });
@@ -35,6 +52,23 @@ export async function POST(request: Request) {
   const store = new PortfolioStore(env.DB);
   const month = new Date().toISOString().slice(0, 7);
   try {
+    if (command.kind === "ask") {
+      if (!env.OPENROUTER_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
+      const chatModel = env.AGENT_DEFAULT_MODEL ?? env.AGENT_CHAT_MODEL ?? "deepseek/deepseek-v4.1-flash";
+      try {
+        const result = await answerPortfolioQuestion({ ownerId: env.PORTFOLIO_OWNER_ID, db: env.DB, apiKey: env.OPENROUTER_API_KEY, chatModel }, command.question);
+        const draft = result.reply.draft;
+        const suffix = draft ? `\n\nDraft ${draft.action} for ${draft.symbol}: ${draft.conditions} Invalidation: ${draft.invalidation}. Use /decide to save it after reviewing.` : "";
+        return reply(`${result.reply.answer}${suffix}`);
+      } catch (error) {
+        return assistantFailure(error);
+      }
+    }
+    if (command.kind === "decide") {
+      const draft = parseDecision(command.draft);
+      await new CopilotStore(env.DB).confirm(env.PORTFOLIO_OWNER_ID, { ...draft, id: command.id, confirmedAt: new Date().toISOString() });
+      return reply(`Decision note saved for ${draft.symbol}: ${draft.action}. Conditions and invalidation are recorded; no order was sent.`);
+    }
     if (command.kind === "portfolio") return reply(portfolioLine(await store.view(env.PORTFOLIO_OWNER_ID)));
     const current = await store.ledger(month);
     const snapshot = await new DashboardStore(env.DB).latest();

@@ -8,6 +8,7 @@ and the two evaluators. Data is synthetic so these are deterministic.
 
 import io
 import json
+import pytest
 import sys
 import time
 import types
@@ -28,8 +29,75 @@ import config as cfg
 import data
 import news
 import main
+import market_pulse
 import summary_contract
 from movement import detect_unusual_movement
+
+
+def _stub_market_pulse(monkeypatch):
+    monkeypatch.setattr(market_pulse, "collect", lambda _items: artifacts.build_market_pulse_artifact(
+        status="empty", as_of="2026-09-16T07:00:00Z", quotes=[], requested=[], errors=[]))
+
+
+def test_intraday_batch_splits_yahoo_multi_index_by_requested_code(monkeypatch):
+    index = pd.date_range("2026-09-16 10:00", periods=2, freq="5min", tz="Asia/Riyadh")
+    columns = pd.MultiIndex.from_product([["1303.SR", "2320.SR"], ["Open", "High", "Low", "Close", "Volume"]])
+    batch_frame = pd.DataFrame([
+        [10, 11, 9, 10.5, 100, 20, 21, 19, 20.5, 200],
+        [10.5, 11.5, 10, 11, 150, 20.5, 22, 20, 21.5, 250],
+    ], index=index, columns=columns)
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.download = lambda *args, **kwargs: batch_frame
+    fake_yf.Ticker = lambda _symbol: (_ for _ in ()).throw(AssertionError("fallback must not run"))
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+
+    result = data.get_intraday_histories(["1303", "2320"], period="5d_test_split", interval="5m")
+
+    assert result.status == "available"
+    assert result.frames["1303"]["Close"].tolist() == [10.5, 11.0]
+    assert result.frames["2320"]["Close"].tolist() == [20.5, 21.5]
+
+
+def test_intraday_batch_distinguishes_empty_from_provider_failure(monkeypatch):
+    fake_yf = types.ModuleType("yfinance")
+    fake_yf.download = lambda *args, **kwargs: pd.DataFrame()
+    fake_yf.Ticker = lambda _symbol: types.SimpleNamespace(history=lambda **_kwargs: pd.DataFrame())
+    monkeypatch.setitem(sys.modules, "yfinance", fake_yf)
+    empty = data.get_intraday_histories(["1303"], period="5d_test_empty", interval="5m")
+    assert empty.status == "empty"
+
+    fake_yf.download = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("provider down"))
+    fake_yf.Ticker = lambda _symbol: types.SimpleNamespace(history=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("provider down")))
+    failed = data.get_intraday_histories(["1303"], period="5d_test_failed", interval="5m")
+    assert failed.status == "failed"
+    assert failed.errors == ["Yahoo intraday request failed for 1303."]
+
+
+def test_market_pulse_uses_previous_session_close_and_source_timestamp():
+    index = pd.DatetimeIndex([
+        pd.Timestamp("2026-09-15 14:55", tz="Asia/Riyadh"),
+        pd.Timestamp("2026-09-16 10:00", tz="Asia/Riyadh"),
+        pd.Timestamp("2026-09-16 10:05", tz="Asia/Riyadh"),
+    ])
+    frame = pd.DataFrame({"Open": [10, 10.2, 10.3], "High": [10, 10.4, 10.6], "Low": [10, 10.1, 10.2], "Close": [10, 10.3, 10.5], "Volume": [1000, 100, 150]}, index=index)
+    batch = data.IntradayBatch(status="available", frames={"1303": frame}, errors=[])
+
+    pulse = market_pulse.collect([{"code": "1303", "name": "EIC"}], now="2026-09-16T07:10:00Z", fetch=lambda _codes: batch)
+
+    assert pulse["artifactKind"] == "market-pulse"
+    assert pulse["artifactId"].startswith("sha256:")
+    assert pulse["quotes"][0]["observedAt"] == "2026-09-16T07:05:00Z"
+    assert pulse["quotes"][0]["price"] == 10.5
+    assert pulse["quotes"][0]["changePct"] == 5.0
+    assert pulse["quotes"][0]["sessionVolume"] == 250.0
+
+
+def test_market_pulse_failed_collection_has_no_quotes_and_a_safe_reason():
+    batch = data.IntradayBatch(status="failed", frames={"1303": pd.DataFrame()}, errors=["Yahoo intraday request failed for 1303."])
+    pulse = market_pulse.collect([{"code": "1303", "name": "EIC"}], now="2026-09-16T07:10:00Z", fetch=lambda _codes: batch)
+    assert pulse["status"] == "failed"
+    assert pulse["quotes"] == []
+    assert pulse["errors"] == ["Yahoo intraday request failed for 1303."]
 
 
 def test_volume_without_unusual_price_never_alerts():
@@ -79,6 +147,44 @@ def test_a_total_price_outage_says_so_instead_of_shipping_an_empty_digest(monkey
     assert "not because nothing happened" in main._DATA_WARNING
 
 
+def test_collected_price_carries_the_actual_market_session_date(monkeypatch):
+    frame = _ohlcv()
+    holding = {"code": "1303", "name": "EIC", "shares": 104, "avg_cost": 12.41}
+    monkeypatch.setattr(main.cfg, "HOLDINGS", [holding])
+    monkeypatch.setattr(main.cfg, "WATCHLIST", [])
+    monkeypatch.setattr(main, "_holdings", lambda: [holding])
+    monkeypatch.setattr(main.dat, "get_histories", lambda codes, period: {code: frame for code in codes})
+    monkeypatch.setattr(main, "_verify_symbols", lambda names: {"1303": {"verified": True}})
+    monkeypatch.setattr(main.discl, "fetch_all", lambda: ([], False))
+    monkeypatch.setattr(main, "_load", lambda path, default: {})
+    monkeypatch.setattr(main, "_budget_remaining", lambda: 0)
+    monkeypatch.setattr(main, "_budget_record", lambda buys: None)
+
+    _regime, recs, _budget = main._collect_recs(include_news=False, record_history=False)
+
+    assert recs[0]["priceDate"] == frame.index[-1].date().isoformat()
+
+
+def test_daily_digest_excludes_an_in_progress_same_day_bar(monkeypatch):
+    frame = _ohlcv()
+    cutoff = frame.index[-1].date().isoformat()
+    holding = {"code": "1303", "name": "EIC", "shares": 104, "avg_cost": 12.41}
+    monkeypatch.setattr(main.cfg, "HOLDINGS", [holding])
+    monkeypatch.setattr(main.cfg, "WATCHLIST", [])
+    monkeypatch.setattr(main, "_holdings", lambda: [holding])
+    monkeypatch.setattr(main.dat, "get_histories", lambda codes, period: {code: frame for code in codes})
+    monkeypatch.setattr(main, "_verify_symbols", lambda names: {"1303": {"verified": True}})
+    monkeypatch.setattr(main.discl, "fetch_all", lambda: ([], False))
+    monkeypatch.setattr(main, "_load", lambda path, default: {})
+    monkeypatch.setattr(main, "_budget_remaining", lambda: 0)
+    monkeypatch.setattr(main, "_budget_record", lambda buys: None)
+
+    _regime, recs, _budget = main._collect_recs(
+        include_news=False, record_history=False, completed_before=cutoff)
+
+    assert recs[0]["priceDate"] == frame.index[-2].date().isoformat()
+
+
 def test_the_price_outage_warning_reaches_the_snapshot_not_just_the_log(monkeypatch):
     """A warning nobody sees is the same as no warning."""
     monkeypatch.setattr(main, "_DATA_WARNING",
@@ -123,6 +229,7 @@ def test_weekly_top10_mode_persists_the_evidence_draft_before_snapshot(monkeypat
     fail Fri-Sat -- it was observed failing on a Friday -- so CI was red every
     weekend for a reason that had nothing to do with the code under test.
     """
+    monkeypatch.setattr(main, "_delivered_digest_today", lambda: None)
     saved = {}
     draft = {"proposalId": "top10-2026-08-12", "status": "draft", "researchedAt": "2026-08-12T12:00:00Z", "entries": []}
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
@@ -156,15 +263,19 @@ def test_pending_initial_top10_draft_is_not_replaced_before_approval(monkeypatch
     assert main.mode_top10_draft() == 0
 
 
-def test_cockpit_refresh_never_calls_discord(monkeypatch):
-    saved = {}
-    monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", [], {"monthly_cap": 500}))
-    monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
-    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+def test_cockpit_refresh_only_replays_the_canonical_artifact(monkeypatch):
+    canonical = {"schemaVersion": 3, "artifactId": "sha256:" + "a" * 64,
+                 "tradeDate": "2026-09-07"}
+    monkeypatch.setattr(main, "_load", lambda path, default: canonical if path == main.DASHBOARD_FILE else default)
+    monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: (_ for _ in ()).throw(AssertionError("refresh must not collect market data")))
+    monkeypatch.setattr(main, "_save", lambda *_: (_ for _ in ()).throw(AssertionError("refresh must not rewrite the artifact")))
     monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("refresh must not send Discord")))
     assert main.mode_cockpit_refresh() == 0
-    assert main.DASHBOARD_FILE in saved
-    assert saved[main.DASHBOARD_FILE]["schemaVersion"] == 3
+
+
+def test_cockpit_refresh_fails_when_no_canonical_artifact_exists(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda *_: None)
+    assert main.mode_cockpit_refresh() == 1
 
 
 def test_discord_smoke_sends_one_labelled_delivery_only_message(monkeypatch):
@@ -191,6 +302,7 @@ def test_discord_smoke_returns_failure_when_delivery_fails(monkeypatch):
 
 def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch):
     saved = {}
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [], {"monthly_cap": 500.0}))
     monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
@@ -203,6 +315,7 @@ def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch)
 
 def test_session_mode_fails_when_movement_delivery_fails(monkeypatch):
     alert = {"alertId": "m-1303", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500.0}))
     monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [alert])
     monkeypatch.setattr(main, "_save", lambda *_: None)
@@ -213,6 +326,7 @@ def test_session_mode_fails_when_movement_delivery_fails(monkeypatch):
 
 def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(monkeypatch):
     saved = {}
+    _stub_market_pulse(monkeypatch)
     recs = [{"code": "1303", "name": "EIC", "action": "HOLD", "price": 15.0}]
     monkeypatch.setattr(main, "_collect_recs", lambda **kwargs: ("ok", recs, {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "a1", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-12T10:00:00Z", "receivedAt": "2026-08-12T10:01:00Z", "latency": "delayed-intraday", "excessMovePct": 2.0, "robustZ": 4.5, "reason": "Delayed bot confirmation."}])
@@ -283,6 +397,7 @@ def test_digest_reports_a_discord_outage_after_writing_state(monkeypatch):
 def test_session_mode_sends_only_new_delayed_movement_cards(monkeypatch):
     saved = {}
     sent = []
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [{"code": "1303", "action": "BUY"}], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_movement_alerts", lambda *_: [{"alertId": "m-1303-20260817", "code": "1303", "name": "EIC", "direction": "upside", "observedAt": "2026-08-17T10:15:00Z", "receivedAt": "2026-08-17T10:18:00Z", "latency": "delayed-intraday", "excessMovePct": 2.4, "robustZ": 3.2, "reason": "Move exceeded delayed baseline."}])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
@@ -965,6 +1080,14 @@ def test_holding_stop_triggers_sell():
                                   "short_ma": 20, "long_ma": 50},
                               tech={"rsi_period": 14, "rsi_oversold": 30, "rsi_overbought": 70})
     assert rec["action"].startswith("SELL")
+    checks = {item["rule"]: item for item in rec["rules"]}
+    assert checks["stop_level"] == {
+        "rule": "stop_level", "available": True, "passed": True,
+        "actual": 110.0, "required": "<= 115.00",
+        "plain": "Protective stop 115.00 crossed at 110.00.",
+    }
+    assert checks["trim_level"]["available"] is False
+    assert checks["target_level"]["available"] is False
 
 
 def test_news_summary_none_when_no_news():
@@ -974,7 +1097,7 @@ def test_news_summary_shapes_result():
     result = news.NewsResult(query="q", headlines=[{"title": "T", "link": "", "published": ""}],
                              score=0.3, label="positive", matches=[{"positive": [], "negative": []}], ok=True)
     summary = az.news_summary(result)
-    assert summary == {"ok": True, "label": "positive", "score": 0.3,
+    assert summary == {"ok": True, "label": "positive", "score": 0.3, "status": "available", "errors": [],
                        "headlines": [{"title": "T", "link": "", "published": ""}]}
 
 def test_evaluate_holding_attaches_news():
@@ -1580,7 +1703,10 @@ def test_archive_headlines_writes_one_jsonl_line_per_headline():
     try:
         if path.exists():
             path.unlink()
-        news.archive_headlines("1234", result, archive_path=path)
+        news.archive_headlines(
+            "1234", result, archive_path=path,
+            observed_at="2026-09-21T04:00:00Z",
+        )
         lines = path.read_text(encoding="utf-8").splitlines()
         assert len(lines) == 1
         rec = json.loads(lines[0])
@@ -1588,6 +1714,7 @@ def test_archive_headlines_writes_one_jsonl_line_per_headline():
         assert rec["title"] == "Firm profit rises 12%"
         assert rec["matched_positive"] == ["profit"]
         assert rec["score"] == 0.5
+        assert rec["observed_at"] == "2026-09-21T04:00:00Z"
     finally:
         if path.exists():
             path.unlink()
@@ -1738,6 +1865,7 @@ def test_mode_run_collects_without_recording_digest_history(monkeypatch):
     import main as m
 
     calls = []
+    _stub_market_pulse(monkeypatch)
     monkeypatch.setattr(
         m, "_collect_recs",
         lambda include_news, record_history: (
@@ -1758,20 +1886,24 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
     import main as m
 
     calls = []
+    monkeypatch.setenv("SCHEDULED_FOR", "2026-09-07T05:30:00Z")
     monkeypatch.setattr(
         m, "_collect_recs",
-        lambda include_news, record_history: (
-            calls.append((include_news, record_history)) or ("ok", [], {
+        lambda include_news, record_history, completed_before: (
+            calls.append((include_news, record_history, completed_before)) or ("ok", [], {
                 "budget": 0.0, "allocated": 0.0, "leftover": 0.0,
             })
         ),
     )
+    chart_calls = []
+    monkeypatch.setattr(m, "_chart_bundle", lambda _recs, completed_before=None: chart_calls.append(completed_before) or ({}, {}, []))
     monkeypatch.setattr(m.nt, "send_discord", lambda *_a, **_kw: True)
     monkeypatch.setattr(m, "_scanner_result", lambda: {"candidates": [], "names": {}, "indexUnavailable": False, "warning": "scanner unavailable: test"})
     monkeypatch.setattr(m, "_save", lambda *_: None)
 
     assert m.mode_digest() == 0
-    assert calls == [(True, True)]
+    assert calls == [(True, True, "2026-09-07")]
+    assert chart_calls == ["2026-09-07"]
 
 
 def test_mode_digest_saves_the_same_real_scanner_result_used_for_its_message(monkeypatch):
@@ -2754,6 +2886,33 @@ def test_holdings_fall_back_to_config_when_the_ledger_is_unreachable(monkeypatch
     assert [h["code"] for h in main._holdings()] == [h["code"] for h in cfg.HOLDINGS]
 
 
+def test_required_portfolio_ledger_never_falls_back_to_config(monkeypatch):
+    """Decision-producing workflows must fail closed if D1 cannot be read."""
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda _p, default=None: default)
+    with pytest.raises(RuntimeError, match="Confirmed portfolio ledger is required"):
+        main._holdings()
+
+
+def test_required_empty_portfolio_ledger_must_be_initialized(monkeypatch):
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0}, "eventCount": 0,
+         "spentThisMonthSar": 0.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    with pytest.raises(RuntimeError, match="opening balance"):
+        main._holdings()
+
+
+def test_boolean_event_count_is_not_an_initialized_ledger(monkeypatch):
+    monkeypatch.setenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "true")
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 0.0}, "eventCount": True}
+        if str(path).endswith("portfolio_active.json") else default))
+    with pytest.raises(RuntimeError, match="opening balance"):
+        main._holdings()
+
+
 def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
     monkeypatch.setattr(main, "_load", lambda path, default=None: (
         {"view": {"holdings": [{"code": "1303", "name": "EIC", "shares": 124,
@@ -2762,6 +2921,14 @@ def test_the_ledger_overrides_config_once_it_exists(monkeypatch):
         if str(path).endswith("portfolio_active.json") else default))
     holdings = main._holdings()
     assert holdings == [{"code": "1303", "name": "EIC", "shares": 124, "avg_cost": 12.84}]
+
+
+def test_an_authoritative_empty_ledger_never_resurrects_config_holdings(monkeypatch):
+    monkeypatch.setattr(main, "_load", lambda path, default=None: (
+        {"view": {"holdings": [], "cashSar": 500.0}, "eventCount": 4,
+         "spentThisMonthSar": 0.0, "month": main._month_key()}
+        if str(path).endswith("portfolio_active.json") else default))
+    assert main._holdings() == []
 
 
 def test_early_movers_reach_the_reader_at_all():
@@ -2899,7 +3066,7 @@ def test_digest_embeds_put_warnings_in_the_header():
 def test_digest_header_links_directly_to_the_private_cockpit():
     embeds = nt.build_digest_embeds([], regime="unknown", trade_date="2026-08-21")
 
-    assert "[Open TASI Action Cockpit](https://tasi-action-cockpit.busaud7041.chatgpt.site)" in embeds[0]["description"]
+    assert "[Open TASI Action Cockpit](https://tasi-action-cockpit.ronaldinho1415.workers.dev)" in embeds[0]["description"]
 
 
 def test_pack_embeds_respects_both_count_and_character_limits():
@@ -3109,6 +3276,7 @@ def test_lean_reports_a_missing_key_rather_than_an_empty_result():
 
 
 def test_lean_reports_gemini_provider_metadata_for_structured_takes(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     """A successful lean must identify the provider that produced it."""
     monkeypatch.setattr(
         llm,
@@ -3159,6 +3327,7 @@ def test_gemini_completion_requests_a_structured_json_schema(monkeypatch):
 
 
 def test_a_dead_provider_falls_through_to_the_next_one(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     """The whole point of the chain: one provider dying is not an outage.
 
     This is the 2026-08-24 failure replayed. Back then a 404 from the only
@@ -3212,6 +3381,7 @@ def test_a_rate_limit_is_retried_before_the_chain_moves_on(monkeypatch, tmp_path
 
 
 def test_openrouter_is_skipped_loudly_when_it_has_no_model(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     """OpenRouter publishes no evergreen alias, so an unset model is a real state.
 
     It must never fall back to a hardcoded name -- that is the exact class of bug
@@ -3233,6 +3403,7 @@ def test_openrouter_is_skipped_loudly_when_it_has_no_model(monkeypatch, tmp_path
 
 
 def test_every_provider_failing_still_names_each_one(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
     monkeypatch.setattr(llm, "OPENROUTER_MODEL", "vendor/some-model")
     monkeypatch.setattr(llm, "BACKOFF_SECONDS", 0)
@@ -3264,6 +3435,7 @@ def test_lean_reports_a_failed_call_distinctly_from_a_neutral_read(monkeypatch):
 
 
 def test_lean_reports_safe_gemini_http_diagnostics(monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "PROVIDER_ORDER", ("openrouter", "gemini"))
     class ClientError(Exception):
         code = 404
 
@@ -3372,7 +3544,7 @@ def test_digest_persists_the_lean_attached_after_daily_snapshot(monkeypatch):
     monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
         "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
                         or {"ok": True, "provider": "gemini", "model": "test"})
-    monkeypatch.setattr(main, "_chart_bundle", lambda _recs: ({}, {}, []))
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None: ({}, {}, []))
     monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
 
     assert main.mode_digest() == 0
@@ -3392,7 +3564,7 @@ def test_digest_sends_embeds_from_the_saved_v3_artifact(monkeypatch):
     monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
         "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
                         or {"ok": True, "provider": "gemini", "model": "test"})
-    monkeypatch.setattr(main, "_chart_bundle", lambda _recs: ({}, {}, [{
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None: ({}, {}, [{
         "code": "1303", "name": "EIC", "status": "unavailable", "reason": "history failed"}]))
     monkeypatch.setattr(main.nt, "build_digest_embeds", lambda **kwargs: rendered.append(kwargs["artifact"]) or [])
     monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
@@ -3515,6 +3687,70 @@ def test_digest_artifact_v3_has_a_stable_identity_without_delivery_receipts():
     assert first["artifactId"].startswith("sha256:")
     assert first["artifactId"] == second["artifactId"]
     assert artifacts.artifact_id({**first, "deliveries": {"discord": {"ok": True}}}) == first["artifactId"]
+
+
+def test_stale_holding_quote_is_unavailable_in_artifact_summary_and_discord():
+    snapshot = main._dashboard_snapshot(
+        "ok", [], {"monthly_cap": 500.0}, {"candidates": [], "names": {}},
+        as_of="2026-09-08T05:30:00Z",
+    )
+    snapshot["urgent"] = [{"code": "1303", "action": "SELL (STOP)"}]
+    artifact = artifacts.build_digest_artifact(
+        snapshot,
+        recs=[_lean_rec(priceDate="2026-09-06", verified=True, rules=[
+            {"rule": "stop_level", "available": True, "passed": False},
+        ])],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[{"code": "1303", "status": "available", "bars": [
+            {"date": "2026-09-06", "Open": 15, "High": 16, "Low": 14,
+             "Close": 15.09, "Volume": 1000}
+            for _ in range(5)
+        ], "levels": {}}],
+        scheduled_for="2026-09-08T05:30:00Z",
+    )
+
+    record = artifact["digestRecords"][0]
+    assert record["decision"]["label"] == "Insufficient data"
+    assert "older than the expected previous session" in record["decision"]["reason"]
+    assert artifact["urgent"] == []
+    assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
+    assert "holding check" in artifact["summary"][0]
+    embeds = nt.build_digest_embeds(artifact=artifact)
+    assert any("Insufficient data" in (embed.get("title") or "") for embed in embeds)
+
+
+def test_missing_holding_chart_is_an_unavailable_shared_decision():
+    record = artifacts.decision_record(
+        _lean_rec(priceDate="2026-09-07", verified=True, rules=[
+            {"rule": "stop_level", "available": True, "passed": False},
+        ]),
+        [{"code": "1303", "status": "unavailable", "reason": "history failed"}],
+        trade_date="2026-09-08",
+    )
+    assert record["decision"]["label"] == "Insufficient data"
+    assert "chart history" in record["decision"]["reason"]
+
+
+def test_missing_producer_record_still_reaches_artifact_summary_and_discord():
+    snapshot = main._dashboard_snapshot(
+        "unknown", [], {"monthly_cap": 500.0}, {"candidates": [], "names": {}},
+        as_of="2026-09-08T05:30:00Z",
+    )
+    snapshot["portfolio"]["holdings"] = [
+        {"code": "8313", "name": "Rasan", "shares": 11, "avgCostSar": 107.45},
+    ]
+    artifact = artifacts.build_digest_artifact(
+        snapshot, recs=[],
+        lean_status={"ok": False, "provider": "gemini", "reason": "no key"},
+        charts=[], scheduled_for="2026-09-08T05:30:00Z",
+    )
+
+    assert [(record["code"], record["decision"]["label"])
+            for record in artifact["digestRecords"]] == [("8313", "Insufficient data")]
+    assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
+    embeds = nt.build_digest_embeds(artifact=artifact)
+    assert any("Insufficient data" in (embed.get("title") or "")
+               and "8313 Rasan" in embed["title"] for embed in embeds)
 
 
 def test_movement_artifact_v1_names_alerts_and_has_its_own_identity():
@@ -3743,6 +3979,15 @@ def test_the_guard_does_nothing_when_todays_digest_already_shipped(monkeypatch):
     assert main.mode_digest_guard() == 0
 
 
+def test_the_guard_trusts_same_artifact_destination_receipts_from_production(monkeypatch):
+    monkeypatch.setenv("TASI_PRODUCTION_DELIVERED", "true")
+    monkeypatch.setattr(main, "_delivered_digest_today",
+                        lambda: (_ for _ in ()).throw(AssertionError("local checkout may be stale")))
+    monkeypatch.setattr(main, "mode_digest",
+                        lambda: (_ for _ in ()).throw(AssertionError("must not re-send")))
+    assert main.mode_digest_guard() == 0
+
+
 def test_a_digest_shaped_artifact_nobody_received_does_not_satisfy_the_guard(monkeypatch):
     """cockpit-refresh and top10-draft write artifactKind "digest" too.
 
@@ -3766,6 +4011,7 @@ def test_a_refresh_never_replaces_the_digest_that_already_went_out(monkeypatch):
     artifact, orphaning the Discord receipt keyed to the old ID.
     """
     monkeypatch.setattr(main, "_load", lambda *_a, **_k: {
+        "schemaVersion": 3, "artifactId": "sha256:" + "a" * 64,
         "tradeDate": main._today(), "artifactKind": "digest", "asOf": "2026-08-30T05:30:00Z",
         "deliveries": {"discord": {"status": "success"}}})
     monkeypatch.setattr(main, "_save",
