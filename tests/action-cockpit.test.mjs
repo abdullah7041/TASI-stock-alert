@@ -54,6 +54,41 @@ test("uses separate Sites and app credentials for private ingestion", () => {
   assert.doesNotMatch(workflow, /Authorization: Bearer \$\{COCKPIT_INGEST_TOKEN/);
 });
 
+test("mirrors successful daily snapshots to the owner-facing Sites database without enabling pulse ingestion", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
+  const start = workflow.indexOf("- name: Mirror daily dashboard to private Sites");
+  assert.notEqual(start, -1, "daily dashboard mirror step must exist");
+  const nextStep = workflow.indexOf("\n      - name:", start + 1);
+  const step = workflow.slice(start, nextStep < 0 ? undefined : nextStep);
+
+  assert.match(step, /steps\.run\.outcome == 'success'/);
+  assert.match(step, /steps\.mode\.outputs\.mode/);
+  assert.match(step, /vars\.SITES_DAILY_SYNC_ENABLED == 'true'/);
+  assert.match(step, /continue-on-error:\s*true/);
+  assert.match(step, /COCKPIT_SIWC_BYPASS_TOKEN/);
+  assert.match(step, /COCKPIT_INGEST_TOKEN/);
+  assert.match(step, /tasi-action-cockpit\.busaud7041\.chatgpt\.site\/api\/dashboard\/ingest/);
+  assert.match(step, /--data-binary @dashboard\.json/);
+  assert.doesNotMatch(step, /market-pulse|pulse\/ingest|DISCORD_WEBHOOK_URL/);
+});
+
+test("mirrors movement alerts to the owner-facing Sites database only for the movement mode", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
+  const start = workflow.indexOf("- name: Mirror movement alerts to private Sites");
+  assert.notEqual(start, -1, "movement alert mirror step must exist");
+  const nextStep = workflow.indexOf("\n      - name:", start + 1);
+  const step = workflow.slice(start, nextStep < 0 ? undefined : nextStep);
+
+  assert.match(step, /steps\.mode\.outputs\.mode == 'run'/);
+  assert.match(step, /vars\.SITES_DAILY_SYNC_ENABLED == 'true'/);
+  assert.match(step, /continue-on-error:\s*true/);
+  assert.match(step, /COCKPIT_SIWC_BYPASS_TOKEN/);
+  assert.match(step, /COCKPIT_INGEST_TOKEN/);
+  assert.match(step, /tasi-action-cockpit\.busaud7041\.chatgpt\.site\/api\/alerts\/ingest/);
+  assert.match(step, /--data-binary @movement_alerts\.json/);
+  assert.doesNotMatch(step, /DISCORD_WEBHOOK_URL|market-pulse|pulse\/ingest/);
+});
+
 test("ingestion stores a version-2 draft and alert history without approving it", () => {
   const source = readFileSync(new URL("../app/api/dashboard/ingest/route.ts", import.meta.url), "utf8");
   assert.match(source, /Top10Store/);

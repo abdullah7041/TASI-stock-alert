@@ -361,6 +361,41 @@ jobs:
           printf 'mode=%s\ncommit=%s\ndashboard_ingest_status=%s\ndashboard_ingest_body=%s\n' "${{ steps.mode.outputs.mode }}" "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
           case "$STATUS" in 2??) ;; *) echo "::error::dashboard ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
 
+      # The owner-facing Sites publication owns a separate D1 database from the
+      # machine gateway above. Keep the owner-facing cockpit current without
+      # moving the producer's authenticated machine API or enabling pulse
+      # ingestion. This runs independently of the gateway replay comparison so
+      # a stale Sites database can recover even when the gateway is current.
+      - name: Mirror daily dashboard to private Sites
+        # Enable only after DASHBOARD_INGEST_TOKEN is configured in Sites.
+        if: vars.SITES_DAILY_SYNC_ENABLED == 'true' && steps.run.outcome == 'success' && contains('digest,digest-guard,top10-draft,cockpit-refresh,reconcile', steps.mode.outputs.mode)
+        continue-on-error: true
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ]; then
+            echo "Sites credentials are unavailable; the owner-facing dashboard was not synced."
+            exit 1
+          fi
+          REPLAY_HEADERS=()
+          if [ "$MODE" = "cockpit-refresh" ]; then
+            REPLAY_HEADERS=(-H "x-tasi-replay-only: true")
+          fi
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            -o .sites-dashboard-ingest.json -w '%{http_code}' \
+            -X POST "https://tasi-action-cockpit.busaud7041.chatgpt.site/api/dashboard/ingest" \
+            -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
+            -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+            "${REPLAY_HEADERS[@]}" \
+            -H "Content-Type: application/json" \
+            --data-binary @dashboard.json)
+          BODY=$(cat .sites-dashboard-ingest.json)
+          echo "Sites dashboard ingest HTTP $STATUS: $BODY"
+          printf 'sites_dashboard_ingest_status=%s\nsites_dashboard_ingest_body=%s\n' "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
+          case "$STATUS" in 2??) ;; *) echo "::error::Sites dashboard ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
+
       - name: Update delayed movement alerts
         if: steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
         env:
@@ -382,6 +417,29 @@ jobs:
           echo "HTTP $STATUS: $BODY"
           printf 'mode=run\ncommit=%s\nalert_ingest_status=%s\nalert_ingest_body=%s\n' "$GITHUB_SHA" "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
           case "$STATUS" in 2??) ;; *) echo "::error::alert ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
+
+      - name: Mirror movement alerts to private Sites
+        if: vars.SITES_DAILY_SYNC_ENABLED == 'true' && steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
+        continue-on-error: true
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+        run: |
+          if [ -z "$COCKPIT_SIWC_BYPASS_TOKEN" ] || [ -z "$COCKPIT_INGEST_TOKEN" ]; then
+            echo "Sites credentials are unavailable; movement alerts were not synced."
+            exit 1
+          fi
+          STATUS=$(curl --silent --show-error --retry 5 --retry-all-errors --retry-max-time 90 \
+            -o .sites-alert-ingest.json -w '%{http_code}' \
+            -X POST "https://tasi-action-cockpit.busaud7041.chatgpt.site/api/alerts/ingest" \
+            -H "OAI-Sites-Authorization: Bearer $COCKPIT_SIWC_BYPASS_TOKEN" \
+            -H "Authorization: Bearer $COCKPIT_INGEST_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @movement_alerts.json)
+          BODY=$(cat .sites-alert-ingest.json)
+          echo "Sites movement-alert ingest HTTP $STATUS: $BODY"
+          printf 'sites_alert_ingest_status=%s\nsites_alert_ingest_body=%s\n' "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
+          case "$STATUS" in 2??) ;; *) echo "::error::Sites movement-alert ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
 
       - name: Update delayed market pulse
         if: always() && steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
