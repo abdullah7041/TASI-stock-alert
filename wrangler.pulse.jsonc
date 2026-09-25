@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tasi-market-pulse-shadow",
+  "account_id": "08a88686149b48264ce72d14678e9f00",
+  "main": "cloudflare-pulse/index.mjs",
+  "compatibility_date": "2026-09-25",
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "tasi-action-cockpit",
+    "database_id": "f0a9722e-ed78-4c3a-ba7f-e28a21377440"
+  }],
+  "triggers": { "crons": ["*/5 7-12 * * SUN-THU"] },
+  "vars": { "TASI_PULSE_PUBLICATION_ENABLED": "false" },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
+}
