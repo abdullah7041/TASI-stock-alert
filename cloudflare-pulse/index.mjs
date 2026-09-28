@@ -6,6 +6,12 @@ const ATTEMPTS_TABLE = `CREATE TABLE IF NOT EXISTS observational_market_pulse_at
   status TEXT NOT NULL, error_json TEXT NOT NULL, recorded_at TEXT NOT NULL
 )`;
 
+export const LIVE_HOLDINGS_SQL = `SELECT symbol AS code,
+  SUM(CASE WHEN event_kind = 'sell' THEN -shares ELSE shares END) AS shares
+  FROM portfolio_events WHERE owner_id = ? AND event_kind IN ('opening_position','buy','sell')
+  AND symbol IS NOT NULL GROUP BY symbol
+  HAVING SUM(CASE WHEN event_kind = 'sell' THEN -shares ELSE shares END) > 0`;
+
 async function readSnapshot(db) {
   for (const key of ["latest-v3", "latest-v2"]) {
     try {
@@ -24,10 +30,7 @@ async function readLedgerHoldings(db, fallback) {
     const owners = await db.prepare("SELECT DISTINCT owner_id FROM portfolio_events").all();
     if (owners.results.length > 1) throw new Error("Multiple portfolio owners; pulse universe cannot be qualified.");
     if (!owners.results.length) return fallback;
-    const rows = await db.prepare(`SELECT symbol AS code,
-      SUM(CASE WHEN event_kind = 'sell' THEN -shares ELSE shares END) AS shares
-      FROM portfolio_events WHERE owner_id = ? AND event_kind IN ('opening_position','buy','sell')
-      AND symbol IS NOT NULL GROUP BY symbol HAVING shares > 0`)
+    const rows = await db.prepare(LIVE_HOLDINGS_SQL)
       .bind(owners.results[0].owner_id).all();
     return rows.results;
   } catch (error) {

@@ -21,6 +21,13 @@ test('every holding is visible and absent market data cannot imply Hold', () => 
   assert.equal(view.holdings[1].price,null);
   assert.equal(view.incomplete,true);
 });
+test('a newer confirmed ledger removes sold holdings without changing the saved daily artifact', () => {
+  const live={holdings:[{code:'2320',name:'Al-Babtain',shares:2}],cashSar:50,confirmedAt:'2026-09-07T10:00:00Z'};
+  const view=buildDecisionView(snapshot,'current',live);
+  assert.deepEqual(view.holdings.map(({code})=>code),['2320']);
+  assert.equal(view.holdings[0].label,'Insufficient data');
+  assert.equal(snapshot.portfolio.holdings.length,2);
+});
 test('market date comes from the price bars, never the digest generation date', () => {
   const view=buildDecisionView(snapshot,'current');
   assert.equal(view.holdings[0].priceDate,'2026-09-03');

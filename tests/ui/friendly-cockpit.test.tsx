@@ -24,6 +24,15 @@ test('all holdings are visible on home, details and diagnostics stay one click a
   await userEvent.click(screen.getByRole('button',{name:/Data status/}));
   expect(screen.getByRole('dialog').textContent).toMatch(/no known provider/);
 }, 15_000);
+test('the owner cockpit shows current ledger holdings after a fully recorded sale',async()=>{
+  const live={confirmedAt:'2026-09-07T10:00:00Z',cashSar:42.15,contributionMonth:null,holdings:[{code:'2320',name:'Al-Babtain',shares:2},{code:'8313',name:'Rasan',shares:3}],proposal:null};
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url==='/api/portfolio'?live:payload)));
+  render(<ActionCockpit dashboard={payload}/>);
+  const holdings=screen.getByRole('region',{name:'My holdings'});
+  expect(await within(holdings).findByText(/42.15 SAR cash/)).toBeTruthy();
+  expect(within(holdings).queryByRole('button',{name:/View EIC details/})).toBeNull();
+  expect(within(holdings).getByRole('button',{name:/View Rasan details/})).toBeTruthy();
+});
 test('unavailable checks are explicit and market date differs from generated time',()=>{
   start();
   expect(screen.getByText('Some checks unavailable')).toBeTruthy();
@@ -73,7 +82,7 @@ test('manual refresh reports an updated artifact',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(updatedPayload));
-  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):fetchMock());
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):url==='/api/portfolio'?Promise.resolve(Response.error()):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
@@ -86,7 +95,7 @@ test('manual refresh reports when the latest saved artifact is stale',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(stalePayload));
-  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):fetchMock());
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):url==='/api/portfolio'?Promise.resolve(Response.error()):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
