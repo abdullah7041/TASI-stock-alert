@@ -1,6 +1,6 @@
 {
   "2026-09": {
-    "spent": 13753.33,
+    "spent": 14189.61,
     "allocations": [
       {
         "date": "2026-09-13",
@@ -442,6 +442,27 @@
         "name": "Fakeeh Care",
         "shares": 6,
         "spend": 218.28
+      },
+      {
+        "date": "2026-09-29",
+        "code": "4016",
+        "name": "Avalon Pharma",
+        "shares": 2,
+        "spend": 126.4
+      },
+      {
+        "date": "2026-09-29",
+        "code": "4017",
+        "name": "Fakeeh Care",
+        "shares": 4,
+        "spend": 142.48
+      },
+      {
+        "date": "2026-09-29",
+        "code": "4263",
+        "name": "SAL Logistics",
+        "shares": 1,
+        "spend": 167.4
       }
     ]
   }
