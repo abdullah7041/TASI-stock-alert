@@ -1,8 +1,22 @@
 {
-  "alerts": [],
+  "alerts": [
+    {
+      "alertId": "e6bd4324cd1b609fc088",
+      "code": "4018",
+      "direction": "upside",
+      "excessMovePct": 6.5142512246672,
+      "latency": "delayed-intraday",
+      "name": "Almoosa Health",
+      "observedAt": "2026-09-30T13:05:44Z",
+      "reason": "Delayed bot confirmation of statistically unusual price movement. Volume confirms participation.",
+      "receivedAt": "2026-09-30T13:05:44Z",
+      "robustZ": 5.087017397775687,
+      "volumeRatio": 8.7204
+    }
+  ],
   "artifactKind": "movement",
-  "asOf": "2026-09-29T13:27:17Z",
+  "asOf": "2026-09-30T13:05:44Z",
   "dataStatus": "delayed-intraday",
   "schemaVersion": 1,
-  "artifactId": "sha256:46eed4052438475ca6386daa60c07989da415fe109f3bd2dde09cd9dc11fc93b"
+  "artifactId": "sha256:5f0c7179ce85ce8ab1d68ed4cea0c9092d7140cade53d6c1e8d5a20e03baeb6d"
 }
