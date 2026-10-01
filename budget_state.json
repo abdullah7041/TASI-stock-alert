@@ -544,7 +544,7 @@
     ]
   },
   "2026-10": {
-    "spent": 933.88,
+    "spent": 1431.48,
     "allocations": [
       {
         "date": "2026-10-01",
@@ -566,6 +566,13 @@
         "name": "SAL Logistics",
         "shares": 1,
         "spend": 167.4
+      },
+      {
+        "date": "2026-10-01",
+        "code": "4016",
+        "name": "Avalon Pharma",
+        "shares": 8,
+        "spend": 497.6
       },
       {
         "date": "2026-10-01",
