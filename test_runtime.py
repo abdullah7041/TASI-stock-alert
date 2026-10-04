@@ -361,3 +361,20 @@ def test_github_keeps_the_digest_and_session_cron_until_the_canary_passes():
     assert 'cron: "30 5 * * 0,1,2,3,4"' in scheduled
     assert 'cron: "10 6 * * 0,1,2,3,4"' in scheduled
     assert 'cron: "*/15 7-11 * * 0,1,2,3,4"' in scheduled
+
+
+def test_evidence_jobs_use_the_same_configured_origin_and_auth_as_the_portfolio():
+    """A retired Sites URL made successful draft jobs silently lose reviewed evidence."""
+    workflow = yaml.safe_load(Path(".github/workflows/tasi.yml").read_text(encoding="utf-8"))
+    steps = {step.get("name"): step for step in workflow["jobs"]["watch"]["steps"]}
+    for name, endpoint in [("Load reviewed evidence for Top 10 drafting", "current"),
+                           ("Persist official evidence review queue", "queue/ingest")]:
+        step = steps[name]
+        assert step["env"]["COCKPIT_ORIGIN"] == "${{ vars.COCKPIT_ORIGIN }}"
+        assert "COCKPIT_ACCESS_CLIENT_ID" in step["env"]
+        assert "COCKPIT_ACCESS_CLIENT_SECRET" in step["env"]
+        assert "source .github/cockpit-auth.sh" in step["run"]
+        assert "cockpit_auth_ready" in step["run"]
+        assert '${COCKPIT_AUTH_HEADERS[@]}' in step["run"]
+        assert f'"$COCKPIT_ORIGIN/api/evidence/{endpoint}"' in step["run"]
+        assert "chatgpt.site" not in step["run"]

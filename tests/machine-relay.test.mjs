@@ -13,3 +13,12 @@ test('allows only an authenticated relay to use documented machine routes', asyn
   assert.equal(await isMachineRelay(request('/api/dashboard/ingest', 'POST'), env), true);
   assert.equal(await isMachineRelay(request('/api/dashboard/ingest', 'POST', 'wrong'), env), false);
 });
+
+test('allows reviewed evidence reads and draft queues without granting owner approval routes', () => {
+  assert.equal(isMachineRelay(request('/api/evidence/current'), env), true);
+  assert.equal(isMachineRelay(request('/api/evidence/queue/ingest', 'POST'), env), true);
+  assert.equal(isMachineRelay(request('/api/evidence/current', 'POST'), env), false);
+  assert.equal(isMachineRelay(request('/api/evidence/current', 'GET', 'wrong'), env), false);
+  assert.equal(isMachineRelay(request('/api/evidence/records', 'POST'), env), false);
+  assert.equal(isMachineRelay(request('/api/top10/approve', 'POST'), env), false);
+});

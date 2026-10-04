@@ -2,6 +2,7 @@ const machineRoutes = new Set([
   'GET /api/health', 'GET /api/dashboard', 'GET /api/portfolio/current', 'GET /api/top10/current',
   'POST /api/dashboard/ingest', 'POST /api/alerts/ingest', 'POST /api/deliveries/ingest',
   'POST /api/discord/interactions', 'POST /api/pulse/ingest',
+  'GET /api/evidence/current', 'POST /api/evidence/queue/ingest',
 ]);
 
 const same = (left, right) => {
