@@ -49,6 +49,10 @@ def release_gate(metrics: dict, survivorship_limited: bool) -> tuple[bool, list[
     selected = metrics.get("selected_count")
     if not _finite_number(cost) or cost <= 0 or not _finite_number(selected) or selected <= 0:
         reasons.append("Measured selected-trade returns and explicit transaction cost are required.")
+    sensitivity = metrics.get("cost_sensitivity")
+    if (not isinstance(sensitivity, dict) or any(
+            not _finite_number(sensitivity.get(cost)) or sensitivity[cost] <= 0 for cost in ("0.4", "0.8"))):
+        reasons.append("Positive expectancy at both 0.4% and 0.8% round-trip costs is required.")
     regimes = metrics.get("regime_skills")
     if (not isinstance(regimes, dict) or not regimes or any(
             not isinstance(values, list) or not values or any(not _finite_number(value) or value <= 0 for value in values)
@@ -112,6 +116,7 @@ def build_point_in_time_dataset(features: pd.DataFrame, histories: dict[str, pd.
     active["endDate"] = pd.to_datetime(active["endDate"], errors="raise")
     rows = []
     verified_rows = []
+    unresolved_outcomes = 0
     for _, feature in features.iterrows():
         code, decision_at = str(feature["code"]), pd.Timestamp(feature["date"])
         listed = active[(active["code"] == code) & (active["startDate"] <= decision_at) & (active["endDate"] >= decision_at)]
@@ -119,12 +124,15 @@ def build_point_in_time_dataset(features: pd.DataFrame, histories: dict[str, pd.
             continue
         history = histories.get(code)
         if history is None or history.empty:
+            unresolved_outcomes += 1
             continue
         try:
             outcome = label_entry_outcome(history, int(feature["t"]), float(feature["atr"]), max_hold=max_hold)
         except (IndexError, KeyError, TypeError, ValueError):
+            unresolved_outcomes += 1
             continue
         if outcome is None:
+            unresolved_outcomes += 1
             continue
         verified = False
         if {"sourceUrl", "sourcePublishedAt", "sourceKind"}.issubset(listed.columns):
@@ -142,7 +150,8 @@ def build_point_in_time_dataset(features: pd.DataFrame, histories: dict[str, pd.
         rows.append({**feature.to_dict(), "code": code, "date": decision_at, "outcome": outcome["outcome"],
                      "return_pct": (outcome["exit"] - outcome["entry"]) / outcome["entry"] * 100})
     dataset = pd.DataFrame(rows)
-    dataset.attrs["historical_membership_verified"] = bool(verified_rows) and all(verified_rows)
+    dataset.attrs["unresolved_outcomes"] = unresolved_outcomes
+    dataset.attrs["historical_membership_verified"] = bool(verified_rows) and all(verified_rows) and unresolved_outcomes == 0
     return dataset
 
 
@@ -154,7 +163,7 @@ def _design_matrix(frame: pd.DataFrame, feature_columns: list[str]) -> pd.DataFr
     for column in raw.columns:
         if not pd.api.types.is_numeric_dtype(raw[column]):
             raw[column] = raw[column].fillna("unknown").astype(str)
-    return pd.get_dummies(raw, dummy_na=True).astype(float).fillna(0.0)
+    return raw
 
 
 def _probability_table(labels: pd.Series) -> np.ndarray:
@@ -225,6 +234,10 @@ def evaluate_forecast_dataset(frame: pd.DataFrame, feature_columns: list[str], *
         raise ValueError("transaction_cost_pct must be an explicit positive finite cost assumption")
     from sklearn.linear_model import LogisticRegression
     from sklearn.calibration import CalibratedClassifierCV
+    from sklearn.compose import ColumnTransformer
+    from sklearn.impute import SimpleImputer
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
     ordered = frame.copy()
     ordered["date"] = pd.to_datetime(ordered["date"], errors="raise")
@@ -234,6 +247,9 @@ def evaluate_forecast_dataset(frame: pd.DataFrame, feature_columns: list[str], *
     brier_skill, log_skill, all_brier_difference, all_sessions, eces, expectancy = [], [], [], [], [], []
     regime_skills: dict[str, list[float]] = {}
     calibrated_folds = 0
+    evaluated_count = 0
+    numeric = [column for column in matrix if pd.api.types.is_numeric_dtype(matrix[column])]
+    categorical = [column for column in matrix if column not in numeric]
     for train, test in purged_time_splits(ordered, n_splits=n_splits, purge_sessions=purge_sessions):
         train_labels, test_labels = labels[train], labels[test]
         baseline = _probability_table(pd.Series(train_labels))
@@ -243,17 +259,30 @@ def evaluate_forecast_dataset(frame: pd.DataFrame, feature_columns: list[str], *
         fit_end = len(train_dates) - calibration_width - purge_sessions
         fit_rows = np.flatnonzero(ordered.iloc[train]["date"].isin(train_dates[:max(0, fit_end)]))
         calibration_rows = np.flatnonzero(ordered.iloc[train]["date"].isin(train_dates[-calibration_width:]))
-        if len(fit_rows) < 10 or len(calibration_rows) < 10 or len(set(train_labels[fit_rows])) < 2:
+        if (len(fit_rows) < 10 or len(calibration_rows) < 10
+                or set(train_labels[fit_rows]) != set(OUTCOMES)
+                or set(train_labels[calibration_rows]) != set(OUTCOMES)):
             model_probabilities = baseline_probabilities.copy()
         else:
+            # Preprocessing is cloned/fitted on the fit partition, never the
+            # calibration or test partition. Future categories cannot leak in.
+            estimator = Pipeline([
+                ("features", ColumnTransformer([
+                    ("numeric", Pipeline([("impute", SimpleImputer(strategy="median", keep_empty_features=True)),
+                                          ("scale", StandardScaler())]), numeric),
+                    ("categorical", OneHotEncoder(handle_unknown="ignore"), categorical),
+                ])),
+                ("model", LogisticRegression(max_iter=1_000, random_state=0)),
+            ])
             model = CalibratedClassifierCV(
-                LogisticRegression(max_iter=1_000, random_state=0),
+                estimator,
                 method="sigmoid", cv=[(fit_rows, calibration_rows)], ensemble=True,
             )
             model.fit(matrix.iloc[train], train_labels)
             model_probabilities = _align_probabilities(model.predict_proba(matrix.iloc[test]), model.classes_)
             calibrated_folds += 1
         model_brier, base_brier = _brier(test_labels, model_probabilities), _brier(test_labels, baseline_probabilities)
+        evaluated_count += len(test)
         model_log, base_log = _log_loss(test_labels, model_probabilities), _log_loss(test_labels, baseline_probabilities)
         brier_skill.append(float(1 - model_brier.mean() / base_brier.mean()) if base_brier.mean() else 0.0)
         log_skill.append(float(1 - model_log.mean() / base_log.mean()) if base_log.mean() else 0.0)
@@ -261,7 +290,7 @@ def evaluate_forecast_dataset(frame: pd.DataFrame, feature_columns: list[str], *
         all_sessions.extend(ordered.iloc[test]["date"].astype(str).tolist())
         eces.append(_ece(test_labels, model_probabilities))
         selected = model_probabilities[:, OUTCOMES.index("target")] > baseline[OUTCOMES.index("target")]
-        expectancy.extend((ordered.iloc[test]["return_pct"].to_numpy(dtype=float)[selected] - transaction_cost_pct).tolist())
+        expectancy.extend(ordered.iloc[test]["return_pct"].to_numpy(dtype=float)[selected].tolist())
         if "regime" in ordered:
             for regime in ordered.iloc[test]["regime"].dropna().astype(str).unique():
                 mask = ordered.iloc[test]["regime"].astype(str).to_numpy() == regime
@@ -271,12 +300,13 @@ def evaluate_forecast_dataset(frame: pd.DataFrame, feature_columns: list[str], *
                     regime_skills.setdefault(regime, []).append(0.0)
     regime_stable = bool(regime_skills) and all(all(skill > 0 for skill in skills) for skills in regime_skills.values())
     return {
-        "model_version": "offline-logistic-v2", "evaluation": "purged-rolling", "purge_sessions": purge_sessions,
+        "model_version": "offline-logistic-v3", "evaluation": "purged-rolling", "purge_sessions": purge_sessions,
         "calibration_method": "purged-sigmoid", "calibrated_folds": calibrated_folds,
         "transaction_cost_pct": transaction_cost_pct, "selected_count": len(expectancy),
-        "sample_size": int(len(ordered)), "folds": len(brier_skill),
+        "sample_size": evaluated_count, "folds": len(brier_skill),
         "brier_skill": round(float(np.mean(brier_skill)), 6), "log_loss_skill": round(float(np.mean(log_skill)), 6),
-        "ece": round(float(np.mean(eces)), 6), "expectancy": round(float(np.mean(expectancy)), 6) if expectancy else 0.0,
+        "ece": round(float(np.mean(eces)), 6), "expectancy": round(float(np.mean(expectancy)) - transaction_cost_pct, 6) if expectancy else 0.0,
+        "cost_sensitivity": {str(cost): round(float(np.mean(expectancy)) - cost, 6) if expectancy else 0.0 for cost in (0.4, 0.8)},
         "stable": bool(calibrated_folds == n_splits and regime_stable and all(value > 0 for value in brier_skill) and all(value > 0 for value in log_skill)),
         "regime_skills": {key: [round(value, 6) for value in values] for key, values in regime_skills.items()},
         "bootstrap_lower": round(_bootstrap_lower(np.asarray(all_brier_difference), np.asarray(all_sessions)), 6),
