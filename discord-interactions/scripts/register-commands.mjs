@@ -4,9 +4,10 @@ import { commands, commandRegistrationUrl } from "../src/commands.mjs";
 export async function registerCommands({ applicationId = process.env.DISCORD_APPLICATION_ID, token = process.env.DISCORD_BOT_TOKEN, guildId = process.env.DISCORD_GUILD_ID, fetchImpl = fetch } = {}) {
   if (!applicationId || !token) throw new Error("DISCORD_APPLICATION_ID and DISCORD_BOT_TOKEN are required.");
   const response = await fetchImpl(commandRegistrationUrl(applicationId, guildId), {
-    method: "PUT",
+    // Single-command POST preserves unrelated registrations at this scope.
+    method: "POST",
     headers: { authorization: `Bot ${token}`, "content-type": "application/json" },
-    body: JSON.stringify(commands),
+    body: JSON.stringify(commands.find(command => command.name === "ask")),
   });
   if (!response.ok) {
     let detail = "";
@@ -20,7 +21,7 @@ export async function registerCommands({ applicationId = process.env.DISCORD_APP
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  registerCommands().then(() => console.log("Discord commands registered.")).catch((error) => {
+  registerCommands().then(() => console.log("Discord /ask registered; other commands preserved.")).catch((error) => {
     console.error(error instanceof Error ? error.message : "Discord command registration failed.");
     process.exitCode = 1;
   });

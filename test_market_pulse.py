@@ -96,7 +96,7 @@ def test_market_pulse_does_not_fabricate_a_regime_from_one_index_point():
     )
 
     assert result["status"] == "current"
-    assert result["regime"] == {"status": "unavailable", "reason": "Market regime unavailable: the index returned 1 usable daily bars; 50 are required."}
+    assert result["regime"] == {"status": "unavailable", "reason": "Market regime unavailable: the index returned 1 usable daily bars; 52 are required."}
 
 
 def test_market_regime_excludes_todays_unfinished_daily_index_bar():

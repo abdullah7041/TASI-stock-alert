@@ -55,7 +55,7 @@ function marketRegime(daily, fetchedAt) {
     seen.add(session);
     return true;
   }).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-  if (completed.length < REGIME_BARS) return { status: "unavailable", reason: `Market regime unavailable: the index returned ${completed.length} usable daily bars; 50 are required.` };
+  if (completed.length < REGIME_BARS) return { status: "unavailable", reason: `Market regime unavailable: the index returned ${completed.length} usable daily bars; ${REGIME_BARS} are required.` };
   const closes = completed.map((bar) => bar.close);
   const mean = (items) => items.reduce((sum, price) => sum + price, 0) / items.length;
   const maNow = mean(closes.slice(-50)), maPrevious = mean(closes.slice(-51, -1));

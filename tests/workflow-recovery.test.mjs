@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8");
+const workflow = readFileSync(new URL("../.github/workflows/tasi.yml", import.meta.url), "utf8").replaceAll('\r\n', '\n');
+
+test("session pulse ingestion requires explicit opt-in and reports disabled ingestion", () => {
+  // Removing this guard would resume unauthorized POSTs and the recurring 404.
+  const step = workflow.split('      - name: Update delayed market pulse\n')[1]?.split('\n      - name:')[0];
+  assert.match(step ?? '', /if:.*vars\.TASI_PULSE_INGESTION_ENABLED == 'true'/);
+  assert.match(workflow, /name: Report disabled market pulse ingestion[\s\S]*vars\.TASI_PULSE_INGESTION_ENABLED != 'true'[\s\S]*pulse_ingestion=disabled/);
+});
 
 test("a queued digest guard refreshes main and checks both production receipts", () => {
   assert.match(workflow, /Refresh canonical state for a queued guard[\s\S]*git checkout -B main origin\/main/);

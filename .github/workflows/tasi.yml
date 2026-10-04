@@ -441,8 +441,12 @@ jobs:
           printf 'sites_alert_ingest_status=%s\nsites_alert_ingest_body=%s\n' "$STATUS" "$BODY" >> "$GITHUB_STEP_SUMMARY"
           case "$STATUS" in 2??) ;; *) echo "::error::Sites movement-alert ingest rejected with HTTP $STATUS: $BODY"; exit 1;; esac
 
+      - name: Report disabled market pulse ingestion
+        if: always() && steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run' && vars.TASI_PULSE_INGESTION_ENABLED != 'true'
+        run: echo 'pulse_ingestion=disabled (requires separate owner authorization)' >> "$GITHUB_STEP_SUMMARY"
+
       - name: Update delayed market pulse
-        if: always() && steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run'
+        if: always() && steps.run.outcome == 'success' && steps.mode.outputs.mode == 'run' && vars.TASI_PULSE_INGESTION_ENABLED == 'true'
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
