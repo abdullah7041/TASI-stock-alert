@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import { buildMarketPulse, collectYahoo, extractYahooBars, runPulse, selectTrackedCodes } from "../cloudflare-pulse/core.mjs";
-import { runScheduledPulse } from "../cloudflare-pulse/index.mjs";
+import { LIVE_HOLDINGS_SQL, runScheduledPulse } from "../cloudflare-pulse/index.mjs";
 
 const at = "2026-09-22T07:20:00Z";
 const bars = (before = 100, after = 101) => [
@@ -10,6 +11,16 @@ const bars = (before = 100, after = 101) => [
   { at: "2026-09-22T07:20:00Z", close: 999 },
 ];
 const daily = Array.from({ length: 52 }, (_, i) => ({ at: new Date(Date.UTC(2026, 6, 1 + i)).toISOString(), close: 10_000 + i }));
+
+test("a fully sold holding leaves the pulse universe even when its original row has positive shares", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("CREATE TABLE portfolio_events (owner_id TEXT,event_kind TEXT,symbol TEXT,shares INTEGER)");
+  db.prepare("INSERT INTO portfolio_events VALUES (?,?,?,?)").run("owner","opening_position","1303",5);
+  db.prepare("INSERT INTO portfolio_events VALUES (?,?,?,?)").run("owner","sell","1303",5);
+  db.prepare("INSERT INTO portfolio_events VALUES (?,?,?,?)").run("owner","opening_position","2320",12);
+  assert.deepEqual(db.prepare(LIVE_HOLDINGS_SQL).all("owner").map(({code,shares})=>({code,shares})),[{code:"2320",shares:12}]);
+  db.close();
+});
 
 test("the shadow collector tracks holdings, daily watchlist, and only approved Top 10 entries", () => {
   const snapshot = {
