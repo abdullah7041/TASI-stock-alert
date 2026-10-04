@@ -71,7 +71,7 @@ def _regime(index_daily: pd.DataFrame, fetched_at: pd.Timestamp) -> dict:
     if bars < REGIME_HISTORY_BARS:
         return {
             "status": "unavailable",
-            "reason": f"Market regime unavailable: the index returned {bars} usable daily bars; 50 are required.",
+            "reason": f"Market regime unavailable: the index returned {bars} usable daily bars; {REGIME_HISTORY_BARS} are required.",
         }
     return {"status": "available", "label": az.market_regime(index_daily, 50), "bars": bars}
 

@@ -60,6 +60,7 @@ test("a current pulse requires a completed index bar and at least seventy percen
 test("a failed source preserves the last valid observation as stale without inventing a regime", () => {
   const prior = buildMarketPulse({ frames: { "^TASI.SR": bars(), "1303": bars() }, daily: [], tracked: ["1303"], fetchedAt: at });
   assert.equal(prior.regime.status, "unavailable");
+  assert.match(prior.regime.reason, /52 are required/);
   const failed = buildMarketPulse({ frames: {}, daily: [], tracked: ["1303"], fetchedAt: "2026-09-22T07:25:00Z", prior });
   assert.equal(failed.status, "stale");
   assert.equal(failed.lastValidAt, at);
