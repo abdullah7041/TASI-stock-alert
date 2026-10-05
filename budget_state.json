@@ -544,7 +544,7 @@
     ]
   },
   "2026-10": {
-    "spent": 3232.58,
+    "spent": 3730.18,
     "allocations": [
       {
         "date": "2026-10-01",
@@ -629,6 +629,13 @@
         "name": "Fakeeh Care",
         "shares": 7,
         "spend": 246.4
+      },
+      {
+        "date": "2026-10-05",
+        "code": "4016",
+        "name": "Avalon Pharma",
+        "shares": 8,
+        "spend": 497.6
       }
     ]
   }
