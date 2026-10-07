@@ -1,12 +1,876 @@
 {
   "status": "review-required",
   "source": "Saudi Exchange issuer announcements",
-  "retrievedAt": "2026-09-30T11:11:16Z",
+  "retrievedAt": "2026-10-07T11:48:53Z",
   "announcements": [
+    {
+      "title": "Correction announcement from Professional Medical Expertise Co. Regarding the Company’s Announcement of Obtaining Shariah-Compliant Credit Facilities from Bank AlJazira",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98444&anCat=1&cs=9574&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9574",
+      "published_at": "2026-10-07T09:55:26+03:00",
+      "source_published_at": "07/10/2026 09:55:26"
+    },
+    {
+      "title": "Hamad Mohammed Bin Saedan Real Estate Co. announces signing a Memorandum of Understanding with Bloom Investment Saudi Arabia to Establish a Real Estate Fund Named “HS Logistics Fund” in Riyadh",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98443&anCat=1&cs=9648&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9648",
+      "published_at": "2026-10-07T09:41:53+03:00",
+      "source_published_at": "07/10/2026 09:41:53"
+    },
+    {
+      "title": "Announcement by Saudi Fisheries Company Clarifying the Company's Strategic Direction for the Upcoming Phase",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98442&anCat=1&cs=6050&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "6050",
+      "published_at": "2026-10-07T09:40:02+03:00",
+      "source_published_at": "07/10/2026 09:40:02"
+    },
+    {
+      "title": "Arabian Internet and Communications Services Company (solutions) announces the results of the Extraordinary General Assembly meeting which included the approval to increase the company’s capital (First Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98441&anCat=1&cs=7202&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7202",
+      "published_at": "2026-10-07T08:17:05+03:00",
+      "source_published_at": "07/10/2026 08:17:05"
+    },
+    {
+      "title": "Quara Finance Co. Announces Appointment of a CEO",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98440&anCat=1&cs=9596&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9596",
+      "published_at": "2026-10-07T08:14:33+03:00",
+      "source_published_at": "07/10/2026 08:14:33"
+    },
+    {
+      "title": "The Board of Directors of Saudi Arabian Mining Company (Maaden) Invites its Shareholders to Attend the 16th Ordinary General Assembly Meeting (First meeting) via modern technology means. (Reminder)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98439&anCat=1&cs=1211&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "1211",
+      "published_at": "2026-10-07T08:12:12+03:00",
+      "source_published_at": "07/10/2026 08:12:12"
+    },
+    {
+      "title": "National Building and Marketing Co. Announces an update on  National Building and Marketing Co. announces the Board of Director’s decision to transfer from the Parallel Market to the Main Market.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98438&anCat=1&cs=9510&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9510",
+      "published_at": "2026-10-07T08:10:30+03:00",
+      "source_published_at": "07/10/2026 08:10:30"
+    },
+    {
+      "title": "Qassim Cement Company Announces the Latest Developments Regarding the Share Sale and Purchase Agreement to Acquire 100% of A-Mix Company’s Shares, Represented by the Issuance of the General Authority for Competition’s No-Objection",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98437&anCat=1&cs=3040&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "3040",
+      "published_at": "2026-10-07T08:07:00+03:00",
+      "source_published_at": "07/10/2026 08:07:00"
+    },
+    {
+      "title": "Middle East Pharmaceutical Industries Co. announces signing of a Memorandum of Understanding with Aurisco Pharma for Strategic Cooperation on Oligonucleotide and Other Complex Pharmaceutical Products",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98436&anCat=1&cs=4016&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4016",
+      "published_at": "2026-10-07T08:04:22+03:00",
+      "source_published_at": "07/10/2026 08:04:22"
+    },
+    {
+      "title": "Saudi Arabian Refineries Company (SARCO) announces the award of a project to (Lawazim Industrial Company), owned by one of its subsidiaries, to carry out subcontracting works for the National Guard Housing Project for Saudi Binladin Group.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98435&anCat=1&cs=2030&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2030",
+      "published_at": "2026-10-07T08:02:07+03:00",
+      "source_published_at": "07/10/2026 08:02:07"
+    },
+    {
+      "title": "Alfakhera for Mens Tailoring Co. announces the purchase of a number of trademarks for SAR (39,175,000)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98434&anCat=1&cs=9618&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9618",
+      "published_at": "2026-10-07T08:01:32+03:00",
+      "source_published_at": "07/10/2026 08:01:32"
+    },
+    {
+      "title": "Al Kathiri Holding Co. Announces the Award of a Project to its Subsidiary, Msandh Al-Emdad Limited Co., by Talaat Moustafa Group Muscat Company for Real Estate Development in the Sultanate of Oman",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98433&anCat=1&cs=3008&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "3008",
+      "published_at": "2026-10-07T08:01:09+03:00",
+      "source_published_at": "07/10/2026 08:01:09"
+    },
+    {
+      "title": "Al Moammar Information Systems Company Announces the CEO’s Decision Not to Renew His Contract and the Appointment of an Acting Chief Executive Officer",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98432&anCat=1&cs=7200&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7200",
+      "published_at": "2026-10-06T16:02:24+03:00",
+      "source_published_at": "06/10/2026 16:02:24"
+    },
+    {
+      "title": "Arabian Internet and Communications Services Company (solutions) announces the signing of a contract with STC Bank (Related Party)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98431&anCat=1&cs=7202&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7202",
+      "published_at": "2026-10-06T15:36:30+03:00",
+      "source_published_at": "06/10/2026 15:36:30"
+    },
+    {
+      "title": "Elm Company announces the renewal of Sharia-Compliant Banking Facilities Agreement",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98430&anCat=1&cs=7203&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7203",
+      "published_at": "2026-10-06T15:32:56+03:00",
+      "source_published_at": "06/10/2026 15:32:56"
+    },
+    {
+      "title": "Alramz Real Estate Co. Announces the Signing of Shariah-compliant Credit Facility Agreement",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98429&anCat=1&cs=4327&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4327",
+      "published_at": "2026-10-06T09:53:02+03:00",
+      "source_published_at": "06/10/2026 09:53:02"
+    },
+    {
+      "title": "Twareat Medical Care Co. Announces an update on  Referring to previous announcements made by Twareat Medical Care Company concerning the legal action filed against the Saudi Basic Industries Corporation (SABIC), the Company hereby announces the latest updates regarding the case.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98428&anCat=1&cs=9627&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9627",
+      "published_at": "2026-10-06T09:35:49+03:00",
+      "source_published_at": "06/10/2026 09:35:49"
+    },
+    {
+      "title": "RaoomTrading Company Announces the Latest Developments Regarding the Purchase of an Existing Factory in the amount of Fifteen million (15,000,000) Saudi Riyals",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98427&anCat=1&cs=4144&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4144",
+      "published_at": "2026-10-06T08:29:34+03:00",
+      "source_published_at": "06/10/2026 08:29:34"
+    },
+    {
+      "title": "Nofoth Food Products Company Announces the Latest Developments Regarding Its Acquisition of a 65% Stake in the Share Capital of Plenty Food Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98426&anCat=1&cs=2288&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2288",
+      "published_at": "2026-10-06T08:14:09+03:00",
+      "source_published_at": "06/10/2026 08:14:09"
+    },
+    {
+      "title": "Academy of Learning Company announces receiving the Corporate Social Responsibility Award, presented by the Ministry of Human Resources and Social Development, for the third consecutive year",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98425&anCat=1&cs=9541&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9541",
+      "published_at": "2026-10-06T08:11:04+03:00",
+      "source_published_at": "06/10/2026 08:11:04"
+    },
+    {
+      "title": "Professional Medical Expertise Company (ProMedEx) Announces Obtaining Shariah-Compliant Credit Facilities from Bank AlJazira",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98424&anCat=1&cs=9574&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9574",
+      "published_at": "2026-10-06T08:08:42+03:00",
+      "source_published_at": "06/10/2026 08:08:42"
+    },
+    {
+      "title": "National Building and Marketing Co. announces the Board resolution to transfer from the Parallel Market to the Main Market",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98423&anCat=1&cs=9510&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9510",
+      "published_at": "2026-10-06T08:05:57+03:00",
+      "source_published_at": "06/10/2026 08:05:57"
+    },
+    {
+      "title": "Saudi Arabian Refineries Company (SARCO) announces the award of a project to Raya Al-Tajdeed, a company owned by one of its subsidiaries, for the Burjeel One Day Surgical Centre Project in Riyadh.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98422&anCat=1&cs=2030&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2030",
+      "published_at": "2026-10-06T08:04:22+03:00",
+      "source_published_at": "06/10/2026 08:04:22"
+    },
+    {
+      "title": "Emaar, the Economic City Announces Recent Developments in Relation to the Shareholder Loan Agreement with the Public Investment Fund",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98421&anCat=1&cs=4220&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4220",
+      "published_at": "2026-10-06T08:02:56+03:00",
+      "source_published_at": "06/10/2026 08:02:56"
+    },
+    {
+      "title": "Almarai Company Announces Board Approval of its Dividend Policy for the Financial Years 2026–2030",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98420&anCat=1&cs=2280&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2280",
+      "published_at": "2026-10-06T08:02:29+03:00",
+      "source_published_at": "06/10/2026 08:02:29"
+    },
+    {
+      "title": "Almarai Company announces the Board of Directors’ approval of the Company’s strategy for the period 2026–2031",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98419&anCat=1&cs=2280&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2280",
+      "published_at": "2026-10-06T08:02:05+03:00",
+      "source_published_at": "06/10/2026 08:02:05"
+    },
+    {
+      "title": "Almasane Alkobra Mining Company (AMAK) Announces the updates on the Application to the Capital Market Authority for the Increase of the Company’s Capital by Offering Right Issues",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98418&anCat=1&cs=1322&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "1322",
+      "published_at": "2026-10-06T08:01:44+03:00",
+      "source_published_at": "06/10/2026 08:01:44"
+    },
+    {
+      "title": "Al Yamamah Steel Industries Co. Announces Contract Sign Off with Algihaz Contracting Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98417&anCat=1&cs=1304&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "1304",
+      "published_at": "2026-10-05T16:21:43+03:00",
+      "source_published_at": "05/10/2026 16:21:43"
+    },
+    {
+      "title": "Al Yamamah Steel Industries Co. Announces Contract Sign Off with Algihaz Contracting Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98416&anCat=1&cs=1304&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "1304",
+      "published_at": "2026-10-05T16:21:38+03:00",
+      "source_published_at": "05/10/2026 16:21:38"
+    },
+    {
+      "title": "Albilad Capital announcement on the process of re-balancing the Sukuk basket for Albilad Saudi Sovereign Sukuk ETF",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98415&anCat=1&cs=9403&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9403",
+      "published_at": "2026-10-05T16:13:15+03:00",
+      "source_published_at": "05/10/2026 16:13:15"
+    },
+    {
+      "title": "Alandalus Property Co. announces the Board of Directors’ resolution about not distribute cash dividends to shareholders for the first half of 2026.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98414&anCat=1&cs=4320&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4320",
+      "published_at": "2026-10-05T16:12:07+03:00",
+      "source_published_at": "05/10/2026 16:12:07"
+    },
+    {
+      "title": "Future Vision for Health Training Co. Board invites its shareholders to attend the Extraordinary General Assembly Meeting the (First Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98413&anCat=1&cs=9632&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9632",
+      "published_at": "2026-10-05T16:05:19+03:00",
+      "source_published_at": "05/10/2026 16:05:19"
+    },
+    {
+      "title": "Naseej for Technology Co. Announces Project Award with Elm Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98412&anCat=1&cs=9538&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9538",
+      "published_at": "2026-10-05T16:01:48+03:00",
+      "source_published_at": "05/10/2026 16:01:48"
+    },
+    {
+      "title": "Atlas Elevators General Trading and Contracting Company Announces Rebranding",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98411&anCat=1&cs=9578&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9578",
+      "published_at": "2026-10-05T15:48:16+03:00",
+      "source_published_at": "05/10/2026 15:48:16"
+    },
+    {
+      "title": "Future Vision for Health Training Co. Announces Contract Sign Off with King Khalid University",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98410&anCat=1&cs=9632&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9632",
+      "published_at": "2026-10-05T15:46:59+03:00",
+      "source_published_at": "05/10/2026 15:46:59"
+    },
+    {
+      "title": "Mouwasat Medical Services Co. announces the board of director’s decision to distribute cash dividends for the first half of the fiscal year 2026",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98409&anCat=1&cs=4002&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4002",
+      "published_at": "2026-10-05T15:45:27+03:00",
+      "source_published_at": "05/10/2026 15:45:27"
+    },
+    {
+      "title": "Al Kathiri Holding Co. announces to Invites its Shareholders to Attend the (First Meeting) Ordinary General Assembly Meeting via modern technology means (Remotely)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98408&anCat=1&cs=3008&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "3008",
+      "published_at": "2026-10-05T15:44:21+03:00",
+      "source_published_at": "05/10/2026 15:44:21"
+    },
+    {
+      "title": "The Board of Directors of ADES Holding Company invite its Shareholders to attend the Extraordinary General Assembly Meeting which includes the Capital Increase (First Meeting) through modern technology means",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98407&anCat=1&cs=2382&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2382",
+      "published_at": "2026-10-05T15:41:34+03:00",
+      "source_published_at": "05/10/2026 15:41:34"
+    },
+    {
+      "title": "Saudi Fisheries Co. Announces Resignation and Appointment Audit Committee Member",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98406&anCat=1&cs=6050&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "6050",
+      "published_at": "2026-10-05T09:43:44+03:00",
+      "source_published_at": "05/10/2026 09:43:44"
+    },
+    {
+      "title": "Southern Province Cement Co. announces the opening of the nomination period for the board of director’s membership",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98404&anCat=1&cs=3050&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "3050",
+      "published_at": "2026-10-05T08:33:24+03:00",
+      "source_published_at": "05/10/2026 08:33:24"
+    },
+    {
+      "title": "Rasan Information Technology Co. Announces the Appointment of the CEO",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98403&anCat=1&cs=8313&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "8313",
+      "published_at": "2026-10-05T08:31:33+03:00",
+      "source_published_at": "05/10/2026 08:31:33"
+    },
+    {
+      "title": "Announcement by The Mediterranean and Gulf Insurance and Reinsurance Company (MEDGULF) Regarding the Resignation of a Board Member, Chairman of the Risk Committee, and Member of the Nomination and Remuneration Committee",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98402&anCat=1&cs=8030&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "8030",
+      "published_at": "2026-10-05T08:29:25+03:00",
+      "source_published_at": "05/10/2026 08:29:25"
+    },
+    {
+      "title": "Announcement by BAAN Holding Group Company Regarding the Resignation of a Member of the Board of Directors, the Nomination and Remuneration Committee, and the Executive Committee",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98401&anCat=1&cs=1820&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "1820",
+      "published_at": "2026-10-05T08:28:02+03:00",
+      "source_published_at": "05/10/2026 08:28:02"
+    },
+    {
+      "title": "Saudi Networkers Services Company Announces Receipt of a Notice from the Zakat, Tax and Customs Authority Regarding the Audit Findings for Its Value-Added Tax Returns for 2024",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98400&anCat=1&cs=9543&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9543",
+      "published_at": "2026-10-05T08:27:13+03:00",
+      "source_published_at": "05/10/2026 08:27:13"
+    },
+    {
+      "title": "Molan Steel Co. Announces an update on  its accumulated losses reaching 99.21% of its capital",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98399&anCat=1&cs=9553&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9553",
+      "published_at": "2026-10-05T08:22:24+03:00",
+      "source_published_at": "05/10/2026 08:22:24"
+    },
+    {
+      "title": "Supplementary Announcement by Academy of Learning regarding its Announcement of the publication of the Board of Directors’ Report for the fiscal year ended June 30, 2026",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98398&anCat=1&cs=9541&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9541",
+      "published_at": "2026-10-05T08:14:36+03:00",
+      "source_published_at": "05/10/2026 08:14:36"
+    },
+    {
+      "title": "Al Moammar Information Systems Co. Announces The latest developments on the Signing of an Agreement with HUMAIN Valued at More Than 689% of the Company's Total Revenue for FY 2025 (Including VAT)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98397&anCat=1&cs=7200&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7200",
+      "published_at": "2026-10-05T08:12:19+03:00",
+      "source_published_at": "05/10/2026 08:12:19"
+    },
+    {
+      "title": "Ladun Investment Co. Announces an update on  Signing of a Memorandum of Understanding with Asbar Financial Company to Study and Develop a Mixed-Use Real Estate Development Project on Land Owned by Asbar Al Munsiyah Fund in Al Munsiyah District, Riyadh.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98396&anCat=1&cs=4328&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4328",
+      "published_at": "2026-10-05T08:09:28+03:00",
+      "source_published_at": "05/10/2026 08:09:28"
+    },
+    {
+      "title": "Saudi Arabian Refineries Company (SARCO) announces that Raya Al-Tajdeed Company, owned by one of its subsidiaries, has signed a contract to carry out the rehabilitation and preparation works for the inpatient department at King Khalid Hospital in Al-Majma’ah.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98395&anCat=1&cs=2030&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2030",
+      "published_at": "2026-10-05T08:04:16+03:00",
+      "source_published_at": "05/10/2026 08:04:16"
+    },
+    {
+      "title": "Tabuk Agricultural Development Co. Announces the Signing of a (Non-Binding) Memorandum of Understanding with 386 Vibrant Solar Solutions Company for Cooperation on a Solar Power Plant and Electrical Infrastructure Project at the Company's Facilities in the Tabuk Region",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98394&anCat=1&cs=6040&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "6040",
+      "published_at": "2026-10-05T08:01:41+03:00",
+      "source_published_at": "05/10/2026 08:01:41"
+    },
+    {
+      "title": "Adeer Real Estate Company announces the appointment of the Chairman of the Board of Directors, the Vice Chairman, the Managing Director, the company's representatives to the Capital Market Authority (CMA) and the Saudi Exchange (Tadawul), as well as the appointment of the Board Secretary.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98393&anCat=1&cs=9634&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9634",
+      "published_at": "2026-10-05T08:01:13+03:00",
+      "source_published_at": "05/10/2026 08:01:13"
+    },
+    {
+      "title": "Announcement by the International Company for Human Resources regarding the renewal and amendment of a Sharia-compliant credit facility agreement with Al Rajhi Bank.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98392&anCat=1&cs=9545&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9545",
+      "published_at": "2026-10-05T08:00:55+03:00",
+      "source_published_at": "05/10/2026 08:00:55"
+    },
+    {
+      "title": "Alkhorayef Water and Power Technologies Co. Announces the signing of Rehabilitation of Water infrastructures with Dammam Airports Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98391&anCat=1&cs=2081&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2081",
+      "published_at": "2026-10-05T08:00:25+03:00",
+      "source_published_at": "05/10/2026 08:00:25"
+    },
+    {
+      "title": "Saudi Ceramics Company Announces the Opening of a New Showroom in the Western Province, in the City of Makkah",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98390&anCat=1&cs=2040&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2040",
+      "published_at": "2026-10-05T08:00:05+03:00",
+      "source_published_at": "05/10/2026 08:00:05"
+    },
+    {
+      "title": "Alwasail Industrial Co. Announces the Signing of a Contract with Almabani General Contractors Company Valued at SAR 8.83 Million for the Sports Boulevard Project",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98389&anCat=1&cs=4148&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4148",
+      "published_at": "2026-10-04T15:50:30+03:00",
+      "source_published_at": "04/10/2026 15:50:30"
+    },
+    {
+      "title": "Saudi Networkers Services Co. Board invites its shareholders to attend the Ordinary General Assembly Meeting the (First Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98388&anCat=1&cs=9543&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9543",
+      "published_at": "2026-10-04T15:48:24+03:00",
+      "source_published_at": "04/10/2026 15:48:24"
+    },
+    {
+      "title": "AYYAN Investment company Announces Resignation and Appointment of the Chief Executive Officer",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98387&anCat=1&cs=2140&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2140",
+      "published_at": "2026-10-04T15:46:24+03:00",
+      "source_published_at": "04/10/2026 15:46:24"
+    },
+    {
+      "title": "Waja Company’s Announcement to Shareholders Regarding the Start of Electronic Voting on the Agenda Items of the Ordinary General Assembly (First Meeting) (Reminder Announcement)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98386&anCat=1&cs=9560&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9560",
+      "published_at": "2026-10-04T15:44:04+03:00",
+      "source_published_at": "04/10/2026 15:44:04"
+    },
+    {
+      "title": "Natural Gas Distribution Company announces winning the Ministry of Energy’s competition for obtaining a license to establish, own, and operate a natural gas distribution network in Al Kharj Industrial City.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98385&anCat=1&cs=9516&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9516",
+      "published_at": "2026-10-04T15:41:49+03:00",
+      "source_published_at": "04/10/2026 15:41:49"
+    },
+    {
+      "title": "Prefect presentation for commercial services (2P) announcing signing an new facility agreement in compliant with Islamic sharia with National Bank of Kuwait.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98384&anCat=1&cs=7204&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7204",
+      "published_at": "2026-10-04T15:37:40+03:00",
+      "source_published_at": "04/10/2026 15:37:40"
+    },
+    {
+      "title": "ASG Plastic Factory Co. announces the latest developments Regarding the Board of Directors’ Approval to Construct a New Factory on an Area of One Hundred Thousand Nine Hundred and Fifty-Nine Square Meters (100,959 m²)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98383&anCat=1&cs=9607&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9607",
+      "published_at": "2026-10-04T09:47:15+03:00",
+      "source_published_at": "04/10/2026 09:47:15"
+    },
+    {
+      "title": "Molan Steel Co. Announces an update on  The Payment and Reduction Agreement with Yara International Limited.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98382&anCat=1&cs=9553&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9553",
+      "published_at": "2026-10-04T09:39:04+03:00",
+      "source_published_at": "04/10/2026 09:39:04"
+    },
+    {
+      "title": "Al Moammar Information Systems Co. Announces the latest developments on the Signing of an Agreement with HUMAIN Valued at More Than 689% of the Company's Total Revenue for FY 2025 (Including VAT)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98381&anCat=1&cs=7200&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7200",
+      "published_at": "2026-10-04T09:37:18+03:00",
+      "source_published_at": "04/10/2026 09:37:18"
+    },
+    {
+      "title": "The Saudi Investment Bank announces the results of the Extraordinary General Assembly Meeting which included the increase in the Bank 's capital (first meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98380&anCat=1&cs=1030&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "1030",
+      "published_at": "2026-10-04T08:49:40+03:00",
+      "source_published_at": "04/10/2026 08:49:40"
+    },
+    {
+      "title": "Saudi Energy announces achieving financial close for Rabigh 2 IPP Expansion Project in Saudi Arabia.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98379&anCat=1&cs=5110&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "5110",
+      "published_at": "2026-10-04T08:46:38+03:00",
+      "source_published_at": "04/10/2026 08:46:38"
+    },
+    {
+      "title": "Professional Medical Expertise Company (ProMedEx) announces the opening of the nomination period for membership of the Board of Directors for the upcoming term",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98378&anCat=1&cs=9574&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9574",
+      "published_at": "2026-10-04T08:22:07+03:00",
+      "source_published_at": "04/10/2026 08:22:07"
+    },
+    {
+      "title": "KEIR International Company Announces Obtaining Four International ISO Certifications",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98377&anCat=1&cs=9542&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9542",
+      "published_at": "2026-10-04T08:15:42+03:00",
+      "source_published_at": "04/10/2026 08:15:42"
+    },
+    {
+      "title": "Saudi Networkers Services Co. Announces the Latest Developments Regarding the Board of Directors' Approval of the Company’s Transition from the Parallel Market (Nomu) to the Main Market (TASI), through the Publication of the Board of Directors' Report for the Fiscal Year 2025G.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98376&anCat=1&cs=9543&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9543",
+      "published_at": "2026-10-04T08:10:21+03:00",
+      "source_published_at": "04/10/2026 08:10:21"
+    },
+    {
+      "title": "Al Kuzama Trading Company Announces the Commencement of Electronic Voting on the Agenda Items of the Ordinary General Assembly Meeting (First Meeting) via Modern Technology Means (Reminder Announcement)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98375&anCat=1&cs=9636&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9636",
+      "published_at": "2026-10-04T08:07:30+03:00",
+      "source_published_at": "04/10/2026 08:07:30"
+    },
+    {
+      "title": "ACWA Power Company (Acwa) announces achieving financial close for Rabigh 2 IPP Expansion Project in Saudi Arabia",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98374&anCat=1&cs=2082&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2082",
+      "published_at": "2026-10-04T08:04:06+03:00",
+      "source_published_at": "04/10/2026 08:04:06"
+    },
+    {
+      "title": "Almarai Company (“The Company”) announces its interim condensed consolidated financial results for the period ending on 30-09-2026 (Nine Months).",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98373&anCat=1&cs=2280&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2280",
+      "published_at": "2026-10-04T08:00:56+03:00",
+      "source_published_at": "04/10/2026 08:00:56"
+    },
+    {
+      "title": "Thimar Development Holding Co. Announces the Submission of the Increase of the Company’s Capital by Offering Right Issues Application File to CMA",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98372&anCat=1&cs=4160&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4160",
+      "published_at": "2026-10-01T15:56:31+03:00",
+      "source_published_at": "01/10/2026 15:56:31"
+    },
+    {
+      "title": "Canadian Medical Center Co. Board invites its shareholders to attend the Ordinary General Assembly Meeting the (First Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98371&anCat=1&cs=4021&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4021",
+      "published_at": "2026-10-01T15:52:37+03:00",
+      "source_published_at": "01/10/2026 15:52:37"
+    },
+    {
+      "title": "Group Five Pipe Saudi Co. Announces Resignation of a Board and Audit committee Member",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98370&anCat=1&cs=9523&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9523",
+      "published_at": "2026-10-01T15:48:38+03:00",
+      "source_published_at": "01/10/2026 15:48:38"
+    },
+    {
+      "title": "Raydan Food Company announces the latest material developments regarding the Board of Directors’ recommendation to reduce the Company’s capital and Subsequently Increase the Share Capital through a Rights Issue Offering",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98369&anCat=1&cs=6012&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "6012",
+      "published_at": "2026-10-01T15:41:49+03:00",
+      "source_published_at": "01/10/2026 15:41:49"
+    },
+    {
+      "title": "Arabian Pipes Co. Announces Contracts Sign Off with Saudi Aramco",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98368&anCat=1&cs=2200&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2200",
+      "published_at": "2026-10-01T15:38:12+03:00",
+      "source_published_at": "01/10/2026 15:38:12"
+    },
+    {
+      "title": "Addendum Announcement from Rawasi Albina Investment Co. in regard to the Filing of a Lawsuit Against the Former Managing Director and Chief Executive Officer, Mr. Mohsen Mutaib Al-Otaibi, and Abdullah Mohsen Al-Otaibi",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98367&anCat=1&cs=9547&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9547",
+      "published_at": "2026-10-01T15:36:24+03:00",
+      "source_published_at": "01/10/2026 15:36:24"
+    },
+    {
+      "title": "Tihama Advertising, Public Relations and Marketing Company Announces the Results of the Ordinary General Assembly Meeting (Second Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98366&anCat=1&cs=4070&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4070",
+      "published_at": "2026-10-01T09:56:12+03:00",
+      "source_published_at": "01/10/2026 09:56:12"
+    },
+    {
+      "title": "Saudi Vitrified Clay Pipes Co. Announces the Results of the Ordinary General Assembly Meeting (Second Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98365&anCat=1&cs=2360&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2360",
+      "published_at": "2026-10-01T09:43:23+03:00",
+      "source_published_at": "01/10/2026 09:43:23"
+    },
+    {
+      "title": "Alramz Real Estate Company Announces the latest developments regarding the Signing of an Agreement with Ramz Al Hijaz Fund Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98364&anCat=1&cs=4327&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4327",
+      "published_at": "2026-10-01T09:21:15+03:00",
+      "source_published_at": "01/10/2026 09:21:15"
+    },
+    {
+      "title": "Riyadh Steel Co. announces the opening of the nomination period for the board of director’s membership",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98363&anCat=1&cs=9588&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9588",
+      "published_at": "2026-10-01T09:15:48+03:00",
+      "source_published_at": "01/10/2026 09:15:48"
+    },
+    {
+      "title": "Rawasi Albina Investment Co. Announces an update on  Rawasi Albina Investment Co.’s announcement regarding its inability to publish the interim financial results for the period ended 30 June 2026 (six months).",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98362&anCat=1&cs=9547&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9547",
+      "published_at": "2026-10-01T08:37:15+03:00",
+      "source_published_at": "01/10/2026 08:37:15"
+    },
+    {
+      "title": "Molan Steel Co. Announces Obtaining a interest- free loan",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98361&anCat=1&cs=9553&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9553",
+      "published_at": "2026-10-01T08:29:47+03:00",
+      "source_published_at": "01/10/2026 08:29:47"
+    },
+    {
+      "title": "Molan Steel Co. Announces an update on  The lawsuit filed against Yara International Limited and the settlement concluded in respect thereof.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98360&anCat=1&cs=9553&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9553",
+      "published_at": "2026-10-01T08:27:03+03:00",
+      "source_published_at": "01/10/2026 08:27:03"
+    },
+    {
+      "title": "Anmat Technology for Trading Company Announces the Award of a Project by the Human Resources Development Fund (HRDF) Valued at SAR 129.9 Million, Including VAT",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98359&anCat=1&cs=9639&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9639",
+      "published_at": "2026-10-01T08:18:58+03:00",
+      "source_published_at": "01/10/2026 08:18:58"
+    },
+    {
+      "title": "SAHARA INTERNATIONAL PETROCHEMICAL COMPANY (Sipchem) ANNOUNCES SCHEDULED PERIODIC MAINTENANCE TURNAROUND FOR ALWAHA PETROCHEMICALS COMPANY",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98358&anCat=1&cs=2310&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2310",
+      "published_at": "2026-10-01T08:14:48+03:00",
+      "source_published_at": "01/10/2026 08:14:48"
+    },
+    {
+      "title": "Al-Jouf Agricultural Development Company Announces Latest Developments Regarding the Potato Processing Plant Expansion Project (Start of Trial Operation)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98357&anCat=1&cs=6070&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "6070",
+      "published_at": "2026-10-01T08:12:39+03:00",
+      "source_published_at": "01/10/2026 08:12:39"
+    },
+    {
+      "title": "Umm Al Qura for Development and Construction Company announces the latest developments regarding the signing of a reservation agreement to sell a land plot within Masar Destination",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98356&anCat=1&cs=4325&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4325",
+      "published_at": "2026-10-01T08:09:16+03:00",
+      "source_published_at": "01/10/2026 08:09:16"
+    },
+    {
+      "title": "Al Kathiri Holding Co. Announces the distribution date for the proceeds of Sukuk Alkathiri Series 1",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98355&anCat=1&cs=3008&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "3008",
+      "published_at": "2026-10-01T08:01:19+03:00",
+      "source_published_at": "01/10/2026 08:01:19"
+    },
+    {
+      "title": "Announcement by Albilad Capital regarding the distributions of Fund’s dividends to the Unitholders of Albilad Saudi Sovereign Sukuk ETF",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98354&anCat=1&cs=9403&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9403",
+      "published_at": "2026-10-01T08:00:32+03:00",
+      "source_published_at": "01/10/2026 08:00:32"
+    },
+    {
+      "title": "SAB Invest announcement on the re-balancing of the SAB Invest Saudi Quant ETF Fund's Basket.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98353&anCat=1&cs=9402&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9402",
+      "published_at": "2026-10-01T08:00:16+03:00",
+      "source_published_at": "01/10/2026 08:00:16"
+    },
+    {
+      "title": "Amwaj International Co. Announces an update on Its Inability to Publish Its Interim Financial Results for the Period Ended on 2026-06-30 (Six Months)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98352&anCat=1&cs=9537&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9537",
+      "published_at": "2026-09-30T16:35:56+03:00",
+      "source_published_at": "30/09/2026 16:35:56"
+    },
+    {
+      "title": "Purity for Information Technology Co. announces its inability to post annual financial results for the period ended on 30-06-2026",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98351&anCat=1&cs=9614&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9614",
+      "published_at": "2026-09-30T16:33:49+03:00",
+      "source_published_at": "30/09/2026 16:33:49"
+    },
+    {
+      "title": "Ruwasi Al-Bina Investment Company Announces the Latest Developments Regarding the Board of Directors’ Resolution to Distribute Cash Dividends to Shareholders for the Fiscal Year 2025",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98350&anCat=1&cs=9547&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9547",
+      "published_at": "2026-09-30T16:12:30+03:00",
+      "source_published_at": "30/09/2026 16:12:30"
+    },
+    {
+      "title": "Adeer Real Estate Co. Announces the formation of the Audit Committee",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98349&anCat=1&cs=9634&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9634",
+      "published_at": "2026-09-30T16:11:25+03:00",
+      "source_published_at": "30/09/2026 16:11:25"
+    },
+    {
+      "title": "Middle East Specialized Cables Company (MESC) announces the signing of a banking facilities renewal agreement, compliant with the provisions of Islamic Shariah, with Al Rajhi Bank.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98348&anCat=1&cs=2370&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2370",
+      "published_at": "2026-09-30T16:10:41+03:00",
+      "source_published_at": "30/09/2026 16:10:41"
+    },
+    {
+      "title": "Al-Jouf Agricultural Development Co. Announces the Latest Developments Regarding the Signing of a Solar Energy Power Purchase Agreement with ENGIE",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98347&anCat=1&cs=6070&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "6070",
+      "published_at": "2026-09-30T16:04:02+03:00",
+      "source_published_at": "30/09/2026 16:04:02"
+    },
+    {
+      "title": "Knowledge Tower Commercial Company announces the formation of the audit committee",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98346&anCat=1&cs=9551&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9551",
+      "published_at": "2026-09-30T16:02:53+03:00",
+      "source_published_at": "30/09/2026 16:02:53"
+    },
+    {
+      "title": "knowledge tower company announced the appointment of the chairman of the board of directors, deputy chairman of the board of directors and CEO, the appointment of the secretary of the board, the formation of the Audit Committee and the appointment of the company's representatives in the new session of the board.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98345&anCat=1&cs=9551&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9551",
+      "published_at": "2026-09-30T15:55:06+03:00",
+      "source_published_at": "30/09/2026 15:55:06"
+    },
+    {
+      "title": "Methanol Chemicals Co. Announces the Submission of the Increase of the Company’s Capital by Offering Right Issues Application File to CMA",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98344&anCat=1&cs=2001&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "2001",
+      "published_at": "2026-09-30T15:53:17+03:00",
+      "source_published_at": "30/09/2026 15:53:17"
+    },
+    {
+      "title": "Basma Adeem Medical Co. Announces the issuance of a license from the Ministry of Health to open its fourth branch in Riyadh.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98343&anCat=1&cs=9626&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9626",
+      "published_at": "2026-09-30T15:53:13+03:00",
+      "source_published_at": "30/09/2026 15:53:13"
+    },
+    {
+      "title": "Ghida Alsultan for Fast Food Co. announces its Interim Financial results for the period ending on 2026-06-30 ( Six Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98342&anCat=1&cs=9567&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9567",
+      "published_at": "2026-09-30T15:50:25+03:00",
+      "source_published_at": "30/09/2026 15:50:25"
+    },
+    {
+      "title": "Ruwasi Al-Bina Investment Company Announces the Inability to Distribute the Returns of the Sukuk (First Issuance) for the return period from 10 March 2026 to 10 September 2026",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98341&anCat=1&cs=9547&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "9547",
+      "published_at": "2026-09-30T15:49:40+03:00",
+      "source_published_at": "30/09/2026 15:49:40"
+    },
+    {
+      "title": "Tabuk Agricultural Development Co. Announces Contract Sign Off with Food Business Square Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98340&anCat=1&cs=6040&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "6040",
+      "published_at": "2026-09-30T15:45:19+03:00",
+      "source_published_at": "30/09/2026 15:45:19"
+    },
+    {
+      "title": "Etihad GO Telecom Co. (GO) Announces the Saudi Central Bank’s Approval to Increase the Capital of Its Subsidiary, Alhulul Almuntilaqa Company (GO Money), from SAR 20 Million to SAR 138 Million",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98339&anCat=1&cs=7040&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7040",
+      "published_at": "2026-09-30T15:42:36+03:00",
+      "source_published_at": "30/09/2026 15:42:36"
+    },
+    {
+      "title": "Dar Albalad for Business Solutions Co. Announces Appointment of a CEO",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98338&anCat=1&cs=7205&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "7205",
+      "published_at": "2026-09-30T15:42:24+03:00",
+      "source_published_at": "30/09/2026 15:42:24"
+    },
+    {
+      "title": "Addendum Announcement from United Cooperative Assurance Company in regard to the announcement related to one of its creditors has filed a request with the Commercial Court in Riyadh to initiate liquidation proceedings",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98337&anCat=1&cs=8190&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "8190",
+      "published_at": "2026-09-30T15:41:19+03:00",
+      "source_published_at": "30/09/2026 15:41:19"
+    },
+    {
+      "title": "The Saudi Industrial Export Company (SIEC) Announces the Relocation of its Headquarters",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98336&anCat=1&cs=4140&locale=en",
+      "retrieved_at": "2026-10-07T11:48:53Z",
+      "symbol": "4140",
+      "published_at": "2026-09-30T15:35:55+03:00",
+      "source_published_at": "30/09/2026 15:35:55"
+    },
     {
       "title": "Future Vision for Health Training Company Announces the Signing of a Cooperation Agreement with the University of Bisha",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98335&anCat=1&cs=9632&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "9632",
       "published_at": "2026-09-30T09:13:17+03:00",
       "source_published_at": "30/09/2026 09:13:17"
@@ -14,7 +878,7 @@
     {
       "title": "Arabian Plastic Industrial Company (APICO) announces rebranding.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98334&anCat=1&cs=9548&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "9548",
       "published_at": "2026-09-30T09:11:16+03:00",
       "source_published_at": "30/09/2026 09:11:16"
@@ -22,7 +886,7 @@
     {
       "title": "Middle East Paper Co. Announces an update on  Middle East Paper Co. Announces Tissue Paper Production Line 6 project (TM6).",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98333&anCat=1&cs=1202&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "1202",
       "published_at": "2026-09-30T08:41:46+03:00",
       "source_published_at": "30/09/2026 08:41:46"
@@ -30,7 +894,7 @@
     {
       "title": "Middle East Paper Co. Announces latest developments for Fifth paper machine (PM5)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98332&anCat=1&cs=1202&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "1202",
       "published_at": "2026-09-30T08:40:38+03:00",
       "source_published_at": "30/09/2026 08:40:38"
@@ -38,7 +902,7 @@
     {
       "title": "Knowledge Tower Trading Co. Announces the Results of the Ordinary General Assembly Meeting (First Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98331&anCat=1&cs=9551&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "9551",
       "published_at": "2026-09-30T08:27:58+03:00",
       "source_published_at": "30/09/2026 08:27:58"
@@ -46,7 +910,7 @@
     {
       "title": "Academy of Learning Company announces the publication of its Sustainability and Environmental, Social, and Governance (ESG) Report for the for the fiscal year ended on June 30, 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98330&anCat=1&cs=9541&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "9541",
       "published_at": "2026-09-30T08:22:48+03:00",
       "source_published_at": "30/09/2026 08:22:48"
@@ -54,7 +918,7 @@
     {
       "title": "Academy of Learning Company Announces the publication of the Board of Directors’ Report for the fiscal year ended June 30, 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98329&anCat=1&cs=9541&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "9541",
       "published_at": "2026-09-30T08:20:34+03:00",
       "source_published_at": "30/09/2026 08:20:34"
@@ -62,7 +926,7 @@
     {
       "title": "The National Agricultural Development Company (NADEC) Announces the Amendment to the Financing Agreement of its Wholly Owned Subsidiary, Al Raie National Livestock Company, with the Agricultural Development Fund",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98328&anCat=1&cs=6010&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "6010",
       "published_at": "2026-09-30T08:20:02+03:00",
       "source_published_at": "30/09/2026 08:20:02"
@@ -70,7 +934,7 @@
     {
       "title": "Al-Jouf Cement Company announces the appointment of a member to the vacant seat on the Board of Directors",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98327&anCat=1&cs=3091&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "3091",
       "published_at": "2026-09-30T08:14:19+03:00",
       "source_published_at": "30/09/2026 08:14:19"
@@ -78,7 +942,7 @@
     {
       "title": "Dallah Healthcare Company Announces the Appointment of the Chief Executive Officer",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98326&anCat=1&cs=4004&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "4004",
       "published_at": "2026-09-30T08:11:47+03:00",
       "source_published_at": "30/09/2026 08:11:47"
@@ -86,7 +950,7 @@
     {
       "title": "Umm Al Qura for Development and Construction Company announces the sale of a plot of land within Masar Destination",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98325&anCat=1&cs=4325&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "4325",
       "published_at": "2026-09-30T08:09:51+03:00",
       "source_published_at": "30/09/2026 08:09:51"
@@ -94,7 +958,7 @@
     {
       "title": "Supplementary Announcement by Al Masar Al Shamil Education Co. regarding the Signing of a Non-Binding Memorandum of Understanding with Al Qalam Educational Trading Company.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98324&anCat=1&cs=6019&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "6019",
       "published_at": "2026-09-30T08:08:23+03:00",
       "source_published_at": "30/09/2026 08:08:23"
@@ -102,562 +966,10 @@
     {
       "title": "The Company for Cooperative Insurance (TAWUNIYA) Announces the Deposit of Sums Resulting from Selling Fractional Stocks Following Increase of the Company’s Capital in the Accounts of Eligible Shareholders",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98323&anCat=1&cs=8010&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
+      "retrieved_at": "2026-10-07T11:48:53Z",
       "symbol": "8010",
       "published_at": "2026-09-30T08:00:04+03:00",
       "source_published_at": "30/09/2026 08:00:04"
-    },
-    {
-      "title": "Marble Design Co. Board invites its shareholders to attend the Extraordinary General Assembly Meeting the (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98322&anCat=1&cs=9575&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9575",
-      "published_at": "2026-09-29T16:07:41+03:00",
-      "source_published_at": "29/09/2026 16:07:41"
-    },
-    {
-      "title": "Addendum Announcement from Amwaj International Co. in regards to Its Announcement on the Latest Developments Relating to Legal Proceedings Taken to Claim Its Financial Rights",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98321&anCat=1&cs=9537&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9537",
-      "published_at": "2026-09-29T15:58:55+03:00",
-      "source_published_at": "29/09/2026 15:58:55"
-    },
-    {
-      "title": "Saudi Fisheries Co. Announces an update on   the latest developments regarding the Board of Directors' decision to appoint the Chairman and Vice Chairman and to form the committees.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98320&anCat=1&cs=6050&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "6050",
-      "published_at": "2026-09-29T15:56:55+03:00",
-      "source_published_at": "29/09/2026 15:56:55"
-    },
-    {
-      "title": "Alkhorayef Water and Power Technologies Co. Announces the award of Rehabilitation of Water infrastructures with Dammam Airports Company",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98319&anCat=1&cs=2081&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2081",
-      "published_at": "2026-09-29T15:37:17+03:00",
-      "source_published_at": "29/09/2026 15:37:17"
-    },
-    {
-      "title": "Saleh Abdulaziz Al Rashed and Sons Co. Announces Obtaining of Shariah-compliant banking facilities agreement with Al Rajhi Bank.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98318&anCat=1&cs=1324&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1324",
-      "published_at": "2026-09-29T15:35:32+03:00",
-      "source_published_at": "29/09/2026 15:35:32"
-    },
-    {
-      "title": "ARABIAN DRILLING ANNOUNCES EXPANSION OF OFFSHORE OPERATIONS WITH FOUR NEW RIG CONTRACT FROM KJO VALUED AT APPROXIMATELY SAR 2 BILLION, INCREASING BACKLOG TO A RECORD SAR 18 BILLION",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98317&anCat=1&cs=2381&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2381",
-      "published_at": "2026-09-29T09:27:47+03:00",
-      "source_published_at": "29/09/2026 09:27:47"
-    },
-    {
-      "title": "The Board of Directors of United Electronics Company (eXtra) invites its shareholders to attend the Extraordinary General Assembly Meeting (First Meeting) remotely by Means of Modern Technology.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98316&anCat=1&cs=4003&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4003",
-      "published_at": "2026-09-29T08:40:36+03:00",
-      "source_published_at": "29/09/2026 08:40:36"
-    },
-    {
-      "title": "Zahrat Al Waha for Trading Company announces the renewal of its Islamic banking and financing facilities agreement with the Saudi National Bank.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98315&anCat=1&cs=3007&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "3007",
-      "published_at": "2026-09-29T08:36:31+03:00",
-      "source_published_at": "29/09/2026 08:36:31"
-    },
-    {
-      "title": "Abdullah Saad Mohammed Abo Moati for Bookstores Co. Announces the Results of the Ordinary General Assembly Meeting (Second Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98314&anCat=1&cs=4191&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4191",
-      "published_at": "2026-09-29T08:21:46+03:00",
-      "source_published_at": "29/09/2026 08:21:46"
-    },
-    {
-      "title": "Addendum Announcement from Dar Almarkabah for Renting Cars Co. in regards to the Board of Directors' Recommendation to Consolidate the Company's Shares (Reverse Split)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98313&anCat=1&cs=9577&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9577",
-      "published_at": "2026-09-29T08:18:17+03:00",
-      "source_published_at": "29/09/2026 08:18:17"
-    },
-    {
-      "title": "MOBI Industry Co. Announces the Submission of its Application to Transfer to the Main Market.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98312&anCat=1&cs=9517&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9517",
-      "published_at": "2026-09-29T08:13:40+03:00",
-      "source_published_at": "29/09/2026 08:13:40"
-    },
-    {
-      "title": "Adeer Real Estate Co. Announces the Results of the Ordinary General Assembly Meeting (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98311&anCat=1&cs=9634&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9634",
-      "published_at": "2026-09-29T08:11:35+03:00",
-      "source_published_at": "29/09/2026 08:11:35"
-    },
-    {
-      "title": "Edarat Communication and Information Technology Co. (EDARAT) Announces the Appointment of the Chairman and Vice Chairman of the Board of Directors, the Board Secretary and the Company's Representatives for the New Board Term",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98310&anCat=1&cs=9557&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9557",
-      "published_at": "2026-09-29T08:09:30+03:00",
-      "source_published_at": "29/09/2026 08:09:30"
-    },
-    {
-      "title": "Umm Al Qura for Development and Construction Company announces the sale of two plots of land within Masar Destination",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98309&anCat=1&cs=4325&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4325",
-      "published_at": "2026-09-29T08:03:15+03:00",
-      "source_published_at": "29/09/2026 08:03:15"
-    },
-    {
-      "title": "Hamad Mohammed Bin Saedan Real Estate Co. Board invites its shareholders to attend the Ordinary General Assembly Meeting the (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98308&anCat=1&cs=9648&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9648",
-      "published_at": "2026-09-28T16:02:13+03:00",
-      "source_published_at": "28/09/2026 16:02:13"
-    },
-    {
-      "title": "Saudi Investment Bank Announces Resignation and Appointment of the Chief Executive Officer",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98307&anCat=1&cs=1030&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1030",
-      "published_at": "2026-09-28T15:59:48+03:00",
-      "source_published_at": "28/09/2026 15:59:48"
-    },
-    {
-      "title": "Inmar Real Estate Development and Investment Company announced the signing of a lease agreement for Rawabi Al Zahra Hotel with Rawabi Al Zahra Hotel Services Company",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98306&anCat=1&cs=9521&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9521",
-      "published_at": "2026-09-28T15:58:13+03:00",
-      "source_published_at": "28/09/2026 15:58:13"
-    },
-    {
-      "title": "Arabian Pipes Co. Announces Contract Sign Off with Saudi Aramco Company",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98305&anCat=1&cs=2200&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2200",
-      "published_at": "2026-09-28T15:45:35+03:00",
-      "source_published_at": "28/09/2026 15:45:35"
-    },
-    {
-      "title": "Arabian Cement Company Announces the Completion of Its Subsidiary’s Share Swap Transaction",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98304&anCat=1&cs=3010&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "3010",
-      "published_at": "2026-09-28T15:38:56+03:00",
-      "source_published_at": "28/09/2026 15:38:56"
-    },
-    {
-      "title": "Sure Global Tech Co. Announces Appointment Audit Committee Member",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98303&anCat=1&cs=9550&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9550",
-      "published_at": "2026-09-28T15:37:53+03:00",
-      "source_published_at": "28/09/2026 15:37:53"
-    },
-    {
-      "title": "Naseej International Trading Company Announces Resignation and Appointment Audit Committee Member",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98302&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1213",
-      "published_at": "2026-09-28T15:35:52+03:00",
-      "source_published_at": "28/09/2026 15:35:52"
-    },
-    {
-      "title": "Naseej International Trading Company Announces Resignation of a Board Member",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98301&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1213",
-      "published_at": "2026-09-28T15:33:42+03:00",
-      "source_published_at": "28/09/2026 15:33:42"
-    },
-    {
-      "title": "Naseej International Trading Company Announces the Appointment of a Board Member to fill the vacant seat on its Board of Directors.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98300&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1213",
-      "published_at": "2026-09-28T15:31:38+03:00",
-      "source_published_at": "28/09/2026 15:31:38"
-    },
-    {
-      "title": "Saudi Steel Pipe Co. Announces Contract Sign Off with Saudi Aramco",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98299&anCat=1&cs=1320&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1320",
-      "published_at": "2026-09-28T15:30:48+03:00",
-      "source_published_at": "28/09/2026 15:30:48"
-    },
-    {
-      "title": "Corrective announcement from the Saudi Fisheries Company regarding its announcement of the results of the Extraordinary General Assembly meeting concerning the capital increase (third meeting).",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98298&anCat=1&cs=6050&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "6050",
-      "published_at": "2026-09-28T09:57:33+03:00",
-      "source_published_at": "28/09/2026 09:57:33"
-    },
-    {
-      "title": "Leaf Global Environmental Services Co. Announces an update on  Leaf Global Environmental Services Co. Announces an update on Announcement of Leaf Global Environmental Services Company regarding the signing of a contract with THE The The Red Sea Development Company",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98297&anCat=1&cs=9597&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9597",
-      "published_at": "2026-09-28T09:56:38+03:00",
-      "source_published_at": "28/09/2026 09:56:38"
-    },
-    {
-      "title": "Saudi Fisheries Co. Announces Resignation of a Board Member",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98296&anCat=1&cs=6050&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "6050",
-      "published_at": "2026-09-28T09:49:50+03:00",
-      "source_published_at": "28/09/2026 09:49:50"
-    },
-    {
-      "title": "Saudi Fisheries Co. Announces the Results of the Extra Ordinary General Assembly’s Meeting Approving Increase ( Third Meeting )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98295&anCat=1&cs=6050&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "6050",
-      "published_at": "2026-09-28T09:36:31+03:00",
-      "source_published_at": "28/09/2026 09:36:31"
-    },
-    {
-      "title": "Announcement by Dar Al Balad For Business Solutions Co on opening nominations for board of directors membership to fill the newly created seat and complete the current board term",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98294&anCat=1&cs=7205&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "7205",
-      "published_at": "2026-09-28T09:30:13+03:00",
-      "source_published_at": "28/09/2026 09:30:13"
-    },
-    {
-      "title": "Correction announcement from Pan Gulf Marketing Co. in regard to securing bank facilities (in compliance with Islamic Sharia)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98293&anCat=1&cs=9593&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9593",
-      "published_at": "2026-09-28T09:25:07+03:00",
-      "source_published_at": "28/09/2026 09:25:07"
-    },
-    {
-      "title": "Marketing Home Group for Trading Co. announces the board of director’s decision to distribute cash dividends for 2nd Quarter of 2026",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98292&anCat=1&cs=4194&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4194",
-      "published_at": "2026-09-28T08:52:45+03:00",
-      "source_published_at": "28/09/2026 08:52:45"
-    },
-    {
-      "title": "Edarat Communication and Information Technology Co. Announces Contract Sign Off with Rackspace Arabia for Information Technology Single LLC",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98291&anCat=1&cs=9557&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9557",
-      "published_at": "2026-09-28T08:41:58+03:00",
-      "source_published_at": "28/09/2026 08:41:58"
-    },
-    {
-      "title": "Pan Gulf Marketing Co. Announces Obtaining a .Bank facilities compatible with the provisions of Islamic Sharia",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98290&anCat=1&cs=9593&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9593",
-      "published_at": "2026-09-28T08:40:21+03:00",
-      "source_published_at": "28/09/2026 08:40:21"
-    },
-    {
-      "title": "Nahdi Medical Company Announces the Results of the Ordinary General Assembly Meeting (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98289&anCat=1&cs=4164&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4164",
-      "published_at": "2026-09-28T08:37:31+03:00",
-      "source_published_at": "28/09/2026 08:37:31"
-    },
-    {
-      "title": "Arabian Centers Company (Cenomi Centers) Announces the Results of the Extraordinary General Assembly’s Meeting, which included the Approval to Increase the Company’s Capital (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98288&anCat=1&cs=4321&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4321",
-      "published_at": "2026-09-28T08:22:54+03:00",
-      "source_published_at": "28/09/2026 08:22:54"
-    },
-    {
-      "title": "Tabuk Agricultural Development Co. Announces the Results of the Extra Ordinary General Assembly’s Meeting Approving Decrease ( Third Meeting )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98287&anCat=1&cs=6040&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "6040",
-      "published_at": "2026-09-28T08:14:09+03:00",
-      "source_published_at": "28/09/2026 08:14:09"
-    },
-    {
-      "title": "Specialized Medical Company ‎‎(SMC Healthcare) Announces ‎the Signing of a Contract with ‎Maharat Al Injaz Company ‎Limited for the Execution of the ‎Foundation, Construction and ‎Full Structural Works of the ‎SMC3 Hospital ‎",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98286&anCat=1&cs=4019&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4019",
-      "published_at": "2026-09-28T08:08:53+03:00",
-      "source_published_at": "28/09/2026 08:08:53"
-    },
-    {
-      "title": "Future Vision for Health Training Co. announces intention to issue A private offering of sukuk denominated in Saudi riyals.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98285&anCat=1&cs=9632&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9632",
-      "published_at": "2026-09-27T15:44:15+03:00",
-      "source_published_at": "27/09/2026 15:44:15"
-    },
-    {
-      "title": "BAAN Holding Group Co. Announces Appointment Audit Committee Member",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98284&anCat=1&cs=1820&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1820",
-      "published_at": "2026-09-27T15:41:46+03:00",
-      "source_published_at": "27/09/2026 15:41:46"
-    },
-    {
-      "title": "Announcement by the Aldrees Petroleum and Transport Services Company (ALDREES) regarding the passing of one of the members of the Board of Directors.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98283&anCat=1&cs=4200&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4200",
-      "published_at": "2026-09-27T15:38:58+03:00",
-      "source_published_at": "27/09/2026 15:38:58"
-    },
-    {
-      "title": "Al Kathiri Holding Co. Announces the Submission of the Decrease of the Company’s Capital Application File to CMA",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98282&anCat=1&cs=3008&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "3008",
-      "published_at": "2026-09-27T15:36:32+03:00",
-      "source_published_at": "27/09/2026 15:36:32"
-    },
-    {
-      "title": "Saudi Cement Company urges its shareholders to deposit paper stock certificates in investment portfolios and verify with the company the receipt of dividends for previous years.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98281&anCat=1&cs=3030&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "3030",
-      "published_at": "2026-09-27T15:33:48+03:00",
-      "source_published_at": "27/09/2026 15:33:48"
-    },
-    {
-      "title": "The Saudi Investment Bank announces the death of Board Member Mr. Mohammed bin Salem Mussa",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98280&anCat=1&cs=1030&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1030",
-      "published_at": "2026-09-27T15:33:38+03:00",
-      "source_published_at": "27/09/2026 15:33:38"
-    },
-    {
-      "title": "United Mining Industries Company (“Company”) announces the latest developments regarding the  announcement on behalf of Knauf International GmbH, regarding the Capital Market Authority’s approval of the publication of the Offer Document and Tender Offer Timetable",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98279&anCat=1&cs=9583&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9583",
-      "published_at": "2026-09-27T09:54:52+03:00",
-      "source_published_at": "27/09/2026 09:54:52"
-    },
-    {
-      "title": "Second Reminder Announcement from Tabuk Agricultural Development Company to its Shareholders to Attend the Extraordinary General Assembly Meeting Including the Reduction of the Company’s Capital (Third Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98278&anCat=1&cs=6040&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "6040",
-      "published_at": "2026-09-27T09:45:36+03:00",
-      "source_published_at": "27/09/2026 09:45:36"
-    },
-    {
-      "title": "United Mining Industries Company announces, on behalf of Knauf International GmbH (“Knauf”), the latest developments regarding Knauf’s firm intention to make the Tender Offer",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98277&anCat=1&cs=9583&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9583",
-      "published_at": "2026-09-27T09:05:28+03:00",
-      "source_published_at": "27/09/2026 09:05:28"
-    },
-    {
-      "title": "Saudi Arabian Refineries Company (SARCO) announces that Lawazem Industrial Advanced Company– owned by one of its subsidiaries – has signed a contract to execute the works of the Banan Package 1 (BV1) Project",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98276&anCat=1&cs=2030&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2030",
-      "published_at": "2026-09-27T08:38:18+03:00",
-      "source_published_at": "27/09/2026 08:38:18"
-    },
-    {
-      "title": "Tanmiah Food Co. announces signing a Memorandum of Understanding with Tradewinds (M) Berhad (\"TWM\"), a leading Malaysian food company",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98275&anCat=1&cs=2281&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2281",
-      "published_at": "2026-09-27T08:35:10+03:00",
-      "source_published_at": "27/09/2026 08:35:10"
-    },
-    {
-      "title": "WSM for Information Technology Company Announces its intention to launch its public Sukuk offering",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98274&anCat=1&cs=9595&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9595",
-      "published_at": "2026-09-27T08:22:02+03:00",
-      "source_published_at": "27/09/2026 08:22:02"
-    },
-    {
-      "title": "Knowledge tower Trading Company announces to its shareholders the start of electronic voting on the items of the Ordinary General Assembly (first meeting) (reminder announcement)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98273&anCat=1&cs=9551&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9551",
-      "published_at": "2026-09-27T08:18:34+03:00",
-      "source_published_at": "27/09/2026 08:18:34"
-    },
-    {
-      "title": "Allied Cooperative Insurance Group (ACIG) announce receiving the decision from the Insurance Authority to stop the company from issuing comprehensive motor insurance policies while continuing to renew existing policies",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98272&anCat=1&cs=8150&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "8150",
-      "published_at": "2026-09-27T08:04:25+03:00",
-      "source_published_at": "27/09/2026 08:04:25"
-    },
-    {
-      "title": "Alujain Corp. Announces Regarding the End of Assignment of the Acting Chief Executive Officer and the Appointment of a New Chief Executive Officer",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98271&anCat=1&cs=2170&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2170",
-      "published_at": "2026-09-27T08:00:11+03:00",
-      "source_published_at": "27/09/2026 08:00:11"
-    },
-    {
-      "title": "The Saudi Investment Bank announces the start of electronic voting on the Extraordinary General Assembly Meeting Agenda which include the increase of the Bank 's capital (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98270&anCat=1&cs=1030&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1030",
-      "published_at": "2026-09-24T16:06:40+03:00",
-      "source_published_at": "24/09/2026 16:06:40"
-    },
-    {
-      "title": "Canadian Medical Center Company Announces the Latest Developments Regarding the Board of Directors' Recommendation to Increase the Company's Capital by Granting Bonus Shares",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98269&anCat=1&cs=4021&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4021",
-      "published_at": "2026-09-24T15:57:24+03:00",
-      "source_published_at": "24/09/2026 15:57:24"
-    },
-    {
-      "title": "National Gypsum Co.  announces its Interim Financial results for the Period Ending on 2026-06-30 ( Six Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98268&anCat=1&cs=2090&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2090",
-      "published_at": "2026-09-24T15:53:44+03:00",
-      "source_published_at": "24/09/2026 15:53:44"
-    },
-    {
-      "title": "AL Wasatah Al Maliah (Wasatah Capital) Announces the Occurrence of Specific Event to AL AZIZIAH REIT Fund",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98267&anCat=1&cs=4337&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4337",
-      "published_at": "2026-09-24T15:46:33+03:00",
-      "source_published_at": "24/09/2026 15:46:33"
-    },
-    {
-      "title": "Saudi Research and Media Group (SRMG) announces the signing of a contract with the Ministry of Culture for the execution of satellite and digital broadcasting services, and the management and production of media content for Al-Thaqafiya Channel.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98266&anCat=1&cs=4210&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4210",
-      "published_at": "2026-09-24T15:36:21+03:00",
-      "source_published_at": "24/09/2026 15:36:21"
-    },
-    {
-      "title": "United Cooperative Assurance Co. Announces the receipt of a letter from the Insurance Authority suspending the company from issuing or renewing insurance policies for all insurance products including those offered to individuals and the extended warranty product effective 22 September 2026",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98265&anCat=1&cs=8190&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "8190",
-      "published_at": "2026-09-24T09:13:13+03:00",
-      "source_published_at": "24/09/2026 09:13:13"
-    },
-    {
-      "title": "Riyadh Development Company announces the board of director’s decision to distribute cash dividends for First half of 2026",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98264&anCat=1&cs=4150&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4150",
-      "published_at": "2026-09-24T08:41:59+03:00",
-      "source_published_at": "24/09/2026 08:41:59"
-    },
-    {
-      "title": "Riyadh Development Company Announces Board recommendation to buy-back its Shares",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98263&anCat=1&cs=4150&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4150",
-      "published_at": "2026-09-24T08:29:08+03:00",
-      "source_published_at": "24/09/2026 08:29:08"
-    },
-    {
-      "title": "Al Kathiri Holding Company announces the signing of a contract with SA'AF Capital to provide advisory services for strategic review and capital allocation",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98262&anCat=1&cs=3008&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "3008",
-      "published_at": "2026-09-24T08:04:20+03:00",
-      "source_published_at": "24/09/2026 08:04:20"
-    },
-    {
-      "title": "Cherry Trading Co. Announces Project Award with Ministry of Culture",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98261&anCat=1&cs=4265&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "4265",
-      "published_at": "2026-09-24T08:03:40+03:00",
-      "source_published_at": "24/09/2026 08:03:40"
-    },
-    {
-      "title": "Purity for Information Technology Co. Announces the Results of the Extra Ordinary General Assembly’s Meeting, which included approval of the company's capital increase (first meeting).",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98260&anCat=1&cs=9614&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9614",
-      "published_at": "2026-09-24T08:03:11+03:00",
-      "source_published_at": "24/09/2026 08:03:11"
-    },
-    {
-      "title": "Al Ashghal Al Moysra Co. Announces Project Award with Royal Commission for Jubail and Yanbu",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98259&anCat=1&cs=9608&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9608",
-      "published_at": "2026-09-24T08:02:30+03:00",
-      "source_published_at": "24/09/2026 08:02:30"
-    },
-    {
-      "title": "ACWA Power Co. (“Acwa” or the “Company”) announces the start of the Initial Commercial Operation  for the Qassim 1 Combined Cycle Power Plant (CCGT) Project",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98258&anCat=1&cs=2082&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2082",
-      "published_at": "2026-09-24T08:02:10+03:00",
-      "source_published_at": "24/09/2026 08:02:10"
-    },
-    {
-      "title": "East Pipes Integrated Company for Industry Announces Contract Sign Off with Saudi Arabian Oil Co. (Aramco)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98257&anCat=1&cs=1321&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "1321",
-      "published_at": "2026-09-24T08:01:34+03:00",
-      "source_published_at": "24/09/2026 08:01:34"
-    },
-    {
-      "title": "Sport Clubs Company announces the signing of a land lease contract in Jeddah City to establish and operate a sports club under the Body Masters brand",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98256&anCat=1&cs=6018&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "6018",
-      "published_at": "2026-09-24T08:01:09+03:00",
-      "source_published_at": "24/09/2026 08:01:09"
-    },
-    {
-      "title": "Al Ashghal Al Moysra Co. Announces Project Award with Royal Commission for Jubail and Yanbu",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98255&anCat=1&cs=9608&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "9608",
-      "published_at": "2026-09-24T08:00:45+03:00",
-      "source_published_at": "24/09/2026 08:00:45"
-    },
-    {
-      "title": "ACWA Power Co. (“Acwa” or the “Company”) announces the start of the Initial Commercial Operation  for the Taiba 1 Combined Cycle Power Plant (CCGT) Project",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98254&anCat=1&cs=2082&locale=en",
-      "retrieved_at": "2026-09-30T11:11:16Z",
-      "symbol": "2082",
-      "published_at": "2026-09-24T08:00:24+03:00",
-      "source_published_at": "24/09/2026 08:00:24"
     }
   ]
 }
