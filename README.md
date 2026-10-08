@@ -4,6 +4,57 @@ Watches your TASI holdings and watchlist during the trading session (Sun-Thu, 10
 
 It automates your rules. It does not place orders and it is not financial advice. You execute every trade yourself.
 
+The new portfolio workflow is **account foundations only**. Al Rajhi and Al Ahli
+have separate cash, positions, audit history, and statement comparisons. Company
+assessment, signal evaluation, financial-strength criteria, fee assumptions,
+and sizing remain unconfigured; technical levels do not establish a company
+buy/hold/sell case and no trade quantity is proposed in account-book mode.
+
+## Broker account records
+
+Open the cockpit's **Broker accounts** panel. The initial combined view is
+reporting only. Select Al Rajhi or Al Ahli, enter that broker's actual opening
+cash and positions, and provide the snapshot time in Riyadh. Nothing is
+prefilled from config or the old ledger. Leave unknown average costs blank;
+earlier performance is unavailable across an opening snapshot boundary.
+Use only Saudi main-market individual stocks; REITs, funds, and international
+instruments are outside this workflow. There is no Sharia screen.
+
+Record variable deposits, withdrawals, dividends, standalone fees, and trades
+already executed in your broker. Multiple deposits per month are allowed and
+cash carries forward. Enter each fee once: attach it to its trade or record it
+separately. Actual trade fees are required, including an intentional zero.
+Transaction/statement times use Riyadh (+03:00); the server assigns a separate
+audit timestamp. **Preview record** validates cash, positions, history, and
+differences; **Confirm record** is the separate save action. Neither sends an
+order. Use your broker app to verify live prices and actual balances.
+
+To correct an error, select the original event and enter a complete replacement
+or void it with a reason. Originals remain in immutable history. All later
+transactions are replayed; corrections that create historical overspending or
+overselling are rejected. A statement comparison requires a statement time,
+reference, cash, and positions. It reports statement-minus-ledger differences
+without adjusting balances. Corrections after comparison require another check.
+These are manual inputs; broker-file parsing and batch imports are not available.
+
+Every write uses the selected account's revision. Conflicting concurrent writes
+require refresh and another preview, retaining the form draft. An unchanged
+retry uses the same operation ID; changing inputs starts a new operation. Old
+`portfolio_events` remain **unassigned** and are excluded from broker balances;
+no inferred migration assigns them to an account. The new D1 table is additive.
+
+The ledger loads independently of market snapshots. Failed refreshes preserve
+the last account book and its timestamps with a visible notice. Missing quotes
+make value/exposure totals incomplete; unknown cost makes P/L unavailable.
+Combined cash is never available for spending. `/portfolio` and `/budget` report
+accounts separately; old Discord `/bought` and `/sold` commands direct you to
+the cockpit until separately authorized account/fee command registration.
+
+No production migration, deployment, schedule activation, provider change, or
+notification delivery is part of this local implementation. Company policy,
+qualified sizing, concentration warnings, performance methodology, routines,
+broker-file adapters, and live release qualification need follow-on work.
+
 ## What each run does
 
 1. Pulls daily history and a delayed quote for every holding and watchlist name (Yahoo Finance, free).
@@ -241,7 +292,10 @@ already used when a name's price exceeds what's left of the monthly budget.
 
 Config codes are hand-entered, and a wrong code silently resolves to a real but **different** company — e.g. `6015` labeled "Jahez" is actually Americana Restaurants. Each run compares your config name to the company name the data source returns and caches the result in `symbols.json`. A mismatch marks the name **UNVERIFIED**: it is shown but **excluded from BUY and the budget**, and listed in the digest footer so you can fix the code against Tadawul (the authority). Brand-vs-legal-name cases (Avalon Pharma = "Middle East Pharmaceutical Industries") are confirmed once by setting `verified: true` for that code in `symbols.json`.
 
-## Monthly buy budget
+## Legacy monthly buy budget
+
+This section describes legacy payloads/local fallback only. It does not apply
+to the new account book, which has no monthly deposit default or spending cap.
 
 `BUDGET["monthly_budget_sar"]` in `config.py` (default 500) is a hard cap on new-buy spend per calendar month. Each run pools all BUYs, splits the *remaining* monthly budget across them **equally**, and rounds down to whole shares (Tadawul has no fractional shares). Leftover stays cash.
 
@@ -253,7 +307,10 @@ When the cap is reached, a qualifying name still appears with its full reasoning
 
 ### What you own
 
-`config.HOLDINGS` is the **opening balance**, not the running total. Once the ledger has entries it becomes authoritative: shares and weighted average cost are maintained from the buys and sells you record, including topping up a position you already hold. If the ledger cannot be read, the digest falls back to `config.py` — a failed fetch must never read as "you own nothing".
+For legacy local runs, `config.HOLDINGS` is the fallback when no ledger exists.
+Production decision workflows require the authenticated ledger. New account
+books use only their confirmed openings and records; an invalid schema-2 book
+fails visibly and never restores config holdings or legacy spendable cash.
 
 ## Validation (does any of this actually work?)
 

@@ -145,7 +145,9 @@ export function foldPortfolio(events) {
       // hand on every top-up.
       const priorCost = holding.avgCostSar == null ? null : holding.avgCostSar * holding.shares;
       holding.shares += shares;
-      if (priorCost !== null) holding.avgCostSar = round2((priorCost + spend) / holding.shares);
+      // Keep the full cost through later sales; rounding each share's cost
+      // first invents a cent of realised gain on a SAR 100 / 3-share position.
+      if (priorCost !== null) holding.avgCostSar = (priorCost + spend) / holding.shares;
       holdings.set(event.code, holding);
     } else {
       if (shares > holding.shares) throw new Error("sell exceeds confirmed holding.");

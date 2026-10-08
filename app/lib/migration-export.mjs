@@ -1,4 +1,4 @@
-const tables = new Set(['agent_messages', 'agent_reports', 'agent_usage', 'artifact_deliveries', 'dashboard_snapshots', 'movement_alerts', 'portfolio_events', 'top10_proposals']);
+const tables = new Set(['agent_messages', 'agent_reports', 'agent_usage', 'artifact_deliveries', 'dashboard_snapshots', 'movement_alerts', 'portfolio_events', 'portfolio_account_records', 'top10_proposals']);
 
 export async function exportPage(db, table, offset = 0) {
   if (!tables.has(table)) throw new Error('Unknown export table');

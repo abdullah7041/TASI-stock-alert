@@ -101,6 +101,13 @@ test('same-time activity follows original revision order and a Riyadh deposit ke
   assert.throws(()=>foldAccount([openAccount(),{...sale,revision:2},{...buy,revision:3}]),/holding/i);
 });
 
+test('a full sale preserves the entire fee-inclusive cost instead of rounding cost per share first',()=>{
+  const buy=eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:3,priceSar:33,feesSar:1},2);
+  const sale=eventRecord('sale',{kind:'sell',code:'1303',name:'EIC',shares:3,priceSar:50,feesSar:0},3);
+  const account=foldAccount([openAccount(100),buy,sale]);
+  assert.equal(account.realisedSar,50);
+});
+
 test("imports an opening balance without inventing cash contributions or buys", () => {
   const opening = {
     operationId: "opening-config-2026-09-07",
@@ -228,7 +235,7 @@ test("adding to a position blends the cost you actually paid", () => {
   const [holding] = state.holdings;
   assert.equal(holding.shares, 124);
   // (104*12.41 + 20*14.80 + 5) / 124 = 1591.64 / 124 = 12.8358...
-  assert.equal(holding.avgCostSar, 12.84);
+  assert.equal(Math.round(holding.avgCostSar * 100) / 100, 12.84);
 });
 
 test("a contribution may be any positive amount, not only 500", () => {
