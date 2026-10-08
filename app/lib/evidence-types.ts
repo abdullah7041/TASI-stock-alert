@@ -49,6 +49,55 @@ export type PortfolioView = {
   proposal: PortfolioProposal;
 };
 
+export type BrokerAccountId = "al_rajhi" | "al_ahli";
+export type AccountEventPayload = {
+  kind: "opening_balance" | "contribution" | "buy" | "sell" | "withdrawal" | "dividend" | "fee";
+  occurredAt: string;
+  provenance: { source: "manual"; reference?: string };
+  cashSar?: number;
+  holdings?: PortfolioHolding[];
+  code?: string;
+  name?: string;
+  shares?: number;
+  priceSar?: number;
+  feesSar?: number;
+  reason?: string;
+};
+export type AccountRecordInput = { operationId: string } & (
+  | { kind: "event"; payload: AccountEventPayload }
+  | { kind: "correction"; payload: { targetOperationId: string; replacement: AccountEventPayload | null; reason: string } }
+  | { kind: "reconciliation"; payload: { statementAsOf: string; cashSar: number; holdings: Array<{ code: string; shares: number }>; reference: string } }
+);
+export type AccountRecord = AccountRecordInput & { accountId: BrokerAccountId; revision: number; recordedAt: string };
+export type ReconciliationDifference = { field: "cash" | "shares"; code?: string; ledger: number; statement: number; difference: number };
+export type PortfolioAccountView = {
+  accountId: BrokerAccountId;
+  revision: number;
+  initialized: boolean;
+  cashSar: number | null;
+  confirmedAt: string | null;
+  contributionMonth: string | null;
+  holdings: PortfolioHolding[];
+  realizedSar: number | null;
+  lastReconciledAt: string | null;
+  reconciliationStatementAsOf: string | null;
+  reconciliationStatus: "unreconciled" | "matched" | "discrepancy" | "needs_review";
+  discrepancies: ReconciliationDifference[];
+  historyComplete: boolean;
+  quantityBlockers: string[];
+  proposal: null;
+  records: AccountRecord[];
+  error?: string;
+};
+export type PortfolioBook = {
+  schemaVersion: 1;
+  policyStatus: "unconfigured";
+  accounts: PortfolioAccountView[];
+  combined: { cashSar: number | null; complete: boolean; spendable: false; confirmedAt: Array<{ accountId: BrokerAccountId; confirmedAt: string | null }> };
+  legacy: { status: "unassigned"; events: unknown[] };
+};
+export type AccountPreview = { record: AccountRecordInput; expectedRevision: number; projected: PortfolioAccountView; differences: ReconciliationDifference[] };
+
 export type MovementAlert = {
   alertId: string;
   code: string;
