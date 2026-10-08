@@ -133,14 +133,12 @@ test("ingests the delayed market pulse separately and composes it into the cockp
   assert.match(workflow, /--data-binary @market_pulse\.json/);
 });
 
-test("connects explicit approval and trade confirmation controls to their APIs", () => {
+test("connects explicit research approval controls to their API", () => {
   const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
 
-  const details = readFileSync(new URL('../app/components/CockpitDetails.tsx', import.meta.url), 'utf8');
   assert.match(source, /fetch\(['"]\/api\/top10\/approve['"]/);
-  assert.match(details, /fetch\(['"]\/api\/portfolio\/events['"]/);
-  assert.match(details, /Executed shares/);
-  assert.match(details, /Execution price \(SAR\)/);
+  // Trade preview/confirmation is exercised through the rendered account form
+  // in tests/ui/executed-trade.test.tsx, rather than a source-file substring.
 });
 
 test("registers Discord assistant commands and routes them through the copilot service", () => {

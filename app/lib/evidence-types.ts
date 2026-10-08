@@ -80,7 +80,7 @@ export type PortfolioAccountView = {
   confirmedAt: string | null;
   contributionMonth: string | null;
   holdings: PortfolioHolding[];
-  realizedSar: number | null;
+  realisedSar: number | null;
   lastReconciledAt: string | null;
   reconciliationStatementAsOf: string | null;
   reconciliationStatus: "unreconciled" | "matched" | "discrepancy" | "needs_review";

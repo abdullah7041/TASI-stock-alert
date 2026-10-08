@@ -92,6 +92,15 @@ test('preview is read-only and rejects stale revisions and invalid record input'
   assert.throws(()=>accounts.previewAccountRecord(records,'al_rajhi',{...input,payload:{...input.payload,accountId:'al_ahli'}},1),/account|field/i);
 });
 
+test('same-time activity follows original revision order and a Riyadh deposit keeps its local month',()=>{
+  const deposit=eventRecord('deposit',{kind:'contribution',cashSar:40,occurredAt:'2026-10-31T21:30:00Z'},2);
+  assert.equal(foldAccount([openAccount(),deposit]).contributionMonth,'2026-11');
+  const buy=eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:1,priceSar:50,feesSar:0,occurredAt:'2026-10-02T08:00:00Z'},2);
+  const sale=eventRecord('sale',{...buy.payload,kind:'sell'},3);
+  assert.equal(foldAccount([openAccount(),buy,sale]).cashSar,300);
+  assert.throws(()=>foldAccount([openAccount(),{...sale,revision:2},{...buy,revision:3}]),/holding/i);
+});
+
 test("imports an opening balance without inventing cash contributions or buys", () => {
   const opening = {
     operationId: "opening-config-2026-09-07",

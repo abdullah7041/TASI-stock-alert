@@ -8,7 +8,7 @@ function round2(value) {
 }
 
 function wholeShares(value) {
-  if (!Number.isInteger(value) || value <= 0) throw new Error("shares must be positive whole shares.");
+  if (!Number.isSafeInteger(value) || value <= 0) throw new Error("shares must be positive whole shares.");
   return value;
 }
 
@@ -102,8 +102,8 @@ export function foldPortfolio(events) {
       if (!/^\d{4}-\d{2}$/.test(event.month ?? "")) throw new Error("contribution month is required.");
       // Was pinned to exactly 500. That made a month where a different sum went
       // in unrecordable, which is not a rule -- it is the ledger refusing to
-      // describe what happened. The monthly CAP still lives in config.BUDGET and
-      // is enforced where budgets are decided, not here where facts are stored.
+      // describe what happened. Legacy monthly caps live in config.BUDGET;
+      // new broker accounts do not have a configured sizing policy.
       const contributed = event.cashSar;
       if (typeof contributed !== "number" || !Number.isFinite(contributed) || contributed <= 0) {
         throw new Error("contribution must be a positive amount.");
@@ -277,7 +277,7 @@ export function foldAccountRecords(records, accountId) {
   }
   const initialized = effective.length > 0;
   const reconciliationStatus = correctedAfterStatement ? 'needs_review' : lastReconciliation ? discrepancies.length ? 'discrepancy' : 'matched' : 'unreconciled';
-  return {...folded,accountId,revision:own.length,initialized,cashSar:initialized?folded.cashSar:null,confirmedAt:own.at(-1)?.recordedAt??null,
+  return {...folded,accountId,revision:own.length,initialized,cashSar:initialized?folded.cashSar:null,realisedSar:initialized?folded.realisedSar:null,confirmedAt:own.at(-1)?.recordedAt??null,
     lastReconciledAt:own.filter(r=>r.kind==='reconciliation').at(-1)?.recordedAt??null,reconciliationStatementAsOf:lastReconciliation?.statementAsOf??null,
     reconciliationStatus,discrepancies,historyComplete:initialized && !(effective[0].holdings?.length),quantityBlockers:[...(!initialized?['Opening account data is not confirmed.']:[]),...(reconciliationStatus!=='matched'?['Account reconciliation is unresolved.']:[]),sizingPending],proposal:null,records:own};
 }

@@ -4121,3 +4121,16 @@ def test_account_diagnostics_never_allocate_budget_or_record_recommendation_spen
     _, recs, budget = main._collect_recs(include_news=False)
     assert recs and all(r["action"] == "WATCH" and r["sizing"] is None for r in recs)
     assert budget["policyStatus"] == "unconfigured"
+
+
+def test_account_discord_observations_never_describe_a_price_crossing_as_a_sell():
+    """The pending title must not be contradicted by the old explanatory footer."""
+    rec = {"code": "1303", "name": "EIC", "kind": "holding", "price": 10,
+           "action": "WATCH", "policyStatus": "unconfigured", "unrealized_pct": None,
+           "decision": {"label": "Company assessment pending", "reason": "Company policy is not evaluated."},
+           "rules": [{"rule": "stop_level", "available": True, "passed": True}]}
+    from datetime import date
+    embed = nt.build_name_embed(rec, levels={"stop": 11}, today=date(2026, 10, 8))
+    assert "sell level" not in embed["description"]
+    assert "becomes a sell" not in embed["description"]
+    assert "observations" in embed["description"]

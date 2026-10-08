@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { StockDecision } from '@/app/lib/decision-view.mjs';
-import type { PortfolioView } from '@/app/lib/evidence-types';
+import type { PortfolioAccountView } from '@/app/lib/evidence-types';
 import { PriceVolumeChart } from './PriceVolumeChart';
+import {AccountRecordForm} from './PortfolioAccounts';
 import styles from './FriendlyCockpit.module.css';
 
 export function DetailDialog({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}) {
@@ -50,31 +51,6 @@ export function StockDetails({stock}:{stock:StockDecision}) {
   </>;
 }
 
-export function ExecutedTradeForm({portfolio,onSaved}:{portfolio:PortfolioView;onSaved:()=>void}) {
-  const [kind,setKind]=useState('buy'),[code,setCode]=useState(portfolio.proposal?.code??''),[name,setName]=useState('');
-  const [shares,setShares]=useState(''),[price,setPrice]=useState(''),[fees,setFees]=useState('0');
-  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
-  const operation=useRef<string|null>(null);
-  return <form className={styles.tradeForm} onSubmit={async(e)=>{
-    e.preventDefault();if(busy)return;
-    const quantity=Number(shares),priceSar=Number(price),feesSar=Number(fees);
-    if(!Number.isInteger(quantity)||quantity<=0||!Number.isFinite(priceSar)||priceSar<=0||!Number.isFinite(feesSar)||feesSar<0){setMessage('Enter the actual positive share quantity and execution price.');return;}
-    setBusy(true);setMessage('');operation.current??=crypto.randomUUID();
-    try{
-      const response=await fetch('/api/portfolio/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operationId:operation.current,kind,code,name:portfolio.holdings.find(h=>h.code===code)?.name??name,shares:quantity,priceSar,feesSar,confirmedAt:new Date().toISOString(),reason:'Executed trade entered by owner from broker receipt.'})});
-      const body=await response.json();if(!response.ok)throw new Error(body.error??'The trade could not be recorded.');
-      setMessage('Executed trade recorded. No order was sent.');operation.current=null;setShares('');setPrice('');onSaved();
-    }catch(error){setMessage(error instanceof Error?error.message:'Could not record trade.');}finally{setBusy(false);}
-  }}>
-    <p>Enter a trade you have already executed in your broker. This only updates your ledger.</p>
-    <fieldset disabled={busy} onChange={()=>{operation.current=null;}}>
-      <label>Action<select value={kind} onChange={e=>setKind(e.target.value)}><option value="buy">Bought</option><option value="sell">Sold</option></select></label>
-      <label>Stock code<input value={code} onChange={e=>setCode(e.target.value)} required pattern="[0-9]{4}" placeholder="e.g. 1303"/></label>
-      {!portfolio.holdings.some(h=>h.code===code)&&<label>Company name<input value={name} onChange={e=>setName(e.target.value)} required/></label>}
-      <label>Executed shares<input aria-label="Executed shares" type="number" min="1" step="1" value={shares} onChange={e=>setShares(e.target.value)} required/></label>
-      <label>Execution price (SAR)<input aria-label="Execution price (SAR)" type="number" min="0.0001" step="any" value={price} onChange={e=>setPrice(e.target.value)} required/></label>
-      <label>Fees (SAR)<input type="number" min="0" step="any" value={fees} onChange={e=>setFees(e.target.value)} required/></label>
-      <button className={styles.primaryButton} type="submit">{busy?'Saving…':'Record executed trade'}</button>
-    </fieldset><p role="status">{message}</p>
-  </form>;
+export function ExecutedTradeForm({portfolio,onSaved}:{portfolio:PortfolioAccountView;onSaved:()=>void}) {
+  return <AccountRecordForm account={portfolio} onSaved={onSaved} tradeOnly/>;
 }

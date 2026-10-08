@@ -4,6 +4,8 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { ActionCockpit } from '@/app/components/ActionCockpit';
 import type { DashboardPayload } from '@/app/lib/dashboard-types';
 import saved from '../fixtures/friendly-dashboard.json';
+import {buildPortfolioBook} from '@/app/lib/portfolio-core.mjs';
+import type {AccountRecord} from '@/app/lib/evidence-types';
 
 const payload = { snapshot: saved, freshness:'current', alerts:[] } as unknown as DashboardPayload;
 afterEach(()=>{ cleanup();vi.unstubAllGlobals(); });
@@ -25,13 +27,37 @@ test('all holdings are visible on home, details and diagnostics stay one click a
   expect(screen.getByRole('dialog').textContent).toMatch(/no known provider/);
 }, 15_000);
 test('the owner cockpit shows current ledger holdings after a fully recorded sale',async()=>{
-  const live={confirmedAt:'2026-09-07T10:00:00Z',cashSar:42.15,contributionMonth:null,holdings:[{code:'2320',name:'Al-Babtain',shares:2},{code:'8313',name:'Rasan',shares:3}],proposal:null};
+  const live=buildPortfolioBook([{accountId:'al_rajhi',operationId:'open',revision:1,recordedAt:'2026-09-07T10:00:00Z',kind:'event',payload:{kind:'opening_balance',cashSar:42.15,holdings:[{code:'2320',name:'Al-Babtain',shares:2},{code:'8313',name:'Rasan',shares:3}],occurredAt:'2026-09-07T10:00:00Z',provenance:{source:'manual'}}} as AccountRecord],[]);
   vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url==='/api/portfolio'?live:payload)));
   render(<ActionCockpit dashboard={payload}/>);
   const holdings=screen.getByRole('region',{name:'My holdings'});
+  await screen.findByRole('region',{name:'Broker accounts'});
+  await userEvent.selectOptions(screen.getByLabelText('View account'),'al_rajhi');
   expect(await within(holdings).findByText(/42.15 SAR cash/)).toBeTruthy();
   expect(within(holdings).queryByRole('button',{name:/View EIC details/})).toBeNull();
   expect(within(holdings).getByRole('button',{name:/View Rasan details/})).toBeTruthy();
+});
+
+test('account records remain usable when the daily snapshot is unavailable',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>url==='/api/portfolio'?Response.json(buildPortfolioBook([],[])):Response.json({error:'snapshot unavailable'},{status:502})));
+  render(<ActionCockpit dashboard={null}/>);
+  await screen.findByRole('region',{name:'Broker accounts'});
+  expect(screen.getByText('No verified daily snapshot is available.')).toBeTruthy();
+  await userEvent.selectOptions(screen.getByLabelText('View account'),'al_ahli');
+  expect(screen.getByLabelText('Amount (SAR)')).toBeTruthy();
+});
+
+test('a failed refresh retains the last account book and its confirmation time',async()=>{
+  let failed=false;
+  const live=buildPortfolioBook([{accountId:'al_rajhi',operationId:'open',revision:1,recordedAt:'2026-10-08T08:00:00Z',kind:'event',payload:{kind:'opening_balance',cashSar:300,holdings:[],occurredAt:'2026-10-01T08:00:00Z',provenance:{source:'manual'}}} as AccountRecord],[]);
+  vi.stubGlobal('fetch',vi.fn(async(url:string)=>url==='/api/portfolio'?Response.json(failed?{error:'unavailable'}:live,{status:failed?503:200}):Response.json(payload)));
+  render(<ActionCockpit dashboard={payload}/>);
+  const accounts=await screen.findByRole('region',{name:'Broker accounts'});
+  expect(within(accounts).getByText('300.00 SAR cash')).toBeTruthy();
+  failed=true;await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
+  await screen.findByText(/Live portfolio ledger is unavailable/);
+  expect(within(accounts).getByText('300.00 SAR cash')).toBeTruthy();
+  expect(within(accounts).getByText(/Confirmed: 2026-10-08T08:00:00Z/)).toBeTruthy();
 });
 test('unavailable checks are explicit and market date differs from generated time',()=>{
   start();

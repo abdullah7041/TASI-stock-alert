@@ -21,6 +21,7 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
   const records = snapshot.digestRecords ?? [];
   const charts = snapshot.charts ?? [];
   const holdings = livePortfolio?.holdings ?? snapshot.portfolio?.holdings ?? records.filter((r) => r.kind === 'holding');
+  const accountMode = Boolean(livePortfolio?.accountId || livePortfolio?.policyStatus === 'unconfigured' || snapshot.portfolio?.policyStatus === 'unconfigured');
   function stock(identity, owned = false) {
     const record = records.find((r) => r.code === identity.code) ?? {};
     const chart = charts.find((c) => c.code === identity.code);
@@ -30,7 +31,7 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
     const action = String(record.action ?? '').toUpperCase();
     const known = ['HOLD','WATCH','BUY','SELL','SELL (STOP)','SELL (TARGET)','STOP','STOP_LOSS','EXIT','TRIM','TAKE_PROFIT','TARGET'].includes(action);
     const snapshotHolding=snapshot.portfolio?.holdings?.find((h) => h.code === identity.code);
-    const positionChanged=owned && livePortfolio && (!snapshotHolding || snapshotHolding.shares !== identity.shares || snapshotHolding.avgCostSar !== identity.avgCostSar);
+    const positionChanged=owned && livePortfolio && !accountMode && (!snapshotHolding || snapshotHolding.shares !== identity.shares || snapshotHolding.avgCostSar !== identity.avgCostSar);
     const decisionChecksReady = !owned || (Array.isArray(record.rules) && record.rules.length > 0
       && record.rules.every((rule) => rule?.available !== false));
     const chartReady = !owned || (chart?.status === 'available' && bars.length >= 5);
@@ -39,13 +40,14 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
     const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady || !chartReady || quoteStale || positionChanged;
     const stop = ['SELL','SELL (STOP)','STOP','STOP_LOSS','EXIT'].includes(action);
     const profit = ['SELL (TARGET)','TRIM','TAKE_PROFIT','TARGET'].includes(action);
-    const label = unavailable ? 'Insufficient data' : stop ? 'Review stop' : profit ? 'Review profit level' : owned ? 'Hold' : 'Watching';
+    const label = unavailable ? 'Insufficient data' : accountMode ? 'Company assessment pending' : stop ? 'Review stop' : profit ? 'Review profit level' : owned ? 'Hold' : 'Watching';
     const missing = (record.rules ?? []).filter((r) => !r.passed).map(conditionReason);
     const reason = freshness === 'stale' ? 'This is the last successful snapshot. Check current prices before reviewing a decision.'
       : positionChanged ? 'Your position changed since the daily analysis. Wait for a new snapshot before reviewing its levels or profit and loss.'
       : quoteStale ? `This quote (${priceDate}) is older than the expected previous session. Check your broker before reviewing a decision.`
       : !chartReady ? 'Required chart history is unavailable.'
       : unavailable ? 'A verified price or complete rule check is unavailable.'
+      : accountMode ? 'Company assessment and signal evaluation are pending; no trade quantity is proposed.'
       : record.decision?.reason ? record.decision.reason
       : stop ? 'Your protective level was reached in the daily snapshot. Check your broker.'
       : profit ? 'Your profit-taking level was reached in the daily snapshot. Review it in your broker.'
@@ -53,10 +55,10 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
       : missing.join(' ') || reasons(record.reason) || 'Research candidate; confirm the full entry conditions before acting.';
     return { code:identity.code, name:identity.name, owned, label, reason, price: price !== null && price > 0 ? price : null,
       priceDate,
-      dailyChange:finite(record.delta?.price_pct), pnl:positionChanged ? null : finite(record.unrealized_pct),
+      dailyChange:finite(record.delta?.price_pct), pnl:accountMode ? (owned && !unavailable && finite(identity.avgCostSar)>0 ? (price-identity.avgCostSar)/identity.avgCostSar*100 : null) : positionChanged ? null : finite(record.unrealized_pct),
       conditionsMet:finite(record.rules_met), conditionsTotal:finite(record.rules_total),
       missing, chart, record, shares:identity.shares ?? null,
-      needsAttention: !unavailable && (stop || profit), unavailable,
+      needsAttention: !unavailable && !accountMode && (stop || profit), unavailable,
     };
   }
   const holdingViews = holdings.map((h) => stock(h, true)).sort((a,b) => Number(b.needsAttention)-Number(a.needsAttention));

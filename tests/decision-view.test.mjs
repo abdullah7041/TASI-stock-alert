@@ -13,6 +13,16 @@ const snapshot = {
   charts: [{code:'1303',status:'available',bars:Array.from({length:5},()=>({date:'2026-09-03',Close:12})),levels:{stop:9}}],
   leanStatus:{ok:false},
 };
+
+test('account prices use only that broker cost and cannot make a technical crossing actionable',()=>{
+  const current={...snapshot,digestRecords:[{...snapshot.digestRecords[0],action:'SELL (STOP)'}]};
+  const account={accountId:'al_rajhi',holdings:[{code:'1303',name:'EIC',shares:2,avgCostSar:8}]};
+  let stock=buildDecisionView(current,'current',account).holdings[0];
+  assert.equal(stock.label,'Company assessment pending');assert.equal(stock.needsAttention,false);assert.equal(stock.pnl,50);
+  stock=buildDecisionView(current,'current',{...account,holdings:[{...account.holdings[0],avgCostSar:undefined}]}).holdings[0];
+  assert.equal(stock.pnl,null);
+  assert.equal(buildDecisionView(current,'stale',account).holdings[0].label,'Insufficient data');
+});
 test('every holding is visible and absent market data cannot imply Hold', () => {
   const view=buildDecisionView(snapshot,'current');
   assert.equal(view.holdings.length,2);
