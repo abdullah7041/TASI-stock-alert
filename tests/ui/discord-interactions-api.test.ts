@@ -11,6 +11,19 @@ vi.mock("@/app/lib/copilot-service", () => ({
 
 import { POST } from "@/app/api/discord/interactions/route";
 import { answerPortfolioQuestion } from "@/app/lib/copilot-service";
+import {PortfolioStore} from '@/app/lib/portfolio-store';
+import {buildPortfolioBook} from '@/app/lib/portfolio-core.mjs';
+
+test('old Discord trades never write and budget reports separate cash without a cap',async()=>{
+  env.DISCORD_APP_PUBLIC_KEY='00'.repeat(32);env.DISCORD_OWNER_USER_ID='owner';env.PORTFOLIO_OWNER_ID='owner';env.DB={};
+  vi.spyOn(PortfolioStore.prototype,'book').mockResolvedValue(buildPortfolioBook([],[]));
+  const append=vi.spyOn(PortfolioStore.prototype,'appendAccountRecord');
+  const request=(name:string)=>new Request('https://example.test/api/discord/interactions',{method:'POST',body:JSON.stringify({id:'trade',type:2,user:{id:'owner'},data:{name}})});
+  const trade=await (await POST(request('bought'))).json();
+  expect(trade.data.content).toMatch(/cockpit.*broker account/i);expect(append).not.toHaveBeenCalled();
+  const budget=await (await POST(request('budget'))).json();
+  expect(budget.data.content).toMatch(/Al Rajhi.*unconfirmed/);expect(budget.data.content).toMatch(/Al Ahli.*unconfirmed/);expect(budget.data.content).toMatch(/No monthly spending cap/);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

@@ -299,6 +299,25 @@ export function previewAccountRecord(records, accountId, input, expectedRevision
   return {record,expectedRevision,projected,differences:projected.discrepancies};
 }
 
+export function parseAccountEnvelope(value) {
+  fields(value,['accountId','record','expectedRevision']);
+  if (!brokerAccountIds.includes(value.accountId) || !Number.isSafeInteger(value.expectedRevision) || value.expectedRevision < 0) throw new Error('Broker account and expectedRevision are required.');
+  return {accountId:value.accountId,record:normalizeAccountRecordInput(value.record),expectedRevision:value.expectedRevision};
+}
+
+export function parsePortfolioBook(value) {
+  if (!value || value.schemaVersion !== 1 || value.policyStatus !== 'unconfigured' || !Array.isArray(value.accounts) || value.accounts.length !== 2 || value.legacy?.status !== 'unassigned' || !Array.isArray(value.legacy.events) || value.combined?.spendable !== false) throw new Error('Invalid portfolio account book.');
+  const records = value.accounts.flatMap((a,i)=>{
+    if (a.accountId !== brokerAccountIds[i] || !Array.isArray(a.records) || a.records.some(r=>r.accountId!==a.accountId)) throw new Error('Invalid broker account records.');
+    return a.records;
+  });
+  const book = buildPortfolioBook(records,value.legacy.events);
+  for (let i=0;i<2;i++) {
+    if (['revision','initialized','cashSar','confirmedAt','reconciliationStatus'].some(k=>book.accounts[i][k] !== value.accounts[i][k])) throw new Error('Account projection does not match its records.');
+  }
+  return book;
+}
+
 export function proposeMonthlyAction({ cashSar, holdings, approved, materialRisks, evidenceAsOf, priceAsOf }) {
   const risk = materialRisks.find((item) => holdings.some((holding) => holding.code === item.code));
   if (risk) return { action: risk.sharesToSell ? "trim" : "sell", code: risk.code, shares: risk.sharesToSell, reason: risk.reason, evidenceAsOf, priceAsOf, requiresConfirmation: true };

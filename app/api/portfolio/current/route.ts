@@ -10,10 +10,10 @@ export async function GET(request: Request) {
   if (!env.DB || !env.DASHBOARD_INGEST_TOKEN) return Response.json({ error: "Portfolio storage is unavailable." }, { status: 503 });
   if (request.headers.get("authorization") !== `Bearer ${env.DASHBOARD_INGEST_TOKEN}`) return Response.json({ error: "Unauthorized." }, { status: 401 });
   try {
-    // UTC month, to match main._month_key(); main.py ignores spentThisMonthSar
-    // when the month is not the current one, so never back-fill it.
-    const month = new Date().toISOString().slice(0, 7);
-    return Response.json(await new PortfolioStore(env.DB).ledger(month), { headers: { "Cache-Control": "no-store" } });
+    const store = new PortfolioStore(env.DB);
+    const ownerId = await store.soleOwnerId();
+    const book = ownerId ? await store.book(ownerId) : (await import('@/app/lib/portfolio-core.mjs')).buildPortfolioBook([],[]);
+    return Response.json({schemaVersion:2,book,eventCount:book.accounts.reduce((n,a)=>n+a.revision,0)}, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Portfolio is unavailable." }, { status: 502 });
   }

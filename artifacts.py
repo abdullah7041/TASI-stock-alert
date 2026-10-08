@@ -94,6 +94,8 @@ def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict
             "reason": ["No usable daily price history returned for this holding."],
             "unrealized_pct": None,
         })
+    if (snapshot.get("portfolio") or {}).get("policyStatus") == "unconfigured":
+        complete_recs = [{**r, "policyStatus": "unconfigured", "sizing": None} for r in complete_recs]
     records = [decision_record(rec, charts, trade_date=snapshot.get("tradeDate"))
                for rec in complete_recs]
     unavailable_codes = {
@@ -175,6 +177,8 @@ def decision_record(rec: dict, charts: list[dict], *, trade_date: str | None = N
         label, reason = "Insufficient data", "Required chart history is unavailable."
     elif price is None or price <= 0 or rec.get("verified") is False or not known or not rules_ready:
         label, reason = "Insufficient data", "A verified price or complete rule check is unavailable."
+    elif rec.get("policyStatus") == "unconfigured":
+        label, reason = "Company assessment pending", "Company policy is not evaluated. Technical observations do not establish a buy, hold, or sell case."
     elif action == "SELL (STOP)":
         label, reason = "Review stop", "Your protective level was reached in the daily snapshot. Check your broker."
     elif action in {"SELL (TARGET)", "TRIM"}:

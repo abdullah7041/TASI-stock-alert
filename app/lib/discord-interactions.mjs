@@ -26,16 +26,6 @@ export function interactionOption(options, name) {
   return optionValue(options, name);
 }
 
-function positiveWhole(value) {
-  const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
-}
-
-function positiveNumber(value) {
-  const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
-}
-
 export function parseDiscordInteraction(interaction) {
   if (interaction?.type === 1) return { kind: "ping" };
   if (interaction?.type !== 2 || typeof interaction.id !== "string" || !interaction.id || !interaction.data || typeof interaction.data.name !== "string") return { kind: "unknown", message: "Unsupported interaction. No ledger record was created." };
@@ -55,13 +45,7 @@ export function parseDiscordInteraction(interaction) {
     return { kind: "decide", id: `discord:${interaction.id}`, draft: { symbol, action, conditions, invalidation } };
   }
   if (command !== "bought" && command !== "sold") return { kind: "unknown", message: "That command is unavailable. No ledger record was created." };
-  const code = String(optionValue(interaction.data.options, "code") ?? "").trim();
-  const shares = positiveWhole(optionValue(interaction.data.options, "shares"));
-  const priceSar = positiveNumber(optionValue(interaction.data.options, "price"));
-  if (!/^\d{4}$/.test(code)) return { kind: "invalid", message: "Use a four-digit TASI stock code. No ledger record was created." };
-  if (shares === null) return { kind: "invalid", message: "Shares must be positive whole shares. No ledger record was created." };
-  if (priceSar === null) return { kind: "invalid", message: "Price must be a positive SAR value. No ledger record was created." };
-  return { kind: "record", operationId: `discord:${interaction.id}`, event: { kind: command === "bought" ? "buy" : "sell", code, shares, priceSar } };
+  return {kind:'invalid',message:'Record executed trades in the cockpit: choose a broker account, actual fees, and preview before confirming. No ledger record was created.'};
 }
 
 export function discordMessage(content) {

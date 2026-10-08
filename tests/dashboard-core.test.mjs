@@ -3,6 +3,18 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { dashboardFreshness, parseDashboardSnapshot } from "../app/lib/dashboard-core.mjs";
 import { dashboardSnapshotKey, dashboardSnapshotReadKeys } from "../app/lib/dashboard-storage-core.mjs";
+import {buildPortfolioBook} from '../app/lib/portfolio-core.mjs';
+
+test('an unconfigured account artifact preserves unknown cash and rejects a broken new book',()=>{
+  const raw=JSON.parse(readFileSync(new URL('../dashboard.json',import.meta.url),'utf8'));
+  raw.monthlyBudgetSar=null;
+  raw.portfolio={...raw.portfolio,cashSar:null,policyStatus:'unconfigured',accountBook:buildPortfolioBook([],[])};
+  const parsed=parseDashboardSnapshot(raw);
+  assert.equal(parsed.portfolio.policyStatus,'unconfigured');assert.equal(parsed.portfolio.cashSar,null);
+  assert.equal(parsed.portfolio.accountBook.accounts[0].cashSar,null);
+  raw.portfolio.accountBook.accounts[0].cashSar=999;
+  assert.throws(()=>parseDashboardSnapshot(raw),/projection/i);
+});
 
 const validSnapshot = {
   schemaVersion: 1,

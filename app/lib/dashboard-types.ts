@@ -17,7 +17,7 @@ export type DashboardSnapshot = {
   changed: Array<{ code: string; name: string; status: string; reason: string }>;
   qualified: Candidate[];
   researchCount: number;
-  monthlyBudgetSar: number;
+  monthlyBudgetSar: number | null;
 };
 
 export type DashboardSnapshotV2 = Omit<DashboardSnapshot, "schemaVersion"> & {

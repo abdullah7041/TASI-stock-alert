@@ -43,10 +43,12 @@ export type PortfolioProposal = {
 
 export type PortfolioView = {
   confirmedAt: string;
-  cashSar: number;
+  cashSar: number | null;
   contributionMonth: string | null;
   holdings: PortfolioHolding[];
   proposal: PortfolioProposal;
+  policyStatus?: "unconfigured";
+  accountBook?: PortfolioBook;
 };
 
 export type BrokerAccountId = "al_rajhi" | "al_ahli";

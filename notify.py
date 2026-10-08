@@ -263,7 +263,9 @@ def build_message(recs: list, header: str, quote_note: str = "",
         parts.append("No actionable levels hit this run.")
     else:
         parts += [format_recommendation(r) for r in recs]
-    if budget is not None:
+    if budget is not None and budget.get("policyStatus") == "unconfigured":
+        parts.append("Company decisions pending. Sizing policy and fee assumptions are not configured.")
+    elif budget is not None:
         parts.append(
             f"**Budget** (cap {budget.get('monthly_cap')} SAR/month): "
             f"{budget['allocated']} SAR allocated this run out of {budget['budget']} SAR "
@@ -629,7 +631,7 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
         recs = artifact["digestRecords"]
         regime = artifact["regime"]
         trade_date = artifact["tradeDate"]
-        budget = {"monthly_cap": artifact.get("monthlyBudgetSar")}
+        budget = {"monthly_cap": artifact.get("monthlyBudgetSar"), "policyStatus": (artifact.get("portfolio") or {}).get("policyStatus")}
         warnings = artifact.get("warnings") or []
         early_movers = artifact.get("earlyMovers") or []
         index_unavailable = bool(artifact.get("indexUnavailable"))
@@ -650,7 +652,9 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
         f"[Open TASI Action Cockpit]({COCKPIT_URL})",
         "**Data:** delayed daily bars (free tier)",
     ]
-    if budget:
+    if budget and budget.get("policyStatus") == "unconfigured":
+        header_lines.append("**Decisions pending:** company policy and sizing are unconfigured; technical observations only.")
+    elif budget:
         header_lines.append(
             f"**Budget:** {budget.get('allocated', 0)} SAR allocated of "
             f"{budget.get('budget', 0)} SAR remaining "

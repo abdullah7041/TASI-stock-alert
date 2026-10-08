@@ -1,4 +1,5 @@
 import { resolveAlertName } from "./alert-names.mjs";
+import {parsePortfolioBook} from './portfolio-core.mjs';
 
 const RIYADH = "Asia/Riyadh";
 
@@ -99,7 +100,7 @@ export function parseDashboardSnapshot(value) {
     changed,
     qualified,
     researchCount: number(value, "researchCount"),
-    monthlyBudgetSar: number(value, "monthlyBudgetSar"),
+    monthlyBudgetSar: value.portfolio?.policyStatus === 'unconfigured' && value.monthlyBudgetSar === null ? null : number(value, "monthlyBudgetSar"),
   };
   if (value.schemaVersion === 1) return common;
   const sourceStamp = (item) => ({
@@ -147,7 +148,7 @@ export function parseDashboardSnapshot(value) {
   const parsedV2 = {
     ...common, schemaVersion: 2, summary: list(value.summary, "summary").map((line) => text({ line }, "line")),
     top10: { proposalId: text(top10, "proposalId"), status: enumValue(top10.status, "top10.status", ["draft", "approved", "rejected"]), researchedAt: timestamp(top10.researchedAt, "top10.researchedAt"), entries },
-    portfolio: { confirmedAt: timestamp(portfolio.confirmedAt, "portfolio.confirmedAt"), cashSar: nonNegative(portfolio, "cashSar"), contributionMonth: portfolio.contributionMonth === null ? null : text(portfolio, "contributionMonth"), holdings: list(portfolio.holdings, "portfolio.holdings").map((holding) => ({ code: text(holding, "code"), name: text(holding, "name"), shares: nonNegative(holding, "shares"), ...(typeof holding.avgCostSar === "number" ? { avgCostSar: nonNegative(holding, "avgCostSar") } : {}) })), proposal: portfolio.proposal === null ? null : portfolio.proposal },
+    portfolio: { confirmedAt: timestamp(portfolio.confirmedAt, "portfolio.confirmedAt"), cashSar: portfolio.policyStatus === 'unconfigured' && portfolio.cashSar === null ? null : nonNegative(portfolio, "cashSar"), contributionMonth: portfolio.contributionMonth === null ? null : text(portfolio, "contributionMonth"), holdings: list(portfolio.holdings, "portfolio.holdings").map((holding) => ({ code: text(holding, "code"), name: text(holding, "name"), shares: nonNegative(holding, "shares"), ...(typeof holding.avgCostSar === "number" ? { avgCostSar: nonNegative(holding, "avgCostSar") } : {}) })), proposal: portfolio.proposal === null ? null : portfolio.proposal, ...(portfolio.policyStatus === 'unconfigured'?{policyStatus:'unconfigured',accountBook:parsePortfolioBook(portfolio.accountBook)}:{}) },
     ...(summaryV1 ? { summaryV1 } : {}), alerts, forecast: parsedForecast,
   };
   if (value.schemaVersion === 2) return parsedV2;
