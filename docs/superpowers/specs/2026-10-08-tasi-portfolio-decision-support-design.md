@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-08, Asia/Riyadh
 
-**Status:** Written specification awaiting user review. The approach and four design sections were approved in conversation; this document and an implementation plan have not been approved.
+**Status:** Written specification approved by the user's “Implement” instruction on 2026-10-08. Implementation planning is the current stage; the written implementation plan still requires review before execution.
 
 **Source conversation:** `01a10d71-a147-71a0-ab0d-d8ae699affd5` and its new-chat handoff.
 
@@ -152,7 +152,7 @@ These are accepted open decisions, not blank fields to fill with guessed default
 | Practical loss tolerance | User assessment when needed for a proposed risk-dependent policy | No numerical drawdown limit, stop-loss policy, or tolerance claim |
 | Delivery times | User-selected Riyadh times and cadence settings | Do not activate or change schedules on the basis of this document |
 
-The agreed scope is ready for written review; the full investment-decision engine is not implementation-ready. After written-spec approval, planning can detail account foundations and explicitly unconfigured states. Resolve only the open decisions needed by the slice being planned before finalizing its dependent behavior. A broker parser or actionable sizing/rule slice needs its additional inputs and review first.
+The written scope is approved; the full investment-decision engine is not implementation-ready. Planning can detail account foundations and explicitly unconfigured states. Resolve only the open decisions needed by the slice being planned before finalizing its dependent behavior. A broker parser or actionable sizing/rule slice needs its additional inputs and review first.
 
 ## 8. Verification and acceptance
 
@@ -175,4 +175,4 @@ Run applicable checks from `AGENTS.md` for implementation: Python compile and do
 
 The selected delivery order remains: independent reconciled accounts → aligned holding/selling and account-specific sizing → review routines and observation-only evaluation. This is a design sequence, not the written implementation plan or an execution approval.
 
-Current work is limited to writing and reviewing this specification. No product code, machine-written state, market validation, provider configuration, publication flag, ingestion, Discord delivery, scheduler, or deployment is changed. Written-spec approval permits the `writing-plans` stage; the user then reviews the implementation plan and selects execution before implementation begins.
+Current authorization permits implementation planning following written-spec approval. No product code, machine-written state, market validation, provider configuration, publication flag, ingestion, Discord delivery, scheduler, or deployment has been changed by this documentation work. The user reviews the written implementation plan and selects execution before implementation begins.
