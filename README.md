@@ -55,6 +55,12 @@ notification delivery is part of this local implementation. Company policy,
 qualified sizing, concentration warnings, performance methodology, routines,
 broker-file adapters, and live release qualification need follow-on work.
 
+The account-foundations branch has completed independent review and local
+release checks. See the [verification record](docs/research/2026-10-08-tasi-portfolio-foundations-verification.md)
+and [deployment commands and targets](docs/research/2026-10-09-tasi-foundations-deployment-readiness.md).
+The configured website is the Cloudflare cockpit that shares its ledger with
+Discord; the separate legacy ChatGPT Site is outside this release.
+
 ## What each run does
 
 1. Pulls daily history and a delayed quote for every holding and watchlist name (Yahoo Finance, free).

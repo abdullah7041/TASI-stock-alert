@@ -28,10 +28,10 @@ notification smoke tests, scheduled runs, production writes or deployments.
 |---|---|
 | `rtk npm ci` | Passed; no dependency changes |
 | `rtk python -m compileall -q main.py movement.py session_gate.py runtime research` | Passed |
-| `rtk python -m pytest test_core.py test_alert_names.py test_runtime.py research/test_base_rate.py -q` | 391 passed after the review fixes |
+| Expanded current CI/release Python suite, including `research/test_entry_forecast.py`, `test_event_study.py`, `test_official_sources.py`, `test_company_evidence.py`, and `test_top10.py` | 431 passed; this includes all AGENTS checks |
 | `rtk npm run lint` | Passed |
 | `rtk npm run typecheck` | Passed |
-| `rtk npm test` | Passed: build, 156 Node tests, 69 UI tests in 14 files; no unhandled errors reported |
+| Final `npm test` through Task 5 completion command | Passed: build, 156 Node tests and 75 UI tests in 14 files; no unhandled errors reported |
 | `rtk git diff --check` | Passed |
 | Offline producer → JS parser | Passed twice after fixes: healthy 300/400 accounts and a damaged Al Rajhi account beside healthy Al Ahli; nullable combined cash, account error/revision, known/unknown cost, pending assessment and pending summary survived parsing |
 
@@ -53,10 +53,17 @@ rerun checks for unhandled errors as well as passing assertions.
 The executed-trade retry check now uses the explicit `Retry confirmation` label
 after an unavailable response; it still asserts the unchanged operation ID.
 
+An intermediate lint run scanned generated dry-run JavaScript inside the plan's
+scratch directory and failed there. That generated output was removed; retained
+release bundles now live under the already-ignored `dist/` directory. An
+intermediate concurrent full run also had UI timeouts. The final complete run
+passed without changing test timeouts or production behavior for those failures.
+
 ## Review regression evidence
 
-The reviewer supplied concrete findings before its usage-limit interruption.
-Each confirmed defect was reproduced before its fix in one grouped local pass:
+The initial reviewer supplied concrete findings before its usage-limit interruption.
+A fresh independent reviewer completed the whole-change review on 2026-10-09.
+Each confirmed defect was reproduced before its fix in a grouped local pass:
 
 | Guarantee | Observed RED | GREEN evidence |
 |---|---|---|
@@ -69,6 +76,10 @@ Each confirmed defect was reproduced before its fix in one grouped local pass:
 | Pending policy preserves diagnostics history | Account-mode return skipped deltas, streaks and history writes | Producer test retains history while forbidding allocation/spend writes |
 | Missing-price warnings use current holdings | Old config holdings were reported missing despite complete current-account data | Same producer test requires no false warning |
 | Account P/L depends on the quote and own cost | Missing chart/rules hid supported P/L | Decision-view test retains P/L with a verified dated quote; stale/undated prices remain unavailable |
+| Discord reports combined cash honestly | Combined reporting cash absent from `/portfolio` and `/budget` | Owner API tests cover SAR 700 and incomplete cash, with no spending pool |
+| Discord can verify a signed actorless PING | Owner check rejected a valid PING with 403 | Signed PING/PONG, other-user rejection and invalid-signature rejection tests |
+| A committed save remains retryable after readback failure | Actual SQLite insert committed, but the route returned 400 | API returns generic 503 for operational failure, real store exact retry remains revision 1, rendered form retries identical envelope after refresh |
+| Combined company exposure aggregates brokers | One company appeared twice at 40% and 60% | Rendered combined view shows its full SAR 50 exposure at 100% |
 
 Focused checks passed: 27 core tests, 11 decision-view tests, 27 UI/store tests,
 and both targeted Python cases. The combined-total precision regression also
@@ -94,23 +105,55 @@ individually supported account.
   combined reporting total exceeds that range. Cost if wrong: supporting larger
   values requires an explicit decimal representation rather than native numbers.
 
-- Keep the independent-review gate open and retain its local scratch evidence.
-  The fresh reviewer stopped at a usage limit before a final graded verdict;
-  author-run regression checks cannot supply that verdict. Cost if wrong:
-  further independent findings may remain before integration.
+- The earlier ruling kept independent review open after its usage limit instead
+  of substituting author checks. That limitation is now resolved by a fresh,
+  complete review. Cost of the original ruling was an additional review pass.
+
+- Keep company suitability, entry and selling policy pending. The reviewer
+  declined these investment choices because they are outside the approved
+  slice. Cost: the foundations release cannot qualify a company or trade signal.
+
+- Keep sizing, fee assumptions and concentration thresholds unconfigured.
+  Reviewed policy choices are still required. Cost: no suggested quantities or
+  policy-based concentration warnings in this release.
+
+- Defer portfolio return methodology and review routines to their approved
+  follow-on plan. The account history supports later work but does not select
+  a return formula or delivery cadence. Cost: neither is supplied here.
+
+- Keep broker-file parsers and batch imports deferred until real examples and
+  their mapping contract exist. Manual records are the agreed first scope.
+  Cost: account setup and statement comparison require manual entry.
+
+- Use the configured Cloudflare cockpit as the release website. Live read-only
+  GitHub variables and Discord configuration point to its machine gateway, so
+  producer and Discord use the same cockpit D1. The separate legacy ChatGPT
+  Site has its own database and no agreed synchronization contract. Cost:
+  this release does not update or synchronize that legacy Site.
+
+- Keep live deployment, delivery qualification and real balances unverified
+  until the release is explicitly executed. Dry runs and synthetic tests cannot
+  prove deployed credentials match or broker data is correct. Cost: authorized
+  deployment and owner smoke checks remain release operations, not code work.
 
 ## Deferred minors
 
-- Discord portfolio/budget text shows independent broker balances but omits a
-  combined reporting cash total. The cockpit supplies that labelled total.
+None. The earlier Discord combined-cash minor and the fresh review's
+combined-exposure minor are both fixed with observed RED-to-GREEN regressions.
 
 ## Review and release boundary
 
-Independent whole-change review was dispatched on the fresh review context.
-It returned the concrete findings addressed above, then stopped at a usage limit
-before delivering final severity grades or a complete verdict. No clean-review
-claim is made, and Task 5's review checkbox remains open. The partial review
-package and scratch evidence are retained locally; no second reviewer was run.
+Fresh independent whole-change review completed against `781ab64..9a5a83f`.
+It reported no Critical findings, one Important operational-save ambiguity,
+and one Minor combined-exposure presentation issue. Its 62 bounded offline
+checks passed, and its verdict was ready to merge/deploy after the Important
+fix and regression checks. Both findings are fixed in `a7ed8d2`, with 12/12
+focused API/store/form checks, 30/30 core/Discord parser checks, lint and
+typecheck passing. As required by the execution method, tests verify the fixes;
+there is no author-substituted verdict or repeat review loop.
+
+The complete release preparation and exact deployment commands are recorded
+in [the deployment record](2026-10-09-tasi-foundations-deployment-readiness.md).
 
 The original checkout remains on `codex/tasi-portfolio-decision-support-spec`.
 Its pre-existing changes remain untouched: `top10_draft.json`, `AGENTS.md`,

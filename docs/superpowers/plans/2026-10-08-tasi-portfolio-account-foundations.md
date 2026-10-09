@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-08-tasi-portfolio-decision-support-design.md`, approved on 2026-10-08.
 
-**Status:** Native execution approved on 2026-10-08. Tasks 1-4 implemented and verified. Task 5 documentation and local verification are complete; independent review returned concrete findings but stopped at a usage limit before its final verdict. Confirmed findings have regression fixes. The independent-review gate remains open.
+**Status:** Native execution approved on 2026-10-08. Tasks 1-5 complete on 2026-10-09. Fresh independent review completed; every confirmed Important and Minor finding has an observed RED-to-GREEN regression fix. Final full verification passed: 431 Python, 156 Node and 75 UI tests, lint, typecheck, compile and patch integrity. Production packaging dry runs passed; no external release action was performed.
 
 ## Scope and sequence
 
@@ -186,13 +186,9 @@ test('a combined view requires an explicit broker before recording activity', ()
 - [x] **2. Run the documented Python checks:** `rtk pip install -r requirements.txt` if needed; `rtk python -m compileall -q main.py movement.py session_gate.py runtime research`; `rtk python -m pytest test_core.py test_alert_names.py test_runtime.py research/test_base_rate.py -q`.
 - [x] **3. Run the documented web checks:** `rtk npm ci` if needed; `rtk npm run lint`; `rtk npm run typecheck`; `rtk npm test`; `rtk git diff --check`. `npm test` builds first. Record complete exit summaries; if the bundled/runtime environment needs an adjustment, report it instead of treating a partial run as success.
 - [x] **4. Review offline scenarios** with synthetic account data: two account openings, two deposits in one month, buy and sale with fees, withdrawal, dividend, exact retry, conflicting retry, historical correction, discrepancy then matched statement, missing market snapshot, and unavailable broker quote. Run no network-backed market collection or notification smoke test.
-- [ ] **5. Obtain the selected method's code review**, fix actionable findings, and rerun only checks justified by those changes. Verify staged paths and commit documentation. Report account foundations implemented only; list the remaining spec sections below. Do not merge, push, migrate production D1, or deploy without separate authorization.
+- [x] **5. Obtain the selected method's code review**, fix actionable findings, and rerun only checks justified by those changes. Verify staged paths and commit documentation. Report account foundations implemented only; list the remaining spec sections below. Do not merge, push, migrate production D1, or deploy without separate authorization.
 
-  Review dispatched to a fresh reviewer against `781ab64..9a44c5b`.
-  Its arithmetic, date, storage isolation, refresh, and producer-history findings
-  were reproduced and fixed in one local pass. It hit a usage limit before
-  delivering a complete graded review. This checkbox remains open to distinguish
-  passing local verification from a completed independent review.
+  Fresh independent whole-change review completed against 781ab64..9a5a83f: no Critical findings, one Important save-readback error classification and one Minor combined-exposure display issue. Both were reproduced and fixed in 7ed8d2; the full build/test suite and targeted regressions passed. Discord combined cash and signed actorless PING are also verified. See the verification and deployment-readiness records for the complete evidence and rulings.
 
 ## Coverage and remaining decisions
 
