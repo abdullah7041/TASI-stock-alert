@@ -22,7 +22,14 @@ export class PortfolioStore {
     await this.ensureReady();
     const query = this.db.prepare(`SELECT * FROM portfolio_account_records WHERE owner_id = ?${accountId ? ' AND account_id = ?' : ''} ORDER BY account_id,revision`);
     const rows = await query.bind(...(accountId ? [ownerId,accountId] : [ownerId])).all<AccountRow>();
-    return rows.results.map(r => ({...normalizeAccountRecordInput({operationId:r.operation_id,kind:r.record_kind,payload:JSON.parse(r.payload_json)}),accountId:r.account_id,revision:r.revision,recordedAt:r.recorded_at}));
+    return rows.results.map(r => {
+      let payload: unknown;
+      try { payload=JSON.parse(r.payload_json); }
+      catch { payload={unreadablePayload:r.payload_json}; }
+      // Stored data is untrusted. The account fold validates it independently,
+      // so one damaged broker remains visible without blocking the other.
+      return {operationId:r.operation_id,kind:r.record_kind,payload,accountId:r.account_id,revision:r.revision,recordedAt:r.recorded_at} as AccountRecord;
+    });
   }
   async book(ownerId: string) { return buildPortfolioBook(await this.accountRecords(ownerId),await this.events(ownerId)); }
   async preview(ownerId: string, accountId: BrokerAccountId, input: AccountRecordInput, expectedRevision: number) {

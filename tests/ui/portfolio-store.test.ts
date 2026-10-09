@@ -53,6 +53,14 @@ describe('account storage',()=>{
     expect((await store.book('old')).accounts[0].initialized).toBe(false);
     await expect(store.soleOwnerId()).rejects.toThrow(/owner/i);
     sqlite.prepare("UPDATE portfolio_account_records SET payload_json = 'broken' WHERE operation_id='open'").run();
-    await expect(store.book('new')).rejects.toThrow(/JSON/i);
+    const broken=await store.book('new');
+    expect(broken.accounts[0].error).toMatch(/verified/i);
+    expect(broken.accounts[0].revision).toBe(1);
+    expect(broken.accounts[0].cashSar).toBeNull();
+    const healthy=await store.appendAccountRecord('new','al_ahli',opening('healthy',400),0);
+    expect(healthy.accounts[0].error).toMatch(/verified/i);
+    expect(healthy.accounts[1].cashSar).toBe(400);
+    expect(healthy.combined.cashSar).toBeNull();
+    expect((await store.appendAccountRecord('new','al_ahli',opening('healthy',400),0)).accounts[1].revision).toBe(1);
   });
 });

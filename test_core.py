@@ -4114,13 +4114,42 @@ def test_account_diagnostics_never_allocate_budget_or_record_recommendation_spen
     monkeypatch.setattr(main, "_verify_symbols", lambda names: {})
     monkeypatch.setattr(main.discl, "fetch_all", lambda: ([], False))
     monkeypatch.setattr(main, "_load", lambda *a: {})
+    monkeypatch.setattr(main, "_today", lambda: "2026-10-08")
+    saved = []
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.append((path, value)))
     def forbidden(*a, **kw):
         raise AssertionError("Sizing must remain inactive")
     monkeypatch.setattr(main.az, "allocate_budget", forbidden)
     monkeypatch.setattr(main, "_budget_record", forbidden)
-    _, recs, budget = main._collect_recs(include_news=False)
+    _, recs, budget = main._collect_recs(include_news=False, record_history=True)
     assert recs and all(r["action"] == "WATCH" and r["sizing"] is None for r in recs)
     assert budget["policyStatus"] == "unconfigured"
+    assert all("delta" in r and "trend_streak" in r for r in recs)
+    assert saved and saved[0][0] == main.HISTORY_FILE
+    assert main._DATA_WARNING is None
+
+
+def test_a_partial_account_error_keeps_healthy_account_data_without_legacy_fallback(monkeypatch):
+    """An unavailable broker must not erase the other broker or become empty cash."""
+    broken = {"accountId": "al_rajhi", "initialized": False, "revision": 1,
+              "cashSar": None, "holdings": [], "confirmedAt": None,
+              "error": "Account records could not be verified."}
+    healthy = {"accountId": "al_ahli", "initialized": True, "revision": 1,
+               "cashSar": 400, "holdings": [{"code": "1303", "name": "EIC", "shares": 2}],
+               "confirmedAt": "2026-10-08T08:00:00Z"}
+    payload = {"schemaVersion": 2, "eventCount": 2, "book": {
+        "schemaVersion": 1, "policyStatus": "unconfigured", "accounts": [broken, healthy]}}
+    assert main.validate_account_book(payload) == payload["book"]
+    monkeypatch.setattr(main, "_portfolio_ledger", lambda: payload)
+    assert main._holdings()[0]["shares"] == 2
+    snapshot = main._dashboard_snapshot("SIDEWAYS", [], {}, None,
+        as_of="2026-10-08T08:00:00Z", top10={"entries": []})
+    assert snapshot["portfolio"]["cashSar"] is None
+    assert snapshot["portfolio"]["accountBook"]["accounts"][0]["error"]
+    assert any("al_rajhi" in warning for warning in snapshot["warnings"])
+    broken["initialized"] = True
+    with pytest.raises(RuntimeError, match="projection"):
+        main.validate_account_book(payload)
 
 
 def test_account_discord_observations_never_describe_a_price_crossing_as_a_sell():

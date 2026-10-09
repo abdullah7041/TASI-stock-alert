@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Candidate, DashboardPayload } from '@/app/lib/dashboard-types';
 import type { PortfolioBook, BrokerAccountId } from '@/app/lib/evidence-types';
-import {parsePortfolioBook} from '@/app/lib/portfolio-core.mjs';
+import {buildPortfolioBook,parsePortfolioBook} from '@/app/lib/portfolio-core.mjs';
 import {PortfolioAccounts} from './PortfolioAccounts';
 import { buildDecisionView } from '@/app/lib/decision-view.mjs';
 import type { StockDecision } from '@/app/lib/decision-view.mjs';
@@ -58,7 +58,8 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
       ]);
       if(ledgerResult.status==='fulfilled'){
         const nextBook=ledgerResult.value;
-        setBook(current=>current&&nextBook.accounts.some((a,i)=>a.revision<current.accounts[i].revision)?current:nextBook);
+        setBook(current=>current?buildPortfolioBook(nextBook.accounts.flatMap((a,i)=>
+          !a.error&&a.revision<current.accounts[i].revision?current.accounts[i].records:a.records),nextBook.legacy.events):nextBook);
         setLedgerError(false);
       }else setLedgerError(true);
       if(dashboardResult.status==='rejected')throw new Error('Snapshot unavailable');

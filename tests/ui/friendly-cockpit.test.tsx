@@ -59,6 +59,26 @@ test('a failed refresh retains the last account book and its confirmation time',
   expect(within(accounts).getByText('300.00 SAR cash')).toBeTruthy();
   expect(within(accounts).getByText(/Confirmed: 2026-10-08T08:00:00Z/)).toBeTruthy();
 });
+
+test('a partial error refresh exposes the damaged broker and advances the healthy broker',async()=>{
+ const opening=(accountId:'al_rajhi'|'al_ahli',cashSar:number):AccountRecord=>({accountId,operationId:accountId,revision:1,recordedAt:'2026-10-08T08:00:00Z',kind:'event',payload:{kind:'opening_balance',cashSar,holdings:[],occurredAt:'2026-10-01T08:00:00Z',provenance:{source:'manual'}}});
+ const records=[opening('al_rajhi',300),opening('al_ahli',400)];
+ let live=buildPortfolioBook(records,[]);
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url==='/api/portfolio'?live:payload)));
+ render(<ActionCockpit dashboard={payload}/>);
+ const region=await screen.findByRole('region',{name:'Broker accounts'});
+ expect(within(region).getByText('300.00 SAR cash')).toBeTruthy();
+ live=buildPortfolioBook([{...records[0],payload:null} as unknown as AccountRecord,records[1],{...records[1],operationId:'deposit',revision:2,kind:'event',payload:{kind:'contribution',cashSar:40,occurredAt:'2026-10-02T08:00:00Z',provenance:{source:'manual'}}}],[]);
+ await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
+ await within(region).findByText(/Account records could not be verified/);
+ expect(within(region).getByText('440.00 SAR cash')).toBeTruthy();
+ await userEvent.selectOptions(screen.getByLabelText('View account'),'al_rajhi');
+ expect(screen.queryByRole('button',{name:'Preview record'})).toBeNull();
+ live=buildPortfolioBook(records,[]);
+ await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
+ await within(region).findByText('300.00 SAR cash');
+ expect(within(region).getByText('440.00 SAR cash')).toBeTruthy();
+});
 test('unavailable checks are explicit and market date differs from generated time',()=>{
   start();
   expect(screen.getByText('Some checks unavailable')).toBeTruthy();

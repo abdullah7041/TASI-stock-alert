@@ -21,7 +21,7 @@ test('previews explicit account, actual fees and Riyadh time before confirmation
  const preview=JSON.parse(fetcher.mock.calls[0][1].body);expect(preview.accountId).toBe('al_rajhi');expect(preview.expectedRevision).toBe(0);
  expect(preview.record.payload.feesSar).toBe(0);expect(preview.record.payload.occurredAt).toBe('2026-10-31T21:30:00.000Z');
  await userEvent.click(screen.getByRole('button',{name:'Confirm record'}));await screen.findByText('Retry later');
- await userEvent.click(screen.getByRole('button',{name:'Confirm record'}));await waitFor(()=>expect(onSaved).toHaveBeenCalledTimes(1));
+ await userEvent.click(screen.getByRole('button',{name:'Retry confirmation'}));await waitFor(()=>expect(onSaved).toHaveBeenCalledTimes(1));
  expect(JSON.parse(fetcher.mock.calls[1][1].body).record.operationId).toBe(preview.record.operationId);
  expect(JSON.parse(fetcher.mock.calls[2][1].body).record.operationId).toBe(preview.record.operationId);
 },20000);

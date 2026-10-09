@@ -1,10 +1,15 @@
 function finitePositive(value, field) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) throw new Error(`${field} must be positive.`);
+  return supportedMoney(value);
+}
+
+function supportedMoney(value) {
+  if (!Number.isSafeInteger(Math.round(value * 100))) throw new Error('Amount exceeds safe native monetary precision.');
   return value;
 }
 
 function round2(value) {
-  return Math.round(value * 100) / 100;
+  return Math.round(supportedMoney(value) * 100) / 100;
 }
 
 function wholeShares(value) {
@@ -80,7 +85,7 @@ export function foldPortfolio(events) {
     if (event.kind === "opening_balance") {
       if (index !== 0 || openingSeen) throw new Error("Opening balance must be the first and only opening balance.");
       if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) throw new Error("Opening cash must not be negative.");
-      cashSar = event.cashSar;
+      cashSar = supportedMoney(event.cashSar);
       openingSeen = true;
       continue;
     }
@@ -88,6 +93,7 @@ export function foldPortfolio(events) {
       if (!openingSeen || regularEventSeen) throw new Error("Opening positions must immediately follow the opening balance.");
       if (typeof event.code !== "string" || !event.code || typeof event.name !== "string" || !event.name) throw new Error("symbol identity is required.");
       if (holdings.has(event.code)) throw new Error("Duplicate holding in opening balance.");
+      if (event.priceSar != null) supportedMoney(wholeShares(event.shares) * finitePositive(event.priceSar, 'priceSar'));
       holdings.set(event.code, {
         code: event.code,
         name: event.name,
@@ -109,33 +115,35 @@ export function foldPortfolio(events) {
         throw new Error("contribution must be a positive amount.");
       }
       contributions.add(event.month);
-      cashSar += contributed;
+      cashSar = supportedMoney(cashSar + contributed);
       continue;
     }
     if (["withdrawal", "dividend", "fee"].includes(event.kind)) {
       const amount = finitePositive(event.cashSar, "amount");
       const change = event.kind === "dividend" ? amount : -amount;
       if (cashSar + change < -1e-9) throw new Error("activity exceeds confirmed cash.");
-      cashSar += change;
+      cashSar = supportedMoney(cashSar + change);
       continue;
     }
     if (event.kind === "cash_adjustment") {
       if (typeof event.reason !== "string" || !event.reason.trim()) throw new Error("cash adjustment reason is required.");
       if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar)) throw new Error("cash adjustment is required.");
       if (cashSar + event.cashSar < -1e-9) throw new Error("cash adjustment exceeds confirmed cash.");
-      cashSar += event.cashSar;
+      cashSar = supportedMoney(cashSar + event.cashSar);
       continue;
     }
     if (!["buy", "sell"].includes(event.kind)) throw new Error("event kind is invalid.");
     if (typeof event.code !== "string" || !event.code || typeof event.name !== "string" || !event.name) throw new Error("symbol identity is required.");
     const shares = wholeShares(event.shares);
     const priceSar = finitePositive(event.priceSar, "priceSar");
+    const gross = supportedMoney(shares * priceSar);
     const feesSar = event.feesSar ?? 0;
     if (typeof feesSar !== "number" || !Number.isFinite(feesSar) || feesSar < 0) throw new Error("feesSar must not be negative.");
+    supportedMoney(feesSar);
     const holding = holdings.get(event.code)
       ?? { code: event.code, name: event.name, shares: 0, avgCostSar: 0, realisedSar: realised.get(event.code) ?? 0 };
     if (event.kind === "buy") {
-      const spend = shares * priceSar + feesSar;
+      const spend = supportedMoney(gross + feesSar);
       if (spend > cashSar + 1e-9) throw new Error("buy exceeds confirmed cash.");
       cashSar -= spend;
       // Weighted average cost, fees included because they are part of what the
@@ -144,14 +152,14 @@ export function foldPortfolio(events) {
       // which is why config.py carried a hand-maintained avg_cost, recomputed by
       // hand on every top-up.
       const priorCost = holding.avgCostSar == null ? null : holding.avgCostSar * holding.shares;
-      holding.shares += shares;
+      holding.shares = wholeShares(holding.shares + shares);
       // Keep the full cost through later sales; rounding each share's cost
       // first invents a cent of realised gain on a SAR 100 / 3-share position.
-      if (priorCost !== null) holding.avgCostSar = (priorCost + spend) / holding.shares;
+      if (priorCost !== null) holding.avgCostSar = supportedMoney(priorCost + spend) / holding.shares;
       holdings.set(event.code, holding);
     } else {
       if (shares > holding.shares) throw new Error("sell exceeds confirmed holding.");
-      const proceeds = shares * priceSar - feesSar;
+      const proceeds = supportedMoney(gross - feesSar);
       if (cashSar + proceeds < -1e-9) throw new Error("sale fees exceed confirmed cash and proceeds.");
       // Average cost is unchanged by a sale: selling part of a position does not
       // alter what the remainder cost. The gain is booked in `realised`, which
@@ -159,14 +167,14 @@ export function foldPortfolio(events) {
       // holding -- and booking it on the holding meant the realised gain was
       // dropped in exactly the case this comment claimed it survived.
       const priorRealised = realised.has(event.code) ? realised.get(event.code) : 0;
-      realised.set(event.code, holding.avgCostSar == null || priorRealised === null ? null : round2(priorRealised + proceeds - shares * holding.avgCostSar));
+      realised.set(event.code, holding.avgCostSar == null || priorRealised === null ? null : supportedMoney(priorRealised + proceeds - shares * holding.avgCostSar));
       holding.realisedSar = realised.get(event.code);
       holding.shares -= shares;
-      cashSar += proceeds;
+      cashSar = supportedMoney(cashSar + proceeds);
       if (holding.shares === 0) holdings.delete(event.code); else holdings.set(event.code, holding);
     }
   }
-  return { cashSar: Math.round(cashSar * 100) / 100, holdings: [...holdings.values()].sort((a, b) => a.code.localeCompare(b.code)), realisedSar: [...realised.values()].includes(null) ? null : round2([...realised.values()].reduce((total, value) => total + value, 0)), realisedByCode: Object.fromEntries([...realised.entries()].sort(([a], [b]) => a.localeCompare(b))), contributionMonth: contributions.size ? [...contributions].sort().at(-1) : null, confirmedAt };
+  return { cashSar: round2(cashSar), holdings: [...holdings.values()].map(h=>({...h,realisedSar:h.realisedSar===null?null:round2(h.realisedSar)})).sort((a, b) => a.code.localeCompare(b.code)), realisedSar: [...realised.values()].includes(null) ? null : round2([...realised.values()].reduce((total, value) => total + value, 0)), realisedByCode: Object.fromEntries([...realised.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([code,value])=>[code,value===null?null:round2(value)])), contributionMonth: contributions.size ? [...contributions].sort().at(-1) : null, confirmedAt };
 }
 
 export const brokerAccountIds = ['al_rajhi', 'al_ahli'];
@@ -178,8 +186,12 @@ function textValue(value, field) {
   return value.trim();
 }
 function instant(value) {
-  if (typeof value !== 'string' || !/(Z|[+-]\d{2}:\d{2})$/i.test(value)) throw new Error('A timestamp with timezone is required.');
-  return canonicalTimestamp(value);
+  const parts = typeof value === 'string' && value.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/i);
+  if (!parts) throw new Error('An ISO timestamp with timezone is required.');
+  const normalized = canonicalTimestamp(value);
+  // Date.parse rolls February 30 and 24:00 into another day; reject that input.
+  if (canonicalTimestamp(`${parts[1]}${parts[2] ?? ''}Z`).slice(0,19) !== parts[1]) throw new Error('Invalid calendar date in timestamp.');
+  return normalized;
 }
 function fields(value, allowed) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !allowed.includes(k))) throw new Error('Unexpected record field or account assignment.');
@@ -197,6 +209,7 @@ function normalizedEvent(payload) {
   if (['buy','sell'].includes(kind)) {
     if (!/^\d{4}$/.test(payload.code)) throw new Error('A four-digit stock code is required.');
     if (typeof payload.feesSar !== 'number' || !Number.isFinite(payload.feesSar) || payload.feesSar < 0) throw new Error('Actual feesSar is required, including zero.');
+    supportedMoney(payload.feesSar);
     Object.assign(result, {code:payload.code,name:textValue(payload.name,'name'),shares:wholeShares(payload.shares),priceSar:finitePositive(payload.priceSar,'priceSar'),feesSar:payload.feesSar});
   } else {
     if (kind === 'opening_balance' && payload.cashSar === 0) result.cashSar = 0;
@@ -226,6 +239,7 @@ export function normalizeAccountRecordInput(input) {
     fields(input.payload,['statementAsOf','cashSar','holdings','reference']);
     const p = input.payload;
     if (typeof p.cashSar !== 'number' || !Number.isFinite(p.cashSar) || p.cashSar < 0 || !Array.isArray(p.holdings)) throw new Error('Statement cash and holdings are required.');
+    supportedMoney(p.cashSar);
     const codes = new Set();
     const holdings = p.holdings.map(h => {
       fields(h,['code','shares']);
@@ -287,10 +301,14 @@ export function foldAccountRecords(records, accountId) {
 export function buildPortfolioBook(records, legacyEvents) {
   const accounts = brokerAccountIds.map(id=>{
     try { return foldAccountRecords(records,id); }
-    catch { return {...foldAccountRecords([],id),error:'Account records could not be verified.',records:records.filter(r=>r.accountId===id)}; }
+    catch {
+      const own=records.filter(r=>r.accountId===id);
+      return {...foldAccountRecords([],id),revision:own.length,error:'Account records could not be verified.',records:own};
+    }
   });
-  const complete = accounts.every(a=>a.initialized&&!a.error);
-  return {schemaVersion:1,policyStatus:'unconfigured',accounts,combined:{cashSar:complete?round2(accounts.reduce((n,a)=>n+a.cashSar,0)):null,complete,spendable:false,confirmedAt:accounts.map(a=>({accountId:a.accountId,confirmedAt:a.confirmedAt}))},legacy:{status:'unassigned',events:legacyEvents}};
+  const total = accounts.reduce((n,a)=>n+(a.cashSar??0),0);
+  const complete = accounts.every(a=>a.initialized&&!a.error) && Number.isSafeInteger(Math.round(total*100));
+  return {schemaVersion:1,policyStatus:'unconfigured',accounts,combined:{cashSar:complete?round2(total):null,complete,spendable:false,confirmedAt:accounts.map(a=>({accountId:a.accountId,confirmedAt:a.confirmedAt}))},legacy:{status:'unassigned',events:legacyEvents}};
 }
 
 export function previewAccountRecord(records, accountId, input, expectedRevision) {

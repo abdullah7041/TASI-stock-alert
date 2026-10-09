@@ -16,11 +16,12 @@ export function AccountRecordForm({account,onSaved,tradeOnly=false}:{account:Por
   const [rows,setRows]=useState<HoldingRow[]>([]),[target,setTarget]=useState(''),[reason,setReason]=useState(''),[voided,setVoided]=useState(false);
   const [preview,setPreview]=useState<{envelope:{accountId:BrokerAccountId;record:AccountRecordInput;expectedRevision:number};result:AccountPreview}|null>(null);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
+  const [saveUncertain,setSaveUncertain]=useState(false);
   const operation=useRef<string|null>(null);
   const kind=activity==='correction'?eventKind:activity;
   const trade=kind==='buy'||kind==='sell';
   const positions=kind==='opening_balance'||activity==='reconciliation';
-  function invalidate(){operation.current=null;setPreview(null);setMessage('');}
+  function invalidate(){operation.current=null;setPreview(null);setSaveUncertain(false);setMessage('');}
   function eventPayload():AccountEventPayload {
     const occurredAt=new Date(`${time}+03:00`).toISOString();
     const base={kind:kind as AccountEventPayload['kind'],occurredAt,provenance:{source:'manual' as const,...(reference.trim()?{reference:reference.trim()}:{})}};
@@ -40,14 +41,15 @@ export function AccountRecordForm({account,onSaved,tradeOnly=false}:{account:Por
         envelope={accountId:account.accountId,record,expectedRevision:account.revision};
       }
       if(!envelope)throw new Error('Preview the record first.');
+      if(confirm)setSaveUncertain(true);
       const response=await fetch(`/api/portfolio/${confirm?'events':'preview'}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(envelope)});
       const body=await response.json();
-      if(!response.ok){if(response.status===409){setPreview(null);onSaved();}throw new Error(body.error??'The account record could not be saved.');}
-      if(confirm){setPreview(null);operation.current=null;setAmount('');setShares('');setPrice('');setFees('');setTime('');setRows([]);setMessage('Account record confirmed. No order was sent.');onSaved();}
+      if(!response.ok){if(response.status<500)setSaveUncertain(false);if(response.status===409){setPreview(null);onSaved();}throw new Error(body.error??'The account record could not be saved.');}
+      if(confirm){setPreview(null);setSaveUncertain(false);operation.current=null;setAmount('');setShares('');setPrice('');setFees('');setTime('');setRows([]);setMessage('Account record confirmed. No order was sent.');onSaved();}
       else setPreview({envelope,result:body});
     } catch(e){setMessage(e instanceof Error?e.message:'Account request failed.');}finally{setBusy(false);}
   }
-  const readyPreview=preview&&preview.envelope.expectedRevision===account.revision;
+  const readyPreview=preview&&(preview.envelope.expectedRevision===account.revision||saveUncertain);
   return <form className={styles.tradeForm} onSubmit={e=>{e.preventDefault();void submit(false);}}>
     <p>{brokerName(account.accountId)} · Record only activity already completed in your broker. Saudi main-market individual stocks only.</p>
     <fieldset disabled={busy||Boolean(account.error)} onChange={invalidate}>
@@ -61,10 +63,10 @@ export function AccountRecordForm({account,onSaved,tradeOnly=false}:{account:Por
         <label>{activity==='reconciliation'?'Statement reference':'Receipt reference (optional)'}<input value={reference} onChange={e=>setReference(e.target.value)} required={activity==='reconciliation'}/></label>
         {positions&&<div><p>{activity==='reconciliation'?'Statement positions':'Opening positions'} · Leave empty for no holdings. Unknown cost stays blank.</p>{rows.map((h,i)=><div className={styles.accountRow} key={i}>{(['code',...(activity==='reconciliation'?[]:['name']),'shares',...(activity==='reconciliation'?[]:['avgCostSar'])] as (keyof HoldingRow)[]).map(field=><label key={field}>{field} {i+1}<input value={h[field]} type={field==='shares'||field==='avgCostSar'?'number':'text'} min={field==='shares'?'1':'0.0001'} step={field==='shares'?'1':'any'} pattern={field==='code'?'[0-9]{4}':undefined} required={field!=='avgCostSar'} onChange={e=>setRows(rows.map((row,j)=>i===j?{...row,[field]:e.target.value}:row))}/></label>)}<button type="button" onClick={()=>{invalidate();setRows(rows.filter((_,j)=>i!==j));}}>Remove position {i+1}</button></div>)}<button type="button" onClick={()=>{invalidate();setRows([...rows,emptyRow()]);}}>Add position</button></div>}
       </>}
-      <button className={styles.primaryButton} type="submit">{busy?'Checking…':'Preview record'}</button>
+      <button className={styles.primaryButton} type="submit" disabled={saveUncertain}>{busy?'Checking…':'Preview record'}</button>
     </fieldset>
     {preview&&!readyPreview&&<p role="status">Account revision changed. Preview again before confirmation.</p>}
-    {readyPreview&&<section aria-label="Record preview"><h3>Preview · {brokerName(account.accountId)}</h3><p>Cash before {money(account.cashSar)} → after {money(preview.result.projected.cashSar)}</p><p>Holdings before: {account.holdings.map(h=>`${h.code}: ${h.shares}`).join(', ')||'none'}. After: {preview.result.projected.holdings.map(h=>`${h.code}: ${h.shares}`).join(', ')||'none'}.</p>{trade&&<p>Actual trade fees: {fees} SAR</p>}<p>{preview.result.projected.discrepancies.map(d=>`${d.code??d.field}: statement minus ledger ${d.difference}`).join('; ')||'No statement discrepancies in this projection.'}</p><details><summary>Record details</summary><pre>{JSON.stringify(preview.envelope.record,null,2)}</pre></details><button className={styles.primaryButton} type="button" disabled={busy} onClick={()=>void submit(true)}>Confirm record</button></section>}
+    {readyPreview&&<section aria-label="Record preview"><h3>Preview · {brokerName(account.accountId)}</h3>{saveUncertain?<p>Confirmation response unavailable. Retry the same record; it will only be recorded once.</p>:<><p>Cash before {money(account.cashSar)} → after {money(preview.result.projected.cashSar)}</p><p>Holdings before: {account.holdings.map(h=>`${h.code}: ${h.shares}`).join(', ')||'none'}. After: {preview.result.projected.holdings.map(h=>`${h.code}: ${h.shares}`).join(', ')||'none'}.</p>{trade&&<p>Actual trade fees: {fees} SAR</p>}<p>{preview.result.projected.discrepancies.map(d=>`${d.code??d.field}: statement minus ledger ${d.difference}`).join('; ')||'No statement discrepancies in this projection.'}</p></>}<details><summary>Record details</summary><pre>{JSON.stringify(preview.envelope.record,null,2)}</pre></details><button className={styles.primaryButton} type="button" disabled={busy||Boolean(account.error)} onClick={()=>void submit(true)}>{saveUncertain?'Retry confirmation':'Confirm record'}</button></section>}
     <p role="status">{message}</p>
   </form>;
 }
@@ -81,7 +83,7 @@ export function PortfolioAccounts({book,accountId,onAccountChange,onSaved,prices
     <label>View account<select value={accountId??''} onChange={e=>onAccountChange((e.target.value||null) as BrokerAccountId|null)}><option value="">Combined reporting</option><option value="al_rajhi">Al Rajhi</option><option value="al_ahli">Al Ahli</option></select></label>
     <p>Holding value: {valueComplete?money(total):'incomplete; quotes or account openings unavailable'}. {valued.filter(v=>v.quote).map(v=>`${v.holding.code}: ${money(v.holding.shares*v.quote!.price)} (${v.quote!.asOf})${valueComplete&&total>0?` · ${(v.holding.shares*v.quote!.price/total*100).toFixed(1)}% of holding value`:''}`).join('; ')}</p>
     <p>Sizing policy and fee assumptions are not configured.</p>
-    {account?<><AccountRecordForm key={account.accountId} account={account} onSaved={onSaved}/><details><summary>{brokerName(account.accountId)} immutable history ({account.records.length})</summary>{account.records.map(r=><article key={r.operationId}><p>Revision {r.revision} · recorded {r.recordedAt} · {r.operationId}</p><pre>{JSON.stringify(r,null,2)}</pre></article>)}</details></>:<p>Select a broker account to record activity.</p>}
+    {account?<>{!account.error&&<AccountRecordForm key={account.accountId} account={account} onSaved={onSaved}/>}<details><summary>{brokerName(account.accountId)} immutable history ({account.records.length})</summary>{account.records.map(r=><article key={r.operationId}><p>Revision {r.revision} · recorded {r.recordedAt} · {r.operationId}</p><pre>{JSON.stringify(r,null,2)}</pre></article>)}</details></>:<p>Select a broker account to record activity.</p>}
     <details><summary>Unassigned legacy history ({book.legacy.events.length})</summary><p>These records have no confirmed broker assignment and are excluded from account balances.</p><pre>{JSON.stringify(book.legacy.events,null,2)}</pre></details>
   </section>;
 }

@@ -27,3 +27,21 @@ test('a revision conflict retains the draft, requires another preview, and chang
  await userEvent.type(screen.getByLabelText('Amount (SAR)'),'1');await userEvent.click(screen.getByRole('button',{name:'Preview record'}));await screen.findByRole('button',{name:'Confirm record'});
  expect(JSON.parse(fetcher.mock.calls[0][1].body).record.operationId).not.toBe(JSON.parse(fetcher.mock.calls[2][1].body).record.operationId);
 },20000);
+
+test('an ambiguous save can retry the exact operation after a refresh advances the revision',async()=>{
+ const book=buildPortfolioBook(records,[]);
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json({projected:{...book.accounts[0],cashSar:340}}))
+ .mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce(Response.json({}));
+ vi.stubGlobal('fetch',fetcher);
+ const props={accountId:'al_rajhi' as const,onAccountChange:()=>{},onSaved:()=>{}};
+ const view=render(<PortfolioAccounts book={book} {...props}/>);
+ await userEvent.type(screen.getByLabelText('Amount (SAR)'),'40');
+ fireEvent.change(screen.getByLabelText('Transaction time (Riyadh)'),{target:{value:'2026-10-08T12:00'}});
+ await userEvent.click(screen.getByRole('button',{name:'Preview record'}));
+ await userEvent.click(await screen.findByRole('button',{name:'Confirm record'}));
+ await screen.findByText('Response lost');
+ view.rerender(<PortfolioAccounts book={{...book,accounts:[{...book.accounts[0],revision:2,cashSar:340},book.accounts[1]]}} {...props}/>);
+ await userEvent.click(screen.getByRole('button',{name:'Retry confirmation'}));
+ await screen.findByText('Account record confirmed. No order was sent.');
+ expect(fetcher.mock.calls[2][1].body).toBe(fetcher.mock.calls[1][1].body);
+},20000);

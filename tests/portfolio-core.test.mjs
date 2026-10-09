@@ -108,6 +108,47 @@ test('a full sale preserves the entire fee-inclusive cost instead of rounding co
   assert.equal(account.realisedSar,50);
 });
 
+test('split sales preserve the same realised gain as one full sale',()=>{
+  const buy=eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:3,priceSar:33,feesSar:1},2);
+  const sales=[3,4,5].map(revision=>eventRecord(`sale-${revision}`,{kind:'sell',code:'1303',name:'EIC',shares:1,priceSar:50,feesSar:0},revision));
+  const account=foldAccount([openAccount(100),buy,...sales]);
+  assert.equal(account.realisedSar,50);
+  assert.equal(account.realisedByCode['1303'],50);
+});
+
+test('account timestamps reject impossible dates instead of moving activity into another day',()=>{
+  for(const occurredAt of ['2026-02-30T08:00:00Z','2026-04-31T12:00:00+03:00','2026-10-01T24:00:00Z']) {
+    assert.throws(()=>foldAccount([eventRecord('open',{kind:'opening_balance',cashSar:0,holdings:[],occurredAt})]),/timestamp|date/i);
+  }
+  assert.equal(foldAccount([eventRecord('open',{kind:'opening_balance',cashSar:0,holdings:[],occurredAt:'2024-02-29T12:00:00+03:00'})]).initialized,true);
+});
+
+test('account projections reject amounts and accumulated totals outside safe native precision',()=>{
+  assert.throws(()=>foldAccount([openAccount(1e308)]),/precision|amount|range/i);
+  assert.throws(()=>foldAccount([openAccount(8e13),eventRecord('deposit',{kind:'contribution',cashSar:8e13},2)]),/precision|amount|range/i);
+  assert.throws(()=>foldAccount([openAccount(0,[{code:'1303',name:'EIC',shares:2,avgCostSar:8e13}])]),/precision|amount|range/i);
+  assert.throws(()=>foldAccount([openAccount(100,[{code:'1303',name:'EIC',shares:Number.MAX_SAFE_INTEGER}]),eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:1,priceSar:1,feesSar:0},2)]),/shares/i);
+  assert.throws(()=>foldAccount([openAccount(0,[{code:'1303',name:'EIC',shares:2}]),eventRecord('sale',{kind:'sell',code:'1303',name:'EIC',shares:2,priceSar:5e13,feesSar:2e13},2)]),/precision|amount|range/i);
+});
+
+test('a damaged account retains its audit revision and survives parsing beside a healthy account',()=>{
+  const records=[{...openAccount(),payload:null},openAccount(400,[],'al_ahli')];
+  const book=accounts.buildPortfolioBook(records,[]);
+  assert.equal(book.accounts[0].revision,1);
+  assert.equal(book.accounts[0].initialized,false);
+  assert.ok(book.accounts[0].error);
+  assert.equal(book.accounts[1].cashSar,400);
+  assert.equal(book.combined.cashSar,null);
+  assert.deepEqual(accounts.parsePortfolioBook(JSON.parse(JSON.stringify(book))),book);
+});
+
+test('an unrepresentable combined total never hides individually supported broker balances',()=>{
+  const book=accounts.buildPortfolioBook([openAccount(8e13),openAccount(8e13,[],'al_ahli')],[]);
+  assert.deepEqual(book.accounts.map(a=>a.cashSar),[8e13,8e13]);
+  assert.equal(book.combined.cashSar,null);
+  assert.equal(book.combined.complete,false);
+});
+
 test("imports an opening balance without inventing cash contributions or buys", () => {
   const opening = {
     operationId: "opening-config-2026-09-07",

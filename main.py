@@ -147,7 +147,10 @@ def validate_account_book(value: dict) -> dict:
     def amount(n):
         return type(n) in (int, float) and math.isfinite(n) and n >= 0
     for account in accounts:
-        if (account.get("error") or type(account.get("initialized")) is not bool
+        if (type(account.get("initialized")) is not bool
+                or (account.get("error") is not None and (
+                    not isinstance(account["error"], str) or not account["error"].strip()
+                    or account.get("initialized") or account.get("confirmedAt") is not None))
                 or type(account.get("revision")) is not int or account["revision"] < 0
                 or not isinstance(account.get("holdings"), list)
                 or (account["initialized"] and (not amount(account.get("cashSar")) or not artifacts.timestamp_or_none(account.get("confirmedAt"))))
@@ -489,10 +492,13 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     if book is not None:
         accounts = book["accounts"]
         complete = all(a["initialized"] for a in accounts)
+        total_cash = sum(a["cashSar"] for a in accounts) if complete else None
+        warnings.extend(f"Broker account {a['accountId']} unavailable: {a['error']}"
+                        for a in accounts if a.get("error"))
         snapshot["monthlyBudgetSar"] = None
         snapshot["urgent"] = []
         snapshot["portfolio"].update(policyStatus="unconfigured", accountBook=book,
-            cashSar=round(sum(a["cashSar"] for a in accounts), 2) if complete else None)
+            cashSar=round(total_cash, 2) if total_cash is not None and total_cash*100 <= 2**53-1 else None)
     if top10_review is not None:
         snapshot["top10Review"] = top10_review
     snapshot["summaryV1"] = build_summary_v1(snapshot, scheduled_for=scheduled_for)
@@ -638,7 +644,7 @@ def _collect_recs(include_news: bool, record_history: bool = False,
     # The index has its own warning above; this covers the tradeable names.
     global _DATA_WARNING
     _DATA_WARNING = None
-    tradeable = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST]
+    tradeable = [x["code"] for x in _holdings() + cfg.WATCHLIST]
     missing = [c for c in tradeable
                if hist.get(c) is None or hist[c].empty]
     if missing:
@@ -713,14 +719,14 @@ def _collect_recs(include_news: bool, record_history: bool = False,
             unverified.append((w["code"], w["name"], v.get("yahoo_name", "")))
         recs.append(rec)
 
-    if (_portfolio_ledger() or {}).get("book") is not None:
+    account_mode = (_portfolio_ledger() or {}).get("book") is not None
+    if account_mode:
         for rec in recs:
             rec["technicalAction"] = rec["action"]
             rec["action"] = "WATCH"
             rec["policyStatus"] = "unconfigured"
             rec["sizing"] = None
             rec["reason"].insert(0, "Company policy is not evaluated; technical observations only.")
-        return regime, recs, {"policyStatus": "unconfigured", "unverified": unverified}
 
     if record_history:
         snapshot_history = _load(HISTORY_FILE, {})
@@ -732,6 +738,9 @@ def _collect_recs(include_news: bool, record_history: bool = False,
                                                           "trend", snap["trend"])
             snapshot_history = histmod.record_snapshot(snapshot_history, rec["code"], today, snap)
         _save(HISTORY_FILE, snapshot_history)
+
+    if account_mode:
+        return regime, recs, {"policyStatus": "unconfigured", "unverified": unverified}
 
     # Pool all BUYs (verified only — unverified were re-tagged above) and size
     # them from what is left of this month's budget.

@@ -37,6 +37,7 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
     const chartReady = !owned || (chart?.status === 'available' && bars.length >= 5);
     const priceDate=record.priceDate ?? latest?.date ?? null;
     const quoteStale=owned && Boolean(priceDate) && priceDate < previousTradingDate(snapshot.tradeDate);
+    const quoteReady=price!==null&&price>0&&Boolean(priceDate)&&record.verified!==false&&freshness!=='stale'&&!quoteStale;
     const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady || !chartReady || quoteStale || positionChanged;
     const stop = ['SELL','SELL (STOP)','STOP','STOP_LOSS','EXIT'].includes(action);
     const profit = ['SELL (TARGET)','TRIM','TAKE_PROFIT','TARGET'].includes(action);
@@ -55,7 +56,7 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
       : missing.join(' ') || reasons(record.reason) || 'Research candidate; confirm the full entry conditions before acting.';
     return { code:identity.code, name:identity.name, owned, label, reason, price: price !== null && price > 0 ? price : null,
       priceDate,
-      dailyChange:finite(record.delta?.price_pct), pnl:accountMode ? (owned && !unavailable && finite(identity.avgCostSar)>0 ? (price-identity.avgCostSar)/identity.avgCostSar*100 : null) : positionChanged ? null : finite(record.unrealized_pct),
+      dailyChange:finite(record.delta?.price_pct), pnl:accountMode ? (owned && quoteReady && finite(identity.avgCostSar)>0 ? (price-identity.avgCostSar)/identity.avgCostSar*100 : null) : positionChanged ? null : finite(record.unrealized_pct),
       conditionsMet:finite(record.rules_met), conditionsTotal:finite(record.rules_total),
       missing, chart, record, shares:identity.shares ?? null,
       needsAttention: !unavailable && !accountMode && (stop || profit), unavailable,

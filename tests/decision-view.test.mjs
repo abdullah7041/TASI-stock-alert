@@ -23,6 +23,17 @@ test('account prices use only that broker cost and cannot make a technical cross
   assert.equal(stock.pnl,null);
   assert.equal(buildDecisionView(current,'stale',account).holdings[0].label,'Insufficient data');
 });
+
+test('account profit and loss needs a usable dated quote rather than complete technical diagnostics',()=>{
+  const account={accountId:'al_rajhi',holdings:[{code:'1303',name:'EIC',shares:2,avgCostSar:8}]};
+  const partial={...snapshot,charts:[],digestRecords:[{...snapshot.digestRecords[0],priceDate:'2026-09-03',rules:[]}]};
+  const stock=buildDecisionView(partial,'current',account).holdings[0];
+  assert.equal(stock.label,'Insufficient data');
+  assert.equal(stock.pnl,50);
+  assert.equal(buildDecisionView(partial,'stale',account).holdings[0].pnl,null);
+  const undated={...partial,digestRecords:[{...partial.digestRecords[0],priceDate:undefined}]};
+  assert.equal(buildDecisionView(undated,'current',account).holdings[0].pnl,null);
+});
 test('every holding is visible and absent market data cannot imply Hold', () => {
   const view=buildDecisionView(snapshot,'current');
   assert.equal(view.holdings.length,2);
