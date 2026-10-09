@@ -1,8 +1,11 @@
-import { DatabaseSync } from 'node:sqlite';
+import { createRequire } from 'node:module';
 import { describe, it, expect, vi } from 'vitest';
 import type { D1Database } from 'cloudflare:workers';
 import { PortfolioStore } from '@/app/lib/portfolio-store';
 import type { AccountRecordInput } from '@/app/lib/evidence-types';
+
+// Node 22 omits experimental sqlite from builtinModules; avoid Vite's DOM bundler.
+const {DatabaseSync}=createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 
 function database() {
   const sqlite = new DatabaseSync(':memory:');
