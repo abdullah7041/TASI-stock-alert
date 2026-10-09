@@ -10,7 +10,7 @@ function reply(content: string, status = 200) {
 }
 
 function portfolioLine(book: PortfolioBook) {
-  return book.accounts.map(a=>`${a.accountId === 'al_rajhi'?'Al Rajhi':'Al Ahli'}: ${a.error?'records unavailable':a.initialized?`${a.cashSar?.toFixed(2)} SAR cash; ${a.holdings.map(h=>`${h.code}: ${h.shares} shares`).join(', ')||'no confirmed holdings'}`:'opening unconfirmed'}; reconciliation ${a.reconciliationStatus}.`).join('\n')+'\nAccounts remain separate. Company policy and sizing are unconfigured. Legacy records are unassigned. No order is sent.';
+  return book.accounts.map(a=>`${a.accountId === 'al_rajhi'?'Al Rajhi':'Al Ahli'}: ${a.error?'records unavailable':a.initialized?`${a.cashSar?.toFixed(2)} SAR cash; ${a.holdings.map(h=>`${h.code}: ${h.shares} shares`).join(', ')||'no confirmed holdings'}`:'opening unconfirmed'}; reconciliation ${a.reconciliationStatus}.`).join('\n')+`\nCombined cash: ${book.combined.cashSar===null?'incomplete':`${book.combined.cashSar.toFixed(2)} SAR`} · reporting only; never a spending pool.\nAccounts remain separate. Company policy and sizing are unconfigured. Legacy records are unassigned. No order is sent.`;
 }
 
 function assistantFailure(error: unknown) {
@@ -32,11 +32,6 @@ export async function POST(request: Request) {
   let interaction: unknown;
   try { interaction = JSON.parse(raw); }
   catch { return reply("Invalid interaction payload. No ledger record was created.", 400); }
-  const actorId = (interaction as {member?: {user?: {id?: string}}; user?: {id?: string}}).member?.user?.id
-    ?? (interaction as {user?: {id?: string}}).user?.id;
-  if (!env.DISCORD_OWNER_USER_ID || actorId !== env.DISCORD_OWNER_USER_ID) {
-    return reply("This private assistant is restricted to the portfolio owner.", 403);
-  }
   const command = parseDiscordInteraction(interaction) as
     | { kind: "ping" }
     | { kind: "portfolio" | "budget" }
@@ -44,6 +39,11 @@ export async function POST(request: Request) {
     | { kind: "decide"; id: string; draft: unknown }
     | { kind: "unknown" | "invalid"; message: string };
   if (command.kind === "ping") return Response.json({ type: 1 });
+  const actorId = (interaction as {member?: {user?: {id?: string}}; user?: {id?: string}}).member?.user?.id
+    ?? (interaction as {user?: {id?: string}}).user?.id;
+  if (!env.DISCORD_OWNER_USER_ID || actorId !== env.DISCORD_OWNER_USER_ID) {
+    return reply("This private assistant is restricted to the portfolio owner.", 403);
+  }
   if (command.kind === "unknown" || command.kind === "invalid") return reply(command.message);
   if (!env.DB || !env.PORTFOLIO_OWNER_ID) return reply("Portfolio storage is unavailable. No ledger record was created.", 503);
 
