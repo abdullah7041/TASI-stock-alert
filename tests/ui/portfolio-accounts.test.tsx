@@ -12,6 +12,14 @@ test('combined reporting shows both brokers and requires explicit selection befo
  expect(screen.getByText(/700.00 SAR.*reporting only/i)).toBeTruthy();
  expect(screen.queryByRole('button',{name:'Confirm record'})).toBeNull();
 });
+test('combined exposure aggregates the same company across independent brokers',()=>{
+ const positions=structuredClone(records);
+ positions.forEach((r,i)=>{if(r.kind==='event')r.payload.holdings=[{code:'2320',name:'Al-Babtain',shares:i?3:2}];});
+ render(<PortfolioAccounts book={buildPortfolioBook(positions,[])} accountId={null} onAccountChange={()=>{}} onSaved={()=>{}} prices={[{code:'2320',price:10,asOf:'2026-10-08'}]}/>);
+ const exposure=screen.getByText(/^Holding value:/).textContent;
+ expect(exposure).toContain('2320: 50.00 SAR (2026-10-08) · 100.0%');
+ expect(exposure?.match(/2320:/g)).toHaveLength(1);
+});
 test('a revision conflict retains the draft, requires another preview, and changed fields get a new operation',async()=>{
  const book=buildPortfolioBook(records,[]);
  const fetcher=vi.fn().mockResolvedValueOnce(Response.json({projected:{...book.accounts[0],cashSar:340}}))
@@ -28,10 +36,10 @@ test('a revision conflict retains the draft, requires another preview, and chang
  expect(JSON.parse(fetcher.mock.calls[0][1].body).record.operationId).not.toBe(JSON.parse(fetcher.mock.calls[2][1].body).record.operationId);
 },20000);
 
-test('an ambiguous save can retry the exact operation after a refresh advances the revision',async()=>{
+test.each(['network','readback'])('an ambiguous %s save can retry the exact operation after a refresh advances the revision',async(failure)=>{
  const book=buildPortfolioBook(records,[]);
  const fetcher=vi.fn().mockResolvedValueOnce(Response.json({projected:{...book.accounts[0],cashSar:340}}))
- .mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce(Response.json({}));
+ .mockImplementationOnce(()=>failure==='network'?Promise.reject(new Error('Response lost')):Promise.resolve(Response.json({error:'Response lost'},{status:503}))).mockResolvedValueOnce(Response.json({}));
  vi.stubGlobal('fetch',fetcher);
  const props={accountId:'al_rajhi' as const,onAccountChange:()=>{},onSaved:()=>{}};
  const view=render(<PortfolioAccounts book={book} {...props}/>);

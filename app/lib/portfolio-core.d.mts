@@ -19,6 +19,7 @@ export function expandPortfolioEvent(existing: PortfolioEvent[], event: Portfoli
 export function foldPortfolio(events: PortfolioEvent[]): Omit<PortfolioView, "proposal" | "cashSar"> & {cashSar:number};
 export function proposeMonthlyAction(input: { cashSar: number; holdings: PortfolioView["holdings"]; approved: Array<{ code: string; name: string; totalScore: number; priceSar: number; stopDistancePct: number; owned: boolean }>; materialRisks: Array<{ code: string; reason: string; sharesToSell?: number }>; evidenceAsOf: string; priceAsOf: string }): Exclude<PortfolioProposal, null>;
 export const brokerAccountIds: BrokerAccountId[];
+export class PortfolioValidationError extends Error {}
 export class PortfolioConflict extends Error {}
 export function normalizeAccountRecordInput(input: unknown): AccountRecordInput;
 export function foldAccountRecords(records: AccountRecord[], accountId: BrokerAccountId): PortfolioAccountView;

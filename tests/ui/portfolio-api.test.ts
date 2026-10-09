@@ -28,3 +28,15 @@ test('machine reads use the bearer boundary and return an account book without l
  expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toBe('no-store');
  const body=await response.json();expect(body.schemaVersion).toBe(2);expect(body.book.accounts).toHaveLength(2);expect(body.view).toBeUndefined();
 });
+test('operational save and preview failures remain retryable and hide storage details',async()=>{
+ setup();
+ vi.spyOn(PortfolioStore.prototype,'appendAccountRecord').mockRejectedValue(new Error('D1 private readback failure'));
+ vi.spyOn(PortfolioStore.prototype,'preview').mockRejectedValue(new Error('D1 private preview failure'));
+ for(const route of [POST,preview]){
+  const response=await route(request({accountId:'al_rajhi',record,expectedRevision:0}));
+  expect(response.status).toBe(503);
+  expect(JSON.stringify(await response.json())).not.toContain('D1 private');
+ }
+ const malformed=new Request('https://example.test/api/portfolio',{method:'POST',headers:{origin:'https://example.test','content-type':'application/json','oai-authenticated-user-id':'owner','oai-authenticated-user-email':'owner@example.test'},body:'{'});
+ expect((await POST(malformed)).status).toBe(400);
+});

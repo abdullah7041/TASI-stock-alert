@@ -73,7 +73,9 @@ export function AccountRecordForm({account,onSaved,tradeOnly=false}:{account:Por
 
 export function PortfolioAccounts({book,accountId,onAccountChange,onSaved,prices=[]}:{book:PortfolioBook;accountId:BrokerAccountId|null;onAccountChange:(id:BrokerAccountId|null)=>void;onSaved:()=>void;prices?:Array<{code:string;price:number;asOf:string}>}) {
   const account=book.accounts.find(a=>a.accountId===accountId);
-  const holdings=account?account.holdings:book.accounts.flatMap(a=>a.holdings);
+  const combined=new Map<string,{code:string;shares:number}>();
+  if(!account)for(const h of book.accounts.flatMap(a=>a.holdings))combined.set(h.code,{code:h.code,shares:(combined.get(h.code)?.shares??0)+h.shares});
+  const holdings=account?account.holdings:[...combined.values()];
   const valued=holdings.map(h=>({holding:h,quote:prices.find(p=>p.code===h.code&&p.price>0)}));
   const valueComplete=(account?account.initialized:book.combined.complete)&&valued.every(v=>v.quote);
   const total=valued.reduce((n,v)=>n+v.holding.shares*(v.quote?.price??0),0);

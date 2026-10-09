@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { D1Database } from 'cloudflare:workers';
 import { PortfolioStore } from '@/app/lib/portfolio-store';
 import type { AccountRecordInput } from '@/app/lib/evidence-types';
@@ -21,6 +21,17 @@ const opening = (operationId='open',cashSar=100): AccountRecordInput => ({operat
 const withdrawal: AccountRecordInput = {operationId:'withdraw',kind:'event',payload:{kind:'withdrawal',cashSar:60,occurredAt:'2026-10-02T08:00:00Z',provenance:{source:'manual'}}};
 
 describe('account storage',()=>{
+  it('retries a committed record exactly once after its confirmation read fails',async()=>{
+    const {store}=database();
+    const read=vi.spyOn(store,'book').mockRejectedValueOnce(new Error('Readback unavailable'));
+    await expect(store.appendAccountRecord('a','al_rajhi',opening(),0)).rejects.toThrow('Readback unavailable');
+    expect((await store.accountRecords('a','al_rajhi')).length).toBe(1);
+    read.mockRestore();
+    const retried=await store.appendAccountRecord('a','al_rajhi',opening(),0);
+    expect(retried.accounts[0].cashSar).toBe(100);
+    expect(retried.accounts[0].revision).toBe(1);
+    expect((await store.accountRecords('a','al_rajhi')).length).toBe(1);
+  });
   it('isolates accounts and owners and accepts only exact normalized retries',async()=>{
     const {store}=database();
     await store.appendAccountRecord('a','al_rajhi',opening(),0);

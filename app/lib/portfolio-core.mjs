@@ -1,10 +1,12 @@
+export class PortfolioValidationError extends Error {}
+
 function finitePositive(value, field) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) throw new Error(`${field} must be positive.`);
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) throw new PortfolioValidationError(`${field} must be positive.`);
   return supportedMoney(value);
 }
 
 function supportedMoney(value) {
-  if (!Number.isSafeInteger(Math.round(value * 100))) throw new Error('Amount exceeds safe native monetary precision.');
+  if (!Number.isSafeInteger(Math.round(value * 100))) throw new PortfolioValidationError('Amount exceeds safe native monetary precision.');
   return value;
 }
 
@@ -13,36 +15,36 @@ function round2(value) {
 }
 
 function wholeShares(value) {
-  if (!Number.isSafeInteger(value) || value <= 0) throw new Error("shares must be positive whole shares.");
+  if (!Number.isSafeInteger(value) || value <= 0) throw new PortfolioValidationError("shares must be positive whole shares.");
   return value;
 }
 
 function canonicalTimestamp(value) {
-  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) throw new Error("confirmedAt is required.");
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value))) throw new PortfolioValidationError("confirmedAt is required.");
   return new Date(value).toISOString();
 }
 
 export function expandPortfolioEvent(existing, event) {
-  if (event?.kind === "opening_position") throw new Error("Opening positions are internal to the opening balance.");
+  if (event?.kind === "opening_position") throw new PortfolioValidationError("Opening positions are internal to the opening balance.");
   const normalizedEvent = { ...event, confirmedAt: canonicalTimestamp(event?.confirmedAt) };
   if (event?.kind !== "opening_balance") {
     const latest = existing.reduce((value, item) => Math.max(value, Date.parse(item.confirmedAt)), -Infinity);
     if (Number.isFinite(latest) && Date.parse(normalizedEvent.confirmedAt) <= latest) {
-      throw new Error("confirmedAt must be later than the previous event.");
+      throw new PortfolioValidationError("confirmedAt must be later than the previous event.");
     }
     return [normalizedEvent];
   }
-  if (existing.length) throw new Error("Opening balance requires an empty ledger.");
+  if (existing.length) throw new PortfolioValidationError("Opening balance requires an empty ledger.");
   if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) {
-    throw new Error("Opening cash must not be negative.");
+    throw new PortfolioValidationError("Opening cash must not be negative.");
   }
-  if (!Array.isArray(event.holdings)) throw new Error("Opening holdings are required.");
+  if (!Array.isArray(event.holdings)) throw new PortfolioValidationError("Opening holdings are required.");
   const codes = new Set();
   const positions = event.holdings.map((holding) => {
     if (!holding || typeof holding !== "object" || typeof holding.code !== "string" || !holding.code || typeof holding.name !== "string" || !holding.name) {
-      throw new Error("Opening holding identity is required.");
+      throw new PortfolioValidationError("Opening holding identity is required.");
     }
-    if (codes.has(holding.code)) throw new Error("Duplicate holding in opening balance.");
+    if (codes.has(holding.code)) throw new PortfolioValidationError("Duplicate holding in opening balance.");
     codes.add(holding.code);
     return {
       operationId: `${event.operationId}:position:${holding.code}`,
@@ -77,22 +79,22 @@ export function foldPortfolio(events) {
   let openingSeen = false;
   let regularEventSeen = false;
   for (const [index, event] of events.entries()) {
-    if (!event || typeof event !== "object" || typeof event.operationId !== "string" || !event.operationId) throw new Error("operationId is required.");
-    if (operations.has(event.operationId)) throw new Error("duplicate operation.");
+    if (!event || typeof event !== "object" || typeof event.operationId !== "string" || !event.operationId) throw new PortfolioValidationError("operationId is required.");
+    if (operations.has(event.operationId)) throw new PortfolioValidationError("duplicate operation.");
     operations.add(event.operationId);
     const eventConfirmedAt = canonicalTimestamp(event.confirmedAt);
     confirmedAt = !confirmedAt || eventConfirmedAt > confirmedAt ? eventConfirmedAt : confirmedAt;
     if (event.kind === "opening_balance") {
-      if (index !== 0 || openingSeen) throw new Error("Opening balance must be the first and only opening balance.");
-      if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) throw new Error("Opening cash must not be negative.");
+      if (index !== 0 || openingSeen) throw new PortfolioValidationError("Opening balance must be the first and only opening balance.");
+      if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar) || event.cashSar < 0) throw new PortfolioValidationError("Opening cash must not be negative.");
       cashSar = supportedMoney(event.cashSar);
       openingSeen = true;
       continue;
     }
     if (event.kind === "opening_position") {
-      if (!openingSeen || regularEventSeen) throw new Error("Opening positions must immediately follow the opening balance.");
-      if (typeof event.code !== "string" || !event.code || typeof event.name !== "string" || !event.name) throw new Error("symbol identity is required.");
-      if (holdings.has(event.code)) throw new Error("Duplicate holding in opening balance.");
+      if (!openingSeen || regularEventSeen) throw new PortfolioValidationError("Opening positions must immediately follow the opening balance.");
+      if (typeof event.code !== "string" || !event.code || typeof event.name !== "string" || !event.name) throw new PortfolioValidationError("symbol identity is required.");
+      if (holdings.has(event.code)) throw new PortfolioValidationError("Duplicate holding in opening balance.");
       if (event.priceSar != null) supportedMoney(wholeShares(event.shares) * finitePositive(event.priceSar, 'priceSar'));
       holdings.set(event.code, {
         code: event.code,
@@ -105,14 +107,14 @@ export function foldPortfolio(events) {
     }
     regularEventSeen = true;
     if (event.kind === "contribution") {
-      if (!/^\d{4}-\d{2}$/.test(event.month ?? "")) throw new Error("contribution month is required.");
+      if (!/^\d{4}-\d{2}$/.test(event.month ?? "")) throw new PortfolioValidationError("contribution month is required.");
       // Was pinned to exactly 500. That made a month where a different sum went
       // in unrecordable, which is not a rule -- it is the ledger refusing to
       // describe what happened. Legacy monthly caps live in config.BUDGET;
       // new broker accounts do not have a configured sizing policy.
       const contributed = event.cashSar;
       if (typeof contributed !== "number" || !Number.isFinite(contributed) || contributed <= 0) {
-        throw new Error("contribution must be a positive amount.");
+        throw new PortfolioValidationError("contribution must be a positive amount.");
       }
       contributions.add(event.month);
       cashSar = supportedMoney(cashSar + contributed);
@@ -121,30 +123,30 @@ export function foldPortfolio(events) {
     if (["withdrawal", "dividend", "fee"].includes(event.kind)) {
       const amount = finitePositive(event.cashSar, "amount");
       const change = event.kind === "dividend" ? amount : -amount;
-      if (cashSar + change < -1e-9) throw new Error("activity exceeds confirmed cash.");
+      if (cashSar + change < -1e-9) throw new PortfolioValidationError("activity exceeds confirmed cash.");
       cashSar = supportedMoney(cashSar + change);
       continue;
     }
     if (event.kind === "cash_adjustment") {
-      if (typeof event.reason !== "string" || !event.reason.trim()) throw new Error("cash adjustment reason is required.");
-      if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar)) throw new Error("cash adjustment is required.");
-      if (cashSar + event.cashSar < -1e-9) throw new Error("cash adjustment exceeds confirmed cash.");
+      if (typeof event.reason !== "string" || !event.reason.trim()) throw new PortfolioValidationError("cash adjustment reason is required.");
+      if (typeof event.cashSar !== "number" || !Number.isFinite(event.cashSar)) throw new PortfolioValidationError("cash adjustment is required.");
+      if (cashSar + event.cashSar < -1e-9) throw new PortfolioValidationError("cash adjustment exceeds confirmed cash.");
       cashSar = supportedMoney(cashSar + event.cashSar);
       continue;
     }
-    if (!["buy", "sell"].includes(event.kind)) throw new Error("event kind is invalid.");
-    if (typeof event.code !== "string" || !event.code || typeof event.name !== "string" || !event.name) throw new Error("symbol identity is required.");
+    if (!["buy", "sell"].includes(event.kind)) throw new PortfolioValidationError("event kind is invalid.");
+    if (typeof event.code !== "string" || !event.code || typeof event.name !== "string" || !event.name) throw new PortfolioValidationError("symbol identity is required.");
     const shares = wholeShares(event.shares);
     const priceSar = finitePositive(event.priceSar, "priceSar");
     const gross = supportedMoney(shares * priceSar);
     const feesSar = event.feesSar ?? 0;
-    if (typeof feesSar !== "number" || !Number.isFinite(feesSar) || feesSar < 0) throw new Error("feesSar must not be negative.");
+    if (typeof feesSar !== "number" || !Number.isFinite(feesSar) || feesSar < 0) throw new PortfolioValidationError("feesSar must not be negative.");
     supportedMoney(feesSar);
     const holding = holdings.get(event.code)
       ?? { code: event.code, name: event.name, shares: 0, avgCostSar: 0, realisedSar: realised.get(event.code) ?? 0 };
     if (event.kind === "buy") {
       const spend = supportedMoney(gross + feesSar);
-      if (spend > cashSar + 1e-9) throw new Error("buy exceeds confirmed cash.");
+      if (spend > cashSar + 1e-9) throw new PortfolioValidationError("buy exceeds confirmed cash.");
       cashSar -= spend;
       // Weighted average cost, fees included because they are part of what the
       // position actually cost. Without this the ledger knew how many shares you
@@ -158,9 +160,9 @@ export function foldPortfolio(events) {
       if (priorCost !== null) holding.avgCostSar = supportedMoney(priorCost + spend) / holding.shares;
       holdings.set(event.code, holding);
     } else {
-      if (shares > holding.shares) throw new Error("sell exceeds confirmed holding.");
+      if (shares > holding.shares) throw new PortfolioValidationError("sell exceeds confirmed holding.");
       const proceeds = supportedMoney(gross - feesSar);
-      if (cashSar + proceeds < -1e-9) throw new Error("sale fees exceed confirmed cash and proceeds.");
+      if (cashSar + proceeds < -1e-9) throw new PortfolioValidationError("sale fees exceed confirmed cash and proceeds.");
       // Average cost is unchanged by a sale: selling part of a position does not
       // alter what the remainder cost. The gain is booked in `realised`, which
       // is keyed by code and OUTSIDE `holdings`, because a full exit deletes the
@@ -182,43 +184,43 @@ const sizingPending = 'Sizing policy and fee assumptions are not configured.';
 export class PortfolioConflict extends Error {}
 
 function textValue(value, field) {
-  if (typeof value !== 'string' || !value.trim()) throw new Error(`${field} is required.`);
+  if (typeof value !== 'string' || !value.trim()) throw new PortfolioValidationError(`${field} is required.`);
   return value.trim();
 }
 function instant(value) {
   const parts = typeof value === 'string' && value.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/i);
-  if (!parts) throw new Error('An ISO timestamp with timezone is required.');
+  if (!parts) throw new PortfolioValidationError('An ISO timestamp with timezone is required.');
   const normalized = canonicalTimestamp(value);
   // Date.parse rolls February 30 and 24:00 into another day; reject that input.
-  if (canonicalTimestamp(`${parts[1]}${parts[2] ?? ''}Z`).slice(0,19) !== parts[1]) throw new Error('Invalid calendar date in timestamp.');
+  if (canonicalTimestamp(`${parts[1]}${parts[2] ?? ''}Z`).slice(0,19) !== parts[1]) throw new PortfolioValidationError('Invalid calendar date in timestamp.');
   return normalized;
 }
 function fields(value, allowed) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !allowed.includes(k))) throw new Error('Unexpected record field or account assignment.');
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !allowed.includes(k))) throw new PortfolioValidationError('Unexpected record field or account assignment.');
 }
 function normalizedEvent(payload) {
   fields(payload, ['kind','occurredAt','provenance','cashSar','holdings','code','name','shares','priceSar','feesSar','reason']);
   const {kind} = payload;
-  if (!['opening_balance','contribution','buy','sell','withdrawal','dividend','fee'].includes(kind)) throw new Error('Invalid account event kind.');
+  if (!['opening_balance','contribution','buy','sell','withdrawal','dividend','fee'].includes(kind)) throw new PortfolioValidationError('Invalid account event kind.');
   const occurredAt = instant(payload.occurredAt);
   fields(payload.provenance, ['source','reference']);
-  if (payload.provenance.source !== 'manual') throw new Error('Manual provenance is required.');
+  if (payload.provenance.source !== 'manual') throw new PortfolioValidationError('Manual provenance is required.');
   const provenance = {source:'manual', ...(payload.provenance.reference ? {reference:textValue(payload.provenance.reference,'reference')} : {})};
   const result = {kind,occurredAt,provenance};
   if (payload.reason != null) result.reason = textValue(payload.reason,'reason');
   if (['buy','sell'].includes(kind)) {
-    if (!/^\d{4}$/.test(payload.code)) throw new Error('A four-digit stock code is required.');
-    if (typeof payload.feesSar !== 'number' || !Number.isFinite(payload.feesSar) || payload.feesSar < 0) throw new Error('Actual feesSar is required, including zero.');
+    if (!/^\d{4}$/.test(payload.code)) throw new PortfolioValidationError('A four-digit stock code is required.');
+    if (typeof payload.feesSar !== 'number' || !Number.isFinite(payload.feesSar) || payload.feesSar < 0) throw new PortfolioValidationError('Actual feesSar is required, including zero.');
     supportedMoney(payload.feesSar);
     Object.assign(result, {code:payload.code,name:textValue(payload.name,'name'),shares:wholeShares(payload.shares),priceSar:finitePositive(payload.priceSar,'priceSar'),feesSar:payload.feesSar});
   } else {
     if (kind === 'opening_balance' && payload.cashSar === 0) result.cashSar = 0;
     else result.cashSar = finitePositive(payload.cashSar,'amount');
     if (kind === 'opening_balance') {
-      if (!Array.isArray(payload.holdings)) throw new Error('Opening holdings are required.');
+      if (!Array.isArray(payload.holdings)) throw new PortfolioValidationError('Opening holdings are required.');
       result.holdings = payload.holdings.map(h => {
         fields(h,['code','name','shares','avgCostSar']);
-        if (!/^\d{4}$/.test(h.code)) throw new Error('A four-digit stock code is required.');
+        if (!/^\d{4}$/.test(h.code)) throw new PortfolioValidationError('A four-digit stock code is required.');
         return {code:h.code,name:textValue(h.name,'name'),shares:wholeShares(h.shares),...(h.avgCostSar == null ? {} : {avgCostSar:finitePositive(h.avgCostSar,'avgCostSar')})};
       });
     }
@@ -229,7 +231,7 @@ function normalizedEvent(payload) {
 export function normalizeAccountRecordInput(input) {
   fields(input,['operationId','kind','payload']);
   const operationId = textValue(input.operationId,'operationId');
-  if (operationId.length > 200) throw new Error('operationId is too long.');
+  if (operationId.length > 200) throw new PortfolioValidationError('operationId is too long.');
   let payload;
   if (input.kind === 'event') payload = normalizedEvent(input.payload);
   else if (input.kind === 'correction') {
@@ -238,38 +240,38 @@ export function normalizeAccountRecordInput(input) {
   } else if (input.kind === 'reconciliation') {
     fields(input.payload,['statementAsOf','cashSar','holdings','reference']);
     const p = input.payload;
-    if (typeof p.cashSar !== 'number' || !Number.isFinite(p.cashSar) || p.cashSar < 0 || !Array.isArray(p.holdings)) throw new Error('Statement cash and holdings are required.');
+    if (typeof p.cashSar !== 'number' || !Number.isFinite(p.cashSar) || p.cashSar < 0 || !Array.isArray(p.holdings)) throw new PortfolioValidationError('Statement cash and holdings are required.');
     supportedMoney(p.cashSar);
     const codes = new Set();
     const holdings = p.holdings.map(h => {
       fields(h,['code','shares']);
-      if (!/^\d{4}$/.test(h.code) || codes.has(h.code) || !Number.isSafeInteger(h.shares) || h.shares < 0) throw new Error('Invalid or duplicate statement holding.');
+      if (!/^\d{4}$/.test(h.code) || codes.has(h.code) || !Number.isSafeInteger(h.shares) || h.shares < 0) throw new PortfolioValidationError('Invalid or duplicate statement holding.');
       codes.add(h.code); return {code:h.code,shares:h.shares};
     });
     payload = {statementAsOf:instant(p.statementAsOf),cashSar:p.cashSar,holdings,reference:textValue(p.reference,'statement reference')};
-  } else throw new Error('Invalid account record kind.');
+  } else throw new PortfolioValidationError('Invalid account record kind.');
   return {operationId,kind:input.kind,payload};
 }
 
 export function foldAccountRecords(records, accountId) {
-  if (!brokerAccountIds.includes(accountId)) throw new Error('Invalid broker account.');
+  if (!brokerAccountIds.includes(accountId)) throw new PortfolioValidationError('Invalid broker account.');
   const own = records.filter(r=>r.accountId === accountId).sort((a,b)=>a.revision-b.revision);
   const events = new Map(), operations = new Set();
   let lastReconciliation = null, correctedAfterStatement = false;
   own.forEach((r,index)=>{
-    if (r.revision !== index + 1 || operations.has(r.operationId)) throw new Error('Invalid account revision or duplicate operation.');
+    if (r.revision !== index + 1 || operations.has(r.operationId)) throw new PortfolioValidationError('Invalid account revision or duplicate operation.');
     instant(r.recordedAt); operations.add(r.operationId);
     const input = normalizeAccountRecordInput({operationId:r.operationId,kind:r.kind,payload:r.payload});
     if (r.kind === 'event') events.set(r.operationId,{...input.payload,operationId:r.operationId,revision:r.revision});
     else if (r.kind === 'correction') {
       const target = events.get(input.payload.targetOperationId);
-      if (!target) throw new Error('Correction target must be an original event in this account.');
+      if (!target) throw new PortfolioValidationError('Correction target must be an original event in this account.');
       events.set(target.operationId,{...(input.payload.replacement ?? target),operationId:target.operationId,revision:target.revision,voided:input.payload.replacement === null});
       if (lastReconciliation) correctedAfterStatement = true;
     } else { lastReconciliation = input.payload; correctedAfterStatement = false; }
   });
   const effective = [...events.values()].filter(e=>!e.voided).sort((a,b)=>a.occurredAt.localeCompare(b.occurredAt)||a.revision-b.revision);
-  if (effective.length && effective[0].kind !== 'opening_balance') throw new Error('A confirmed opening is required before account activity.');
+  if (effective.length && effective[0].kind !== 'opening_balance') throw new PortfolioValidationError('A confirmed opening is required before account activity.');
   const project = list => {
     const expanded = list.flatMap(e=>{
       const item = {...e, confirmedAt:e.occurredAt};
@@ -282,7 +284,7 @@ export function foldAccountRecords(records, accountId) {
   const folded = project(effective);
   let discrepancies = [];
   if (lastReconciliation) {
-    if (!effective.length || lastReconciliation.statementAsOf < effective[0].occurredAt) throw new Error('Statement precedes the opening history boundary.');
+    if (!effective.length || lastReconciliation.statementAsOf < effective[0].occurredAt) throw new PortfolioValidationError('Statement precedes the opening history boundary.');
     const atStatement = project(effective.filter(e=>e.occurredAt <= lastReconciliation.statementAsOf));
     if (round2(lastReconciliation.cashSar-atStatement.cashSar) !== 0) discrepancies.push({field:'cash',ledger:atStatement.cashSar,statement:lastReconciliation.cashSar,difference:round2(lastReconciliation.cashSar-atStatement.cashSar)});
     const ledger = new Map(atStatement.holdings.map(h=>[h.code,h.shares])), statement = new Map(lastReconciliation.holdings.map(h=>[h.code,h.shares]));
@@ -321,19 +323,19 @@ export function previewAccountRecord(records, accountId, input, expectedRevision
 
 export function parseAccountEnvelope(value) {
   fields(value,['accountId','record','expectedRevision']);
-  if (!brokerAccountIds.includes(value.accountId) || !Number.isSafeInteger(value.expectedRevision) || value.expectedRevision < 0) throw new Error('Broker account and expectedRevision are required.');
+  if (!brokerAccountIds.includes(value.accountId) || !Number.isSafeInteger(value.expectedRevision) || value.expectedRevision < 0) throw new PortfolioValidationError('Broker account and expectedRevision are required.');
   return {accountId:value.accountId,record:normalizeAccountRecordInput(value.record),expectedRevision:value.expectedRevision};
 }
 
 export function parsePortfolioBook(value) {
-  if (!value || value.schemaVersion !== 1 || value.policyStatus !== 'unconfigured' || !Array.isArray(value.accounts) || value.accounts.length !== 2 || value.legacy?.status !== 'unassigned' || !Array.isArray(value.legacy.events) || value.combined?.spendable !== false) throw new Error('Invalid portfolio account book.');
+  if (!value || value.schemaVersion !== 1 || value.policyStatus !== 'unconfigured' || !Array.isArray(value.accounts) || value.accounts.length !== 2 || value.legacy?.status !== 'unassigned' || !Array.isArray(value.legacy.events) || value.combined?.spendable !== false) throw new PortfolioValidationError('Invalid portfolio account book.');
   const records = value.accounts.flatMap((a,i)=>{
-    if (a.accountId !== brokerAccountIds[i] || !Array.isArray(a.records) || a.records.some(r=>r.accountId!==a.accountId)) throw new Error('Invalid broker account records.');
+    if (a.accountId !== brokerAccountIds[i] || !Array.isArray(a.records) || a.records.some(r=>r.accountId!==a.accountId)) throw new PortfolioValidationError('Invalid broker account records.');
     return a.records;
   });
   const book = buildPortfolioBook(records,value.legacy.events);
   for (let i=0;i<2;i++) {
-    if (['revision','initialized','cashSar','confirmedAt','reconciliationStatus'].some(k=>book.accounts[i][k] !== value.accounts[i][k])) throw new Error('Account projection does not match its records.');
+    if (['revision','initialized','cashSar','confirmedAt','reconciliationStatus'].some(k=>book.accounts[i][k] !== value.accounts[i][k])) throw new PortfolioValidationError('Account projection does not match its records.');
   }
   return book;
 }
