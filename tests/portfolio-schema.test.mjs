@@ -24,6 +24,20 @@ function insert(db, operationId, kind, values = {}, confirmedSecond = 0) {
     );
 }
 
+test("account revisions serialize writes without changing legacy data or schema", () => {
+  const db = database();
+  insert(db, 'legacy', 'opening_balance', {cashSar:100});
+  const before = db.prepare("SELECT sql FROM sqlite_master WHERE name LIKE 'portfolio_%' OR name LIKE 'one_%'").all();
+  for (const sql of researchSchemaStatements) db.exec(sql);
+  assert.deepEqual(db.prepare("SELECT sql FROM sqlite_master WHERE name LIKE 'portfolio_%' OR name LIKE 'one_%'").all(),before);
+  const write = db.prepare(`INSERT INTO portfolio_account_records VALUES (?, 'owner', ?, ?, 'event', '2026-10-08T08:00:00Z', '{}')`);
+  write.run('rajhi','al_rajhi',1);
+  assert.throws(()=>write.run('stale','al_rajhi',1),/UNIQUE/i);
+  write.run('ahli','al_ahli',1);
+  assert.throws(()=>write.run('bad','other',1),/CHECK/i);
+  assert.equal(db.prepare('SELECT cash_sar FROM portfolio_events').get().cash_sar,100);
+});
+
 test("serialized cash enforcement rejects a second otherwise-valid overspending buy", () => {
   const db = database();
   insert(db, "opening", "opening_balance", { cashSar: 100 });

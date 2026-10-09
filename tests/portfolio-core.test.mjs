@@ -1,6 +1,153 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { expandPortfolioEvent, foldPortfolio, proposeMonthlyAction } from "../app/lib/portfolio-core.mjs";
+import * as accounts from "../app/lib/portfolio-core.mjs";
+
+const eventRecord = (id, payload, revision = 1, accountId = 'al_rajhi') => ({
+  operationId: id, accountId, revision, recordedAt: `2026-10-08T08:00:${String(revision).padStart(2,'0')}Z`,
+  kind: 'event', payload: { occurredAt: `2026-10-01T08:00:${String(revision).padStart(2,'0')}Z`, provenance: {source:'manual'}, ...payload },
+});
+const openAccount = (cashSar = 300, holdings = [], accountId = 'al_rajhi') => eventRecord(`open-${accountId}`, {kind:'opening_balance', cashSar, holdings}, 1, accountId);
+const foldAccount = (records) => accounts.foldAccountRecords(records, 'al_rajhi');
+
+test('uninitialized accounts never invent confirmed cash or a spendable combined balance', () => {
+  const book = accounts.buildPortfolioBook([], []);
+  assert.deepEqual(book.accounts.map(a=>a.accountId), ['al_rajhi','al_ahli']);
+  assert.equal(book.accounts[0].cashSar,null);
+  assert.equal(book.accounts[0].initialized,false);
+  assert.equal(book.combined.cashSar,null);
+  assert.equal(book.combined.spendable,false);
+});
+
+test('broker balances and identical stocks stay independent while legacy records remain unassigned', () => {
+  const legacy = [{operationId:'old'}];
+  const book = accounts.buildPortfolioBook([
+    openAccount(300,[{code:'2320',name:'Al-Babtain',shares:2}]),
+    openAccount(400,[{code:'2320',name:'Al-Babtain',shares:3,avgCostSar:40}],'al_ahli'),
+  ],legacy);
+  assert.deepEqual(book.accounts.map(a=>a.cashSar),[300,400]);
+  assert.deepEqual(book.accounts.map(a=>a.holdings[0].shares),[2,3]);
+  assert.equal(book.accounts[0].holdings[0].avgCostSar,undefined);
+  assert.equal(book.accounts[0].historyComplete,false);
+  assert.equal(book.combined.cashSar,700);
+  assert.deepEqual(book.legacy.events,legacy);
+  assert.equal(book.accounts[0].proposal,null);
+});
+
+test('multiple contributions in one month require actual amounts and carry forward', () => {
+  const records=[openAccount(0),eventRecord('d1',{kind:'contribution',cashSar:125},2),eventRecord('d2',{kind:'contribution',cashSar:40},3)];
+  assert.equal(foldAccount(records).cashSar,165);
+  assert.throws(()=>foldAccount([...records,eventRecord('missing',{kind:'contribution'},4)]),/amount|positive|contribution/i);
+  assert.throws(()=>foldAccount([eventRecord('no-opening',{kind:'contribution',cashSar:10})]),/opening/i);
+});
+
+test('cash flows and fees are counted once and cannot overspend the selected account', () => {
+  const records=[openAccount(100),eventRecord('buy',{kind:'buy',code:'2320',name:'Al-Babtain',shares:2,priceSar:25,feesSar:2},2),
+    eventRecord('div',{kind:'dividend',cashSar:8},3),eventRecord('fee',{kind:'fee',cashSar:1},4),eventRecord('withdraw',{kind:'withdrawal',cashSar:10},5)];
+  assert.equal(foldAccount(records).cashSar,45);
+  assert.throws(()=>foldAccount([...records,eventRecord('too-much',{kind:'withdrawal',cashSar:46},6)]),/cash/i);
+  assert.throws(()=>foldAccount([...records,eventRecord('missing-fees',{kind:'buy',code:'2320',name:'Al-Babtain',shares:1,priceSar:1},6)]),/fees/i);
+});
+
+test('known realised gains survive a full sale while unknown opening cost never becomes zero', () => {
+  const sale={kind:'sell',code:'2320',name:'Al-Babtain',shares:2,priceSar:30,feesSar:1};
+  const known=foldAccount([openAccount(0,[{code:'2320',name:'Al-Babtain',shares:2,avgCostSar:20}]),eventRecord('sale',sale,2)]);
+  assert.equal(known.cashSar,59);assert.equal(known.realisedSar,19);assert.deepEqual(known.holdings,[]);
+  const unknown=foldAccount([openAccount(0,[{code:'2320',name:'Al-Babtain',shares:2}]),eventRecord('sale',sale,2)]);
+  assert.equal(unknown.realisedSar,null);
+  assert.throws(()=>foldAccount([openAccount(0),eventRecord('sale',sale,2)]),/holding/i);
+});
+
+test('historical corrections replay every later event and preserve original records', () => {
+  const records=[openAccount(100),eventRecord('buy',{kind:'buy',code:'2320',name:'Al-Babtain',shares:2,priceSar:30,feesSar:0},2)];
+  const correction={operationId:'fix',accountId:'al_rajhi',revision:3,recordedAt:'2026-10-08T09:00:00Z',kind:'correction',payload:{targetOperationId:'open-al_rajhi',replacement:{...records[0].payload,cashSar:80},reason:'Statement correction'}};
+  assert.equal(foldAccount([...records,correction]).cashSar,20);
+  assert.equal(records[0].payload.cashSar,100);
+  assert.throws(()=>foldAccount([...records,{...correction,payload:{...correction.payload,replacement:null}}]),/opening|cash/i);
+  assert.throws(()=>foldAccount([...records,{...correction,payload:{...correction.payload,replacement:{...records[0].payload,cashSar:50}}}]),/cash/i);
+  assert.throws(()=>foldAccount([...records,{...correction,payload:{...correction.payload,targetOperationId:'other-account'}}]),/target|account/i);
+});
+
+test('statement comparisons never change cash and corrections require reconciliation again', () => {
+  const reconcile={operationId:'statement',accountId:'al_rajhi',revision:2,recordedAt:'2026-10-08T09:00:00Z',kind:'reconciliation',payload:{statementAsOf:'2026-10-02T08:00:00Z',cashSar:299,holdings:[],reference:'October statement'}};
+  const state=foldAccount([openAccount(),reconcile]);
+  assert.equal(state.cashSar,300);assert.equal(state.reconciliationStatus,'discrepancy');
+  assert.deepEqual(state.discrepancies,[{field:'cash',ledger:300,statement:299,difference:-1}]);
+  const matched={...reconcile,payload:{...reconcile.payload,cashSar:300}};
+  assert.equal(foldAccount([openAccount(),matched]).reconciliationStatus,'matched');
+  const fixed={operationId:'fix',accountId:'al_rajhi',revision:3,recordedAt:'2026-10-08T10:00:00Z',kind:'correction',payload:{targetOperationId:'open-al_rajhi',replacement:{...openAccount().payload,cashSar:299},reason:'Correction'}};
+  assert.equal(foldAccount([openAccount(),matched,fixed]).reconciliationStatus,'needs_review');
+  const later=eventRecord('later',{kind:'contribution',cashSar:20,occurredAt:'2026-10-03T08:00:00Z'},3);
+  assert.equal(foldAccount([openAccount(),matched,later]).reconciliationStatus,'matched');
+});
+
+test('preview is read-only and rejects stale revisions and invalid record input', () => {
+  const records=[openAccount()];
+  const input={operationId:'deposit',kind:'event',payload:{kind:'contribution',cashSar:40,occurredAt:'2026-10-02T08:00:00Z',provenance:{source:'manual'}}};
+  assert.equal(accounts.previewAccountRecord(records,'al_rajhi',input,1).projected.cashSar,340);
+  assert.equal(records.length,1);
+  assert.throws(()=>accounts.previewAccountRecord(records,'al_rajhi',input,0),/revision|refresh/i);
+  assert.throws(()=>accounts.previewAccountRecord(records,'unknown',input,1),/account/i);
+  assert.throws(()=>accounts.previewAccountRecord(records,'al_rajhi',{...input,payload:{...input.payload,occurredAt:'2026-09-01T08:00:00Z'}},1),/opening|before/i);
+  assert.throws(()=>accounts.previewAccountRecord(records,'al_rajhi',{...input,payload:{...input.payload,accountId:'al_ahli'}},1),/account|field/i);
+});
+
+test('same-time activity follows original revision order and a Riyadh deposit keeps its local month',()=>{
+  const deposit=eventRecord('deposit',{kind:'contribution',cashSar:40,occurredAt:'2026-10-31T21:30:00Z'},2);
+  assert.equal(foldAccount([openAccount(),deposit]).contributionMonth,'2026-11');
+  const buy=eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:1,priceSar:50,feesSar:0,occurredAt:'2026-10-02T08:00:00Z'},2);
+  const sale=eventRecord('sale',{...buy.payload,kind:'sell'},3);
+  assert.equal(foldAccount([openAccount(),buy,sale]).cashSar,300);
+  assert.throws(()=>foldAccount([openAccount(),{...sale,revision:2},{...buy,revision:3}]),/holding/i);
+});
+
+test('a full sale preserves the entire fee-inclusive cost instead of rounding cost per share first',()=>{
+  const buy=eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:3,priceSar:33,feesSar:1},2);
+  const sale=eventRecord('sale',{kind:'sell',code:'1303',name:'EIC',shares:3,priceSar:50,feesSar:0},3);
+  const account=foldAccount([openAccount(100),buy,sale]);
+  assert.equal(account.realisedSar,50);
+});
+
+test('split sales preserve the same realised gain as one full sale',()=>{
+  const buy=eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:3,priceSar:33,feesSar:1},2);
+  const sales=[3,4,5].map(revision=>eventRecord(`sale-${revision}`,{kind:'sell',code:'1303',name:'EIC',shares:1,priceSar:50,feesSar:0},revision));
+  const account=foldAccount([openAccount(100),buy,...sales]);
+  assert.equal(account.realisedSar,50);
+  assert.equal(account.realisedByCode['1303'],50);
+});
+
+test('account timestamps reject impossible dates instead of moving activity into another day',()=>{
+  for(const occurredAt of ['2026-02-30T08:00:00Z','2026-04-31T12:00:00+03:00','2026-10-01T24:00:00Z']) {
+    assert.throws(()=>foldAccount([eventRecord('open',{kind:'opening_balance',cashSar:0,holdings:[],occurredAt})]),/timestamp|date/i);
+  }
+  assert.equal(foldAccount([eventRecord('open',{kind:'opening_balance',cashSar:0,holdings:[],occurredAt:'2024-02-29T12:00:00+03:00'})]).initialized,true);
+});
+
+test('account projections reject amounts and accumulated totals outside safe native precision',()=>{
+  assert.throws(()=>foldAccount([openAccount(1e308)]),/precision|amount|range/i);
+  assert.throws(()=>foldAccount([openAccount(8e13),eventRecord('deposit',{kind:'contribution',cashSar:8e13},2)]),/precision|amount|range/i);
+  assert.throws(()=>foldAccount([openAccount(0,[{code:'1303',name:'EIC',shares:2,avgCostSar:8e13}])]),/precision|amount|range/i);
+  assert.throws(()=>foldAccount([openAccount(100,[{code:'1303',name:'EIC',shares:Number.MAX_SAFE_INTEGER}]),eventRecord('buy',{kind:'buy',code:'1303',name:'EIC',shares:1,priceSar:1,feesSar:0},2)]),/shares/i);
+  assert.throws(()=>foldAccount([openAccount(0,[{code:'1303',name:'EIC',shares:2}]),eventRecord('sale',{kind:'sell',code:'1303',name:'EIC',shares:2,priceSar:5e13,feesSar:2e13},2)]),/precision|amount|range/i);
+});
+
+test('a damaged account retains its audit revision and survives parsing beside a healthy account',()=>{
+  const records=[{...openAccount(),payload:null},openAccount(400,[],'al_ahli')];
+  const book=accounts.buildPortfolioBook(records,[]);
+  assert.equal(book.accounts[0].revision,1);
+  assert.equal(book.accounts[0].initialized,false);
+  assert.ok(book.accounts[0].error);
+  assert.equal(book.accounts[1].cashSar,400);
+  assert.equal(book.combined.cashSar,null);
+  assert.deepEqual(accounts.parsePortfolioBook(JSON.parse(JSON.stringify(book))),book);
+});
+
+test('an unrepresentable combined total never hides individually supported broker balances',()=>{
+  const book=accounts.buildPortfolioBook([openAccount(8e13),openAccount(8e13,[],'al_ahli')],[]);
+  assert.deepEqual(book.accounts.map(a=>a.cashSar),[8e13,8e13]);
+  assert.equal(book.combined.cashSar,null);
+  assert.equal(book.combined.complete,false);
+});
 
 test("imports an opening balance without inventing cash contributions or buys", () => {
   const opening = {
@@ -129,7 +276,7 @@ test("adding to a position blends the cost you actually paid", () => {
   const [holding] = state.holdings;
   assert.equal(holding.shares, 124);
   // (104*12.41 + 20*14.80 + 5) / 124 = 1591.64 / 124 = 12.8358...
-  assert.equal(holding.avgCostSar, 12.84);
+  assert.equal(Math.round(holding.avgCostSar * 100) / 100, 12.84);
 });
 
 test("a contribution may be any positive amount, not only 500", () => {

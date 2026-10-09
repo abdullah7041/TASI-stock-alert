@@ -287,7 +287,7 @@ test("a failed manual refresh retains the last-good cockpit view", async () => {
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify(payload()), { headers: { "content-type": "application/json" } }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ error: "Temporary API failure" }), { status: 503, headers: { "content-type": "application/json" } }));
-  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal('fetch',(url:string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):url==='/api/portfolio'?Promise.resolve(Response.error()):fetchMock());
   render(<ActionCockpit dashboard={payload()} />);
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));

@@ -230,9 +230,12 @@ jobs:
           import json
           from pathlib import Path
           payload = json.loads(Path(".portfolio-current.json").read_text(encoding="utf-8"))
-          if not isinstance(payload, dict) or not isinstance(payload.get("view"), dict):
+          if isinstance(payload, dict) and ("schemaVersion" in payload or "book" in payload):
+              from main import validate_account_book
+              validate_account_book(payload)
+          elif not isinstance(payload, dict) or not isinstance(payload.get("view"), dict):
               raise RuntimeError("Confirmed portfolio ledger response is invalid.")
-          if (isinstance(payload.get("eventCount"), bool)
+          elif (isinstance(payload.get("eventCount"), bool)
                   or not isinstance(payload.get("eventCount"), int)
                   or payload["eventCount"] <= 0):
               raise RuntimeError("Confirmed portfolio ledger requires an imported opening balance.")

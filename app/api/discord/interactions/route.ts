@@ -1,4 +1,4 @@
-import { DashboardStore } from "@/app/lib/dashboard-store";
+import type {PortfolioBook} from '@/app/lib/evidence-types';
 import { discordMessage, parseDiscordInteraction, verifyDiscordSignature } from "@/app/lib/discord-interactions.mjs";
 import { PortfolioStore } from "@/app/lib/portfolio-store";
 import { CopilotStore } from "@/app/lib/copilot-store";
@@ -9,9 +9,8 @@ function reply(content: string, status = 200) {
   return Response.json(discordMessage(content), { status });
 }
 
-function portfolioLine(view: { cashSar: number; holdings: Array<{ code: string; shares: number }> }) {
-  const holdings = view.holdings.length ? view.holdings.map((item) => `${item.code}: ${item.shares} shares`).join(", ") : "no confirmed holdings";
-  return `Confirmed ledger: ${view.cashSar.toFixed(2)} SAR cash; ${holdings}. This is a ledger view and never sends an order.`;
+function portfolioLine(book: PortfolioBook) {
+  return book.accounts.map(a=>`${a.accountId === 'al_rajhi'?'Al Rajhi':'Al Ahli'}: ${a.error?'records unavailable':a.initialized?`${a.cashSar?.toFixed(2)} SAR cash; ${a.holdings.map(h=>`${h.code}: ${h.shares} shares`).join(', ')||'no confirmed holdings'}`:'opening unconfirmed'}; reconciliation ${a.reconciliationStatus}.`).join('\n')+`\nCombined cash: ${book.combined.cashSar===null?'incomplete':`${book.combined.cashSar.toFixed(2)} SAR`} · reporting only; never a spending pool.\nAccounts remain separate. Company policy and sizing are unconfigured. Legacy records are unassigned. No order is sent.`;
 }
 
 function assistantFailure(error: unknown) {
@@ -33,24 +32,22 @@ export async function POST(request: Request) {
   let interaction: unknown;
   try { interaction = JSON.parse(raw); }
   catch { return reply("Invalid interaction payload. No ledger record was created.", 400); }
-  const actorId = (interaction as {member?: {user?: {id?: string}}; user?: {id?: string}}).member?.user?.id
-    ?? (interaction as {user?: {id?: string}}).user?.id;
-  if (!env.DISCORD_OWNER_USER_ID || actorId !== env.DISCORD_OWNER_USER_ID) {
-    return reply("This private assistant is restricted to the portfolio owner.", 403);
-  }
   const command = parseDiscordInteraction(interaction) as
     | { kind: "ping" }
     | { kind: "portfolio" | "budget" }
     | { kind: "ask"; question: string }
     | { kind: "decide"; id: string; draft: unknown }
-    | { kind: "unknown" | "invalid"; message: string }
-    | { kind: "record"; operationId: string; event: { kind: "buy" | "sell"; code: string; shares: number; priceSar: number } };
+    | { kind: "unknown" | "invalid"; message: string };
   if (command.kind === "ping") return Response.json({ type: 1 });
+  const actorId = (interaction as {member?: {user?: {id?: string}}; user?: {id?: string}}).member?.user?.id
+    ?? (interaction as {user?: {id?: string}}).user?.id;
+  if (!env.DISCORD_OWNER_USER_ID || actorId !== env.DISCORD_OWNER_USER_ID) {
+    return reply("This private assistant is restricted to the portfolio owner.", 403);
+  }
   if (command.kind === "unknown" || command.kind === "invalid") return reply(command.message);
   if (!env.DB || !env.PORTFOLIO_OWNER_ID) return reply("Portfolio storage is unavailable. No ledger record was created.", 503);
 
   const store = new PortfolioStore(env.DB);
-  const month = new Date().toISOString().slice(0, 7);
   try {
     if (command.kind === "ask") {
       if (!env.OPENROUTER_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
@@ -69,21 +66,12 @@ export async function POST(request: Request) {
       await new CopilotStore(env.DB).confirm(env.PORTFOLIO_OWNER_ID, { ...draft, id: command.id, confirmedAt: new Date().toISOString() });
       return reply(`Decision note saved for ${draft.symbol}: ${draft.action}. Conditions and invalidation are recorded; no order was sent.`);
     }
-    if (command.kind === "portfolio") return reply(portfolioLine(await store.view(env.PORTFOLIO_OWNER_ID)));
-    const current = await store.ledger(month);
-    const snapshot = await new DashboardStore(env.DB).latest();
+    const book = await store.book(env.PORTFOLIO_OWNER_ID);
+    if (command.kind === "portfolio") return reply(portfolioLine(book));
     if (command.kind === "budget") {
-      if (typeof snapshot?.monthlyBudgetSar !== "number") return reply("The daily buy budget is unavailable. No ledger record was created.");
-      const remaining = Math.max(0, snapshot.monthlyBudgetSar - current.spentThisMonthSar);
-      return reply(`Remaining monthly buy budget: ${remaining.toFixed(2)} SAR. This is a ledger calculation and never sends an order.`);
+      return reply(`No monthly spending cap or sizing policy is configured.\n${portfolioLine(book)}`);
     }
-    if (command.kind !== "record") return reply("Unsupported interaction. No ledger record was created.");
-    const top10Entries = snapshot && "top10" in snapshot ? snapshot.top10.entries : [];
-    const name = current.view.holdings.find((item) => item.code === command.event.code)?.name
-      ?? top10Entries.find((item) => item.code === command.event.code)?.name
-      ?? command.event.code;
-    const view = await store.append(env.PORTFOLIO_OWNER_ID, { operationId: command.operationId, ...command.event, name, confirmedAt: new Date().toISOString() });
-    return reply(`Confirmed ${command.event.kind} recorded. ${portfolioLine(view)}`);
+    return reply("Unsupported interaction. No ledger record was created.");
   } catch {
     return reply("The ledger rejected that activity. Check shares, confirmed cash, and existing holdings. No order was sent.");
   }

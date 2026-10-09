@@ -32,6 +32,14 @@ export const researchSchemaStatements = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS one_contribution_per_owner_month ON portfolio_events(owner_id, month_key) WHERE event_kind = 'contribution'`,
   `CREATE UNIQUE INDEX IF NOT EXISTS one_opening_balance_per_owner ON portfolio_events(owner_id) WHERE event_kind = 'opening_balance'`,
+  `CREATE TABLE IF NOT EXISTS portfolio_account_records (
+    operation_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL,
+    account_id TEXT NOT NULL CHECK(account_id IN ('al_rajhi','al_ahli')),
+    revision INTEGER NOT NULL CHECK(revision > 0),
+    record_kind TEXT NOT NULL CHECK(record_kind IN ('event','correction','reconciliation')),
+    recorded_at TEXT NOT NULL, payload_json TEXT NOT NULL,
+    UNIQUE(owner_id, account_id, revision)
+  )`,
   `CREATE TRIGGER IF NOT EXISTS portfolio_prevent_overspend
     BEFORE INSERT ON portfolio_events
     WHEN NEW.event_kind = 'buy'

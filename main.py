@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import statistics
 import sys
 import time
@@ -118,6 +119,9 @@ def _portfolio_ledger() -> dict | None:
     fallback, while production decision workflows require the confirmed ledger.
     """
     value = _load(PORTFOLIO_FILE, None)
+    if isinstance(value, dict) and ("schemaVersion" in value or "book" in value):
+        validate_account_book(value)
+        return value
     if not isinstance(value, dict) or not isinstance(value.get("view"), dict):
         if os.getenv("TASI_REQUIRE_PORTFOLIO_LEDGER", "").lower() == "true":
             raise RuntimeError("Confirmed portfolio ledger is required but unavailable.")
@@ -126,6 +130,40 @@ def _portfolio_ledger() -> dict | None:
             and (type(value.get("eventCount")) is not int or value["eventCount"] <= 0)):
         raise RuntimeError("Confirmed portfolio ledger requires an imported opening balance.")
     return value
+
+
+def validate_account_book(value: dict) -> dict:
+    """Reject a broken new contract; never downgrade it to spendable legacy data."""
+    book = value.get("book")
+    if (value.get("schemaVersion") != 2 or not isinstance(book, dict)
+            or book.get("schemaVersion") != 1 or book.get("policyStatus") != "unconfigured"
+            or type(value.get("eventCount")) is not int or value["eventCount"] < 0):
+        raise RuntimeError("Confirmed account book is invalid.")
+    accounts = book.get("accounts")
+    if (not isinstance(accounts, list) or len(accounts) != 2
+            or [a.get("accountId") for a in accounts if isinstance(a, dict)] != ["al_rajhi", "al_ahli"]):
+        raise RuntimeError("Confirmed account book accounts are invalid.")
+    import math
+    def amount(n):
+        return type(n) in (int, float) and math.isfinite(n) and n >= 0
+    for account in accounts:
+        if (type(account.get("initialized")) is not bool
+                or (account.get("error") is not None and (
+                    not isinstance(account["error"], str) or not account["error"].strip()
+                    or account.get("initialized") or account.get("confirmedAt") is not None))
+                or type(account.get("revision")) is not int or account["revision"] < 0
+                or not isinstance(account.get("holdings"), list)
+                or (account["initialized"] and (not amount(account.get("cashSar")) or not artifacts.timestamp_or_none(account.get("confirmedAt"))))
+                or (not account["initialized"] and (account.get("cashSar") is not None or account["holdings"]))):
+            raise RuntimeError("Confirmed account book projection is invalid.")
+        for holding in account["holdings"]:
+            if (not isinstance(holding, dict) or not re.fullmatch(r"\d{4}", str(holding.get("code", "")))
+                    or type(holding.get("shares")) is not int or holding["shares"] <= 0
+                    or (holding.get("avgCostSar") is not None and not amount(holding["avgCostSar"]))):
+                raise RuntimeError("Confirmed account book holdings are invalid.")
+    if value["eventCount"] != sum(a["revision"] for a in accounts):
+        raise RuntimeError("Confirmed account book revision count is invalid.")
+    return book
 
 
 def _holdings() -> list[dict]:
@@ -137,6 +175,17 @@ def _holdings() -> list[dict]:
     takes over, without ever leaving the digest with nothing to report.
     """
     ledger = _portfolio_ledger()
+    if ledger and "book" in ledger:
+        # Aggregation is for technical diagnostics only; no account cash pools
+        # and no cost basis is inferred from another broker's position.
+        grouped = {}
+        for account in ledger["book"]["accounts"]:
+            for item in account["holdings"]:
+                code = item["code"]
+                current = grouped.setdefault(code, {"code": code, "name": item.get("name") or code, "shares": 0, "avg_cost": None, "accounts": []})
+                current["shares"] += item["shares"]
+                current["accounts"].append({"accountId": account["accountId"], "shares": item["shares"]})
+        return list(grouped.values())
     holdings = ((ledger or {}).get("view") or {}).get("holdings") or []
     event_count = (ledger or {}).get("eventCount", 0)
     if not holdings and not event_count:
@@ -174,6 +223,8 @@ def _budget_remaining() -> float:
     balance does carry forward, because that is a true statement about money --
     but the CAP is a spending rule, and it resets.
     """
+    if (_portfolio_ledger() or {}).get("book") is not None:
+        return None
     return max(0.0, cfg.BUDGET["monthly_budget_sar"] - _budget_spent_this_month())
 
 
@@ -418,7 +469,7 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     if not top10.get("entries"):
         warnings.append("Top 10 draft unavailable: no current primary-source evidence has been reviewed yet.")
     holdings = [
-        {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), "avgCostSar": float(item["avg_cost"])}
+        {"code": item["code"], "name": item["name"], "shares": int(item["shares"]), **({"avgCostSar": float(item["avg_cost"])} if item.get("avg_cost") else {})}
         for item in _holdings()
     ]
     ledger_view = ((_portfolio_ledger() or {}).get("view") or {})
@@ -437,6 +488,17 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
                               "contributionMonth": ledger_view.get("contributionMonth"),
                               "holdings": holdings, "proposal": None},
                 "alerts": alerts or [], "forecast": _forecast(generated_at)}
+    book = (_portfolio_ledger() or {}).get("book")
+    if book is not None:
+        accounts = book["accounts"]
+        complete = all(a["initialized"] for a in accounts)
+        total_cash = sum(a["cashSar"] for a in accounts) if complete else None
+        warnings.extend(f"Broker account {a['accountId']} unavailable: {a['error']}"
+                        for a in accounts if a.get("error"))
+        snapshot["monthlyBudgetSar"] = None
+        snapshot["urgent"] = []
+        snapshot["portfolio"].update(policyStatus="unconfigured", accountBook=book,
+            cashSar=round(total_cash, 2) if total_cash is not None and total_cash*100 <= 2**53-1 else None)
     if top10_review is not None:
         snapshot["top10Review"] = top10_review
     snapshot["summaryV1"] = build_summary_v1(snapshot, scheduled_for=scheduled_for)
@@ -582,7 +644,7 @@ def _collect_recs(include_news: bool, record_history: bool = False,
     # The index has its own warning above; this covers the tradeable names.
     global _DATA_WARNING
     _DATA_WARNING = None
-    tradeable = [x["code"] for x in cfg.HOLDINGS + cfg.WATCHLIST]
+    tradeable = [x["code"] for x in _holdings() + cfg.WATCHLIST]
     missing = [c for c in tradeable
                if hist.get(c) is None or hist[c].empty]
     if missing:
@@ -657,6 +719,15 @@ def _collect_recs(include_news: bool, record_history: bool = False,
             unverified.append((w["code"], w["name"], v.get("yahoo_name", "")))
         recs.append(rec)
 
+    account_mode = (_portfolio_ledger() or {}).get("book") is not None
+    if account_mode:
+        for rec in recs:
+            rec["technicalAction"] = rec["action"]
+            rec["action"] = "WATCH"
+            rec["policyStatus"] = "unconfigured"
+            rec["sizing"] = None
+            rec["reason"].insert(0, "Company policy is not evaluated; technical observations only.")
+
     if record_history:
         snapshot_history = _load(HISTORY_FILE, {})
         today = _today()
@@ -667,6 +738,9 @@ def _collect_recs(include_news: bool, record_history: bool = False,
                                                           "trend", snap["trend"])
             snapshot_history = histmod.record_snapshot(snapshot_history, rec["code"], today, snap)
         _save(HISTORY_FILE, snapshot_history)
+
+    if account_mode:
+        return regime, recs, {"policyStatus": "unconfigured", "unverified": unverified}
 
     # Pool all BUYs (verified only — unverified were re-tagged above) and size
     # them from what is left of this month's budget.
@@ -1120,6 +1194,8 @@ def _movement_alerts(recs: list, received_at: str | None = None, state: dict | N
     and writes it back there. Both default to the repository file the GitHub
     schedule already uses.
     """
+    if (_portfolio_ledger() or {}).get("book") is not None:
+        return []
     received_at = received_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     state = _load(MOVEMENT_STATE_FILE, {}) if state is None else dict(state)
     catalog = _load(SYMBOLS_FILE, {})

@@ -151,6 +151,8 @@ def what_would_change_it(rec: dict, levels: dict | None) -> str | None:
     rule, and it was rendered as "Next-bar trigger" with the price stripped of
     any statement of what it would do.
     """
+    if rec.get("policyStatus") == "unconfigured":
+        return "Technical levels are observations only; company assessment and sizing are pending."
     if not has_data(rec):
         return None
     price = _number(rec.get("price")) or 0.0

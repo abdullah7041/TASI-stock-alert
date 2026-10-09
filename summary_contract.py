@@ -66,6 +66,8 @@ def build_summary_v1(snapshot: dict, scheduled_for: str | None = None) -> dict:
             ),
         },
     ]
+    if (snapshot.get("portfolio") or {}).get("policyStatus") == "unconfigured":
+        cards[0].update(state="evidence-pending", text="Company assessment and signal evaluation are pending; no trade quantity is proposed.")
     return {
         "version": 1,
         "generatedAt": generated_at,

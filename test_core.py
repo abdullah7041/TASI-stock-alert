@@ -4068,3 +4068,98 @@ def test_the_gate_reads_the_recorded_holiday_list():
     assert session_gate.gate_reason("digest", now=open_moment, holidays=set()) is None
     assert session_gate.gate_reason(
         "digest", now=open_moment, holidays={"2026-08-20"}) is not None
+
+
+def test_account_books_never_restore_config_holdings_or_legacy_monthly_sizing(monkeypatch):
+    """An empty confirmed account and a missing fetch must not look identical."""
+    book = {"schemaVersion": 1, "policyStatus": "unconfigured", "accounts": [
+        {"accountId": code, "initialized": True, "revision": 1, "cashSar": cash,
+         "holdings": [], "confirmedAt": "2026-10-08T08:00:00Z"}
+        for code, cash in [("al_rajhi", 300), ("al_ahli", 400)]]}
+    monkeypatch.setattr(main, "_load", lambda *_: {"schemaVersion": 2, "book": book, "eventCount": 2})
+    assert main._holdings() == []
+    assert main._budget_remaining() is None
+    assert main._movement_alerts([], received_at="2026-10-08T08:00:00Z") == []
+    snapshot = main._dashboard_snapshot("SIDEWAYS", [], {}, None, as_of="2026-10-08T08:00:00Z", top10={"entries": []})
+    assert snapshot["portfolio"]["cashSar"] == 700
+    assert snapshot["portfolio"]["policyStatus"] == "unconfigured"
+    assert snapshot["summaryV1"]["cards"][0]["state"] == "evidence-pending"
+    monkeypatch.setattr(main, "_load", lambda *_: {"schemaVersion": 2, "book": {}, "view": {"cashSar": 999}})
+    with pytest.raises(RuntimeError, match="account book"):
+        main._holdings()
+
+
+def test_pending_company_policy_cannot_turn_technical_levels_into_trade_decisions():
+    """Price weakness is a diagnostic, not an evaluated company sell case."""
+    import artifacts
+    rec = {"kind": "watch", "code": "1303", "name": "EIC", "price": 10,
+           "action": "SELL (STOP)", "policyStatus": "unconfigured", "rules": []}
+    result = artifacts.decision_record(rec, [])
+    assert result["decision"]["label"] == "Company assessment pending"
+    text = nt.build_message([{**rec, "action": "WATCH"}], "digest", budget={"policyStatus": "unconfigured"})
+    assert "not configured" in text and "SAR/month" not in text
+    rec["price"] = None
+    assert artifacts.decision_record(rec, [])["decision"]["label"] == "Insufficient data"
+
+
+def test_account_diagnostics_never_allocate_budget_or_record_recommendation_spend(monkeypatch):
+    """Every recommendation caller shares this guard, including run and digest."""
+    holding = {"code": "1303", "name": "EIC", "shares": 2, "avg_cost": None}
+    frame = _ohlcv()
+    monkeypatch.setattr(main, "_portfolio_ledger", lambda: {"book": {}})
+    monkeypatch.setattr(main, "_holdings", lambda: [holding])
+    monkeypatch.setattr(main.cfg, "WATCHLIST", [])
+    monkeypatch.setattr(main.dat, "get_histories", lambda codes, period: {c: frame for c in codes})
+    monkeypatch.setattr(main.dat, "get_index_history", lambda *a, **kw: frame)
+    monkeypatch.setattr(main, "_verify_symbols", lambda names: {})
+    monkeypatch.setattr(main.discl, "fetch_all", lambda: ([], False))
+    monkeypatch.setattr(main, "_load", lambda *a: {})
+    monkeypatch.setattr(main, "_today", lambda: "2026-10-08")
+    saved = []
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.append((path, value)))
+    def forbidden(*a, **kw):
+        raise AssertionError("Sizing must remain inactive")
+    monkeypatch.setattr(main.az, "allocate_budget", forbidden)
+    monkeypatch.setattr(main, "_budget_record", forbidden)
+    _, recs, budget = main._collect_recs(include_news=False, record_history=True)
+    assert recs and all(r["action"] == "WATCH" and r["sizing"] is None for r in recs)
+    assert budget["policyStatus"] == "unconfigured"
+    assert all("delta" in r and "trend_streak" in r for r in recs)
+    assert saved and saved[0][0] == main.HISTORY_FILE
+    assert main._DATA_WARNING is None
+
+
+def test_a_partial_account_error_keeps_healthy_account_data_without_legacy_fallback(monkeypatch):
+    """An unavailable broker must not erase the other broker or become empty cash."""
+    broken = {"accountId": "al_rajhi", "initialized": False, "revision": 1,
+              "cashSar": None, "holdings": [], "confirmedAt": None,
+              "error": "Account records could not be verified."}
+    healthy = {"accountId": "al_ahli", "initialized": True, "revision": 1,
+               "cashSar": 400, "holdings": [{"code": "1303", "name": "EIC", "shares": 2}],
+               "confirmedAt": "2026-10-08T08:00:00Z"}
+    payload = {"schemaVersion": 2, "eventCount": 2, "book": {
+        "schemaVersion": 1, "policyStatus": "unconfigured", "accounts": [broken, healthy]}}
+    assert main.validate_account_book(payload) == payload["book"]
+    monkeypatch.setattr(main, "_portfolio_ledger", lambda: payload)
+    assert main._holdings()[0]["shares"] == 2
+    snapshot = main._dashboard_snapshot("SIDEWAYS", [], {}, None,
+        as_of="2026-10-08T08:00:00Z", top10={"entries": []})
+    assert snapshot["portfolio"]["cashSar"] is None
+    assert snapshot["portfolio"]["accountBook"]["accounts"][0]["error"]
+    assert any("al_rajhi" in warning for warning in snapshot["warnings"])
+    broken["initialized"] = True
+    with pytest.raises(RuntimeError, match="projection"):
+        main.validate_account_book(payload)
+
+
+def test_account_discord_observations_never_describe_a_price_crossing_as_a_sell():
+    """The pending title must not be contradicted by the old explanatory footer."""
+    rec = {"code": "1303", "name": "EIC", "kind": "holding", "price": 10,
+           "action": "WATCH", "policyStatus": "unconfigured", "unrealized_pct": None,
+           "decision": {"label": "Company assessment pending", "reason": "Company policy is not evaluated."},
+           "rules": [{"rule": "stop_level", "available": True, "passed": True}]}
+    from datetime import date
+    embed = nt.build_name_embed(rec, levels={"stop": 11}, today=date(2026, 10, 8))
+    assert "sell level" not in embed["description"]
+    assert "becomes a sell" not in embed["description"]
+    assert "observations" in embed["description"]
