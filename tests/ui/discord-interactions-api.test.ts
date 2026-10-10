@@ -18,10 +18,15 @@ import {verifyDiscordSignature} from '@/app/lib/discord-interactions.mjs';
 
 test('Discord endpoint verification accepts a signed actorless ping without relaxing owner command access',async()=>{
   env.DISCORD_APP_PUBLIC_KEY='00'.repeat(32);env.DISCORD_OWNER_USER_ID='owner';
+  const book=vi.spyOn(PortfolioStore.prototype,'book');
   const request=(body:unknown)=>new Request('https://example.test/api/discord/interactions',{method:'POST',body:JSON.stringify(body)});
   const ping=await POST(request({type:1}));
   expect(ping.status).toBe(200);expect(await ping.json()).toEqual({type:1});
-  expect((await POST(request({type:2,user:{id:'other'},data:{name:'portfolio'}}))).status).toBe(403);
+  // Discord discards an HTTP 403 even when its body contains a valid refusal.
+  const denied=await POST(request({id:'denied',type:2,user:{id:'other'},data:{name:'portfolio'}}));
+  expect(denied.status).toBe(200);
+  expect(await denied.json()).toMatchObject({type:4,data:{flags:64,content:expect.stringMatching(/restricted to the portfolio owner/)}});
+  expect(book).not.toHaveBeenCalled();
   vi.mocked(verifyDiscordSignature).mockResolvedValueOnce(false);
   expect((await POST(request({type:1}))).status).toBe(401);
 });
@@ -78,7 +83,7 @@ test("Discord /ask reports an assistant outage without claiming the ledger rejec
     body: JSON.stringify(interaction),
   }));
 
-  expect(response.status).toBe(502);
+  expect(response.status).toBe(200);
   const body = await response.json() as { data: { content: string } };
   expect(body.data.content).toMatch(/Discord assistant is temporarily unavailable/i);
   expect(body.data.content).not.toMatch(/ledger rejected/i);

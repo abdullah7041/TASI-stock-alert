@@ -5,8 +5,9 @@ import { CopilotStore } from "@/app/lib/copilot-store";
 import { answerPortfolioQuestion } from "@/app/lib/copilot-service";
 import { parseDecision } from "@/app/lib/copilot-core";
 
-function reply(content: string, status = 200) {
-  return Response.json(discordMessage(content), { status });
+function reply(content: string) {
+  // Signed command refusals still need HTTP 200 for Discord to display them.
+  return Response.json(discordMessage(content));
 }
 
 function portfolioLine(book: PortfolioBook) {
@@ -15,9 +16,9 @@ function portfolioLine(book: PortfolioBook) {
 
 function assistantFailure(error: unknown) {
   if (error instanceof Response && error.status === 429) {
-    return reply("The Discord assistant has reached its monthly AI budget. Try again next month. No ledger record was created.", 429);
+    return reply("The Discord assistant has reached its monthly AI budget. Try again next month. No ledger record was created.");
   }
-  return reply("The Discord assistant is temporarily unavailable. No ledger record was created.", 502);
+  return reply("The Discord assistant is temporarily unavailable. No ledger record was created.");
 }
 
 export async function POST(request: Request) {
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
 
   let interaction: unknown;
   try { interaction = JSON.parse(raw); }
-  catch { return reply("Invalid interaction payload. No ledger record was created.", 400); }
+  catch { return reply("Invalid interaction payload. No ledger record was created."); }
   const command = parseDiscordInteraction(interaction) as
     | { kind: "ping" }
     | { kind: "portfolio" | "budget" }
@@ -42,15 +43,15 @@ export async function POST(request: Request) {
   const actorId = (interaction as {member?: {user?: {id?: string}}; user?: {id?: string}}).member?.user?.id
     ?? (interaction as {user?: {id?: string}}).user?.id;
   if (!env.DISCORD_OWNER_USER_ID || actorId !== env.DISCORD_OWNER_USER_ID) {
-    return reply("This private assistant is restricted to the portfolio owner.", 403);
+    return reply("This private assistant is restricted to the portfolio owner.");
   }
   if (command.kind === "unknown" || command.kind === "invalid") return reply(command.message);
-  if (!env.DB || !env.PORTFOLIO_OWNER_ID) return reply("Portfolio storage is unavailable. No ledger record was created.", 503);
+  if (!env.DB || !env.PORTFOLIO_OWNER_ID) return reply("Portfolio storage is unavailable. No ledger record was created.");
 
   const store = new PortfolioStore(env.DB);
   try {
     if (command.kind === "ask") {
-      if (!env.OPENROUTER_API_KEY) return reply("The Discord assistant is not configured. No request was sent.", 503);
+      if (!env.OPENROUTER_API_KEY) return reply("The Discord assistant is not configured. No request was sent.");
       const chatModel = env.AGENT_DEFAULT_MODEL ?? env.AGENT_CHAT_MODEL ?? "deepseek/deepseek-v4.1-flash";
       try {
         const result = await answerPortfolioQuestion({ ownerId: env.PORTFOLIO_OWNER_ID, db: env.DB, apiKey: env.OPENROUTER_API_KEY, chatModel }, command.question);
