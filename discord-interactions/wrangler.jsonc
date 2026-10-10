@@ -3,7 +3,8 @@
   "name": "tasi-discord-interactions",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-27",
-  "compatibility_flags": ["nodejs_compat"],
+  // Same-zone fetches must reach the gateway Worker through Cloudflare Access.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "vars": {
     "COCKPIT_ORIGIN": "https://tasi-machine-gateway.ronaldinho1415.workers.dev",
     "COCKPIT_ACCESS_CLIENT_ID": "eb652d878fc01f08146eb0a81a5a566e.access",
