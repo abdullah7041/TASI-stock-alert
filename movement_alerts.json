@@ -1,8 +1,8 @@
 {
   "alerts": [],
   "artifactKind": "movement",
-  "asOf": "2026-10-13T14:38:21Z",
+  "asOf": "2026-10-14T12:31:03Z",
   "dataStatus": "delayed-intraday",
   "schemaVersion": 1,
-  "artifactId": "sha256:b8ec007d83fb34f7a8b4645b11ff78fd448971b36555cd3e7088e02d1faa9f76"
+  "artifactId": "sha256:f0f8f7609b64743376d5f4ce5a73c6b8f3573d43fca6d98a2ce26bc8a617aca1"
 }
