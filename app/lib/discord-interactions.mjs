@@ -45,7 +45,7 @@ export function parseDiscordInteraction(interaction) {
     return { kind: "decide", id: `discord:${interaction.id}`, draft: { symbol, action, conditions, invalidation } };
   }
   if (command !== "bought" && command !== "sold") return { kind: "unknown", message: "That command is unavailable. No ledger record was created." };
-  return {kind:'invalid',message:'Record executed trades in the cockpit: choose a broker account, actual fees, and preview before confirming. No ledger record was created.'};
+  return {kind:'invalid',message:'Record executed trades in [Portfolio](https://tasi-action-cockpit.ronaldinho1415.workers.dev/?view=portfolio): choose a broker account, actual fees, and preview before confirming. No ledger record was created.'};
 }
 
 export function discordMessage(content) {

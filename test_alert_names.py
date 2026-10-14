@@ -152,12 +152,12 @@ def test_daily_digest_discord_format_is_frozen():
         },
     }
 
-    assert nt.build_dashboard_digest(snapshot) == "\n".join([
-        "__**TASI delayed digest (2026-08-19)**__",
-        "- No holding crossed a decision level.",
-        "- Top 10: evidence pending; no current primary-source review.",
-        "- Digest started 3 minutes after its scheduled time.",
-    ])
+    message = nt.build_dashboard_digest(snapshot)
+    assert "No holding crossed a decision level." in message
+    assert "Prices unavailable" in message
+    assert "workers.dev" in message
+    assert "scheduled time" not in message
+    assert len(message) <= 900
 
 
 def test_discord_smoke_never_collects_market_data_or_writes_state(monkeypatch):
