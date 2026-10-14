@@ -6,6 +6,11 @@ const REQUIRED = {
 };
 const COMMON = ["valuation_context", "downside_risk", "official_catalyst"];
 
+export function evidenceMetricFields(kind) {
+  if (!Object.hasOwn(REQUIRED, kind)) throw new Error("Company type is invalid.");
+  return [...REQUIRED[kind], ...COMMON];
+}
+
 function text(value, field) {
   if (typeof value !== "string" || !value.trim()) throw new Error(`${field} is required.`);
   return value.trim();
@@ -42,7 +47,7 @@ export function validateEvidenceRecord(value, issuerHosts = []) {
   if (Date.parse(retrievedAt) > Date.now()) throw new Error("retrievedAt cannot be in the future.");
   const metrics = value.metrics;
   if (!metrics || typeof metrics !== "object" || Array.isArray(metrics)) throw new Error("metrics are required.");
-  const required = [...REQUIRED[kind], ...COMMON];
+  const required = evidenceMetricFields(kind);
   const parsedMetrics = {};
   for (const key of required) {
     const metric = metrics[key];

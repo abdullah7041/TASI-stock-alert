@@ -635,13 +635,11 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
                         early_movers: list | None = None,
                         index_unavailable: bool = False,
                         artifact: dict | None = None) -> list:
-    """The pre-open digest as embeds: a header, then one embed per name.
+    """One routine brief from the canonical artifact; legacy embeds remain compatible.
 
-    Replaces build_dashboard_digest's four-card message as the digest body.
-    Holdings always appear -- you own them, so "nothing changed" is itself the
-    answer you came for. Watchlist names appear when they are actionable or
-    when something about them moved; the rest are named in one trailing line so
-    a quiet name is visibly quiet rather than silently missing.
+    The records-only path retains the earlier header/per-name renderer for old
+    callers. Artifact-based scheduled digests retain company evidence in the
+    cockpit and use one concise message.
     """
     if artifact is not None:
         # Full per-company charts and diagnostics are retained in the canonical

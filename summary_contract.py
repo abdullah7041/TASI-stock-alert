@@ -127,9 +127,15 @@ def data_notes(snapshot: dict) -> list[str]:
     failures = sum((r.get("news") or {}).get("ok") is False for r in records)
     if failures:
         notes.append(f"News unavailable for {failures} stock(s)")
+    uncollected = sum(not r.get("news") or r["news"].get("ok") is None for r in records)
+    if uncollected:
+        notes.append(f"News not collected for {uncollected} stock(s)")
     filing_failures = sum((r.get("disclosures") or {}).get("ok") is False for r in records)
     if filing_failures:
         notes.append(f"Filings unavailable for {filing_failures} stock(s)")
+    uncollected_filings = sum(not r.get("disclosures") or r["disclosures"].get("ok") is None for r in records)
+    if uncollected_filings:
+        notes.append(f"Filings not collected for {uncollected_filings} stock(s)")
     return notes
 
 
@@ -169,12 +175,12 @@ def notification_updates(snapshot: dict, prior: dict, *, tracked_codes: set[str]
                                              if str(r.get("code")) in tracked_codes]}
     notes = data_notes(tracked)
     health = {"prices": "failed" if any("price" in n.lower() or "quote" in n.lower() for n in notes) else "available",
-              "news": "failed" if any("News" in n for n in notes) else "available",
-              "filings": "failed" if any("Filings" in n for n in notes) else "available"}
+              "news": "failed" if any("News unavailable" in n for n in notes) else "unknown" if not tracked["digestRecords"] or any("News not collected" in n for n in notes) else "available",
+              "filings": "failed" if any("Filings unavailable" in n for n in notes) else "unknown" if not tracked["digestRecords"] or any("Filings not collected" in n for n in notes) else "available"}
     previous_health = prior.get("health") or {}
     for source, status in health.items():
         previous = previous_health.get(source)
-        if status == previous or (previous is None and status == "available"):
+        if status == previous or status == "unknown" or (previous is None and status == "available"):
             continue
         updates.append({"kind": "health", "id": f"{source}:{status}",
                         "text": f"{source.capitalize()} {'unavailable; check data status.' if status == 'failed' else 'coverage restored.'}"})

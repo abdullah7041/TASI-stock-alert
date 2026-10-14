@@ -16,7 +16,7 @@ export function MarketPulse({ pulse }: { pulse?: MarketPulseArtifact | null }) {
   return <section className={styles.marketPulse} aria-label="Delayed market pulse">
     <div className={styles.pulseHead}>
       <div><p className={styles.eyebrow}>DELAYED MARKET PULSE</p><h2>Latest observed prices</h2></div>
-      <span>5-minute delayed quote · not real time</span>
+      <span>Delayed quote observations · not real time</span>
     </div>
     {!pulse ? <p className={styles.emptyEvidence}>No delayed market pulse has been ingested yet. The daily snapshot remains available below.</p>
       : pulse.status === "failed" ? <p className={styles.pulseUnavailable}>The delayed quote fetch failed. The last saved daily snapshot remains visible; no empty result is implied.</p>

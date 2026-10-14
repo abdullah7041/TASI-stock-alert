@@ -8,7 +8,7 @@ import {buildPortfolioBook} from '@/app/lib/portfolio-core.mjs';
 import type {AccountRecord} from '@/app/lib/evidence-types';
 
 const payload = { snapshot: saved, freshness:'current', alerts:[] } as unknown as DashboardPayload;
-afterEach(()=>{ cleanup();vi.unstubAllGlobals(); });
+afterEach(()=>{ cleanup();vi.unstubAllGlobals();window.history.replaceState({},'', '/'); });
 function start(){vi.stubGlobal('fetch',vi.fn(async()=>Response.json(payload)));return render(<ActionCockpit dashboard={payload}/>);}
 test('all holdings are visible on home, details and diagnostics stay one click away',async()=>{
   start();
@@ -52,6 +52,7 @@ test('a failed refresh retains the last account book and its confirmation time',
   const live=buildPortfolioBook([{accountId:'al_rajhi',operationId:'open',revision:1,recordedAt:'2026-10-08T08:00:00Z',kind:'event',payload:{kind:'opening_balance',cashSar:300,holdings:[],occurredAt:'2026-10-01T08:00:00Z',provenance:{source:'manual'}}} as AccountRecord],[]);
   vi.stubGlobal('fetch',vi.fn(async(url:string)=>url==='/api/portfolio'?Response.json(failed?{error:'unavailable'}:live,{status:failed?503:200}):Response.json(payload)));
   render(<ActionCockpit dashboard={payload}/>);
+  await userEvent.click(screen.getByRole('link',{name:'Portfolio'}));
   const accounts=await screen.findByRole('region',{name:'Broker accounts'});
   expect(within(accounts).getByText('300.00 SAR cash')).toBeTruthy();
   failed=true;await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
@@ -83,7 +84,7 @@ test('unavailable checks are explicit and market date differs from generated tim
   start();
   expect(screen.getByText('Some checks unavailable')).toBeTruthy();
   expect(screen.getByText(/Daily snapshot for/)).toBeTruthy();
-  expect(screen.getByText(/Prices from previous close/)).toBeTruthy();
+  expect(screen.getByText(/Quotes dated/)).toBeTruthy();
   expect(screen.queryByText(/Market observed/)).toBeNull();
 });
 
@@ -96,10 +97,10 @@ test('labels the snapshot date, previous-close price date, and action count sepa
   render(<ActionCockpit dashboard={datedPayload}/>);
 
   expect(screen.getByText('Daily snapshot for 2026-09-07')).toBeTruthy();
-  expect(screen.getByText(/Prices from previous close 2026-09-06/)).toBeTruthy();
-  const summary=screen.getByText('holdings need action').parentElement!;
-  expect(summary.textContent).toContain('0holdings need action');
-  expect(screen.getByText('3 holdings tracked')).toBeTruthy();
+  expect(screen.getByText(/Quotes dated 2026-09-06/)).toBeTruthy();
+  const summary=screen.getByText('Unassigned holdings').parentElement!;
+  expect(summary.textContent).toContain('3');
+  expect(screen.getAllByRole('button',{name:/View .* details/})).toHaveLength(3);
 });
 
 test('labels mixed holding quote dates as a range instead of one false previous close',()=>{
@@ -111,7 +112,7 @@ test('labels mixed holding quote dates as a range instead of one false previous 
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json(mixedPayload)));
   render(<ActionCockpit dashboard={mixedPayload}/>);
 
-  expect(screen.getByText(/Latest available prices dated 2026-09-06 to 2026-09-07/)).toBeTruthy();
+  expect(screen.getByText(/Quotes dated 2026-09-06 to 2026-09-07/)).toBeTruthy();
 });
 
 test('manual refresh reports that the saved artifact is unchanged',async()=>{
@@ -169,7 +170,7 @@ test('optional AI unavailability does not downgrade complete deterministic holdi
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json(completePayload)));
   render(<ActionCockpit dashboard={completePayload}/>);
 
-  expect(screen.getByText('No holding needs a rule-based action.')).toBeTruthy();
+  expect(screen.getByText('Your daily check-in is ready')).toBeTruthy();
   expect(screen.queryByText('Some checks unavailable')).toBeNull();
 });
 
@@ -184,14 +185,14 @@ test('home, watchlist, and view-all controls expose every navigation state',asyn
   render(<ActionCockpit dashboard={expandedPayload}/>);
 
   expect(screen.getByRole('link',{name:'TASI home'}).getAttribute('href')).toBe('/');
+  await userEvent.click(screen.getByRole('link',{name:'Research'}));
   await userEvent.click(screen.getByRole('button',{name:'View all (5)'}));
   expect(screen.getAllByRole('button',{name:/Explore company/})).toHaveLength(5);
   await userEvent.click(screen.getByRole('button',{name:'Show less'}));
   expect(screen.getAllByRole('button',{name:/Explore company/})).toHaveLength(3);
 
-  await userEvent.click(screen.getByRole('button',{name:/Your watchlist/}));
-  expect(screen.getByRole('dialog').textContent).toContain('Entry conditions for the companies you follow');
-  await userEvent.click(within(screen.getByRole('dialog')).getByRole('button',{name:/View Avalon Pharma details/}));
+  const watchlist=screen.getByRole('region',{name:'Your watchlist'});
+  await userEvent.click(within(watchlist).getByRole('button',{name:/View Avalon Pharma details/}));
   expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Avalon Pharma');
 });
 
@@ -203,7 +204,7 @@ test('Data status closes by button and Escape, traps focus, and restores its tri
   const close=screen.getByRole('button',{name:'Close details'});
   expect(document.activeElement).toBe(close);
   await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
-  expect(document.activeElement).toBe(screen.getByRole('button',{name:'Save reviewed evidence'}));
+  expect(document.activeElement).toBe(screen.getByRole('button',{name:'Refresh data'}));
   await userEvent.keyboard('{Escape}');
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(document.activeElement).toBe(trigger);
@@ -239,10 +240,10 @@ test('holding details expose only safe HTTPS source links',async()=>{
   expect(screen.queryByRole('link',{name:/Unsafe source/})).toBeNull();
 });
 
-test('shows freshness before verified events and unexplained anomalies with a persistent copilot rail',()=>{
+test('keeps verified events separate from unexplained anomalies in Research and chat in Assistant',async()=>{
   const base=structuredClone(saved);
   const headline={title:'Insurance investment-rule draft published',link:'https://www.ia.gov.sa/regulations/investment-draft',published:'2026-09-16T06:08:00Z'};
-  const evidence={...base,digestRecords:base.digestRecords.map((record,index)=>index<2?{
+  const evidence={...base,tradeDate:'2026-09-16',asOf:'2026-09-16T11:00:00Z',expectedPriceDate:'2026-09-15',digestRecords:base.digestRecords.map((record,index)=>index<2?{
     ...record,news:{ok:true,status:'available' as const,headlines:[headline]},
   }:record)};
   const evidencePayload={snapshot:evidence,freshness:'current',alerts:[{
@@ -253,17 +254,18 @@ test('shows freshness before verified events and unexplained anomalies with a pe
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json(evidencePayload)));
   render(<ActionCockpit dashboard={evidencePayload}/>);
 
-  const freshness=screen.getByRole('region',{name:'Daily freshness'});
+  expect(screen.getByRole('region',{name:'Daily freshness'})).toBeTruthy();
+  await userEvent.click(screen.getByRole('link',{name:'Research'}));
   const intelligence=screen.getByRole('region',{name:'Market intelligence'});
-  expect(freshness.compareDocumentPosition(intelligence)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(within(intelligence).getByText(/causation is not proven/i)).toBeTruthy();
   expect(within(intelligence).getByText('Example Co')).toBeTruthy();
   expect(within(intelligence).getByText(/No timely verified news/i)).toBeTruthy();
+  expect(screen.queryByRole('complementary',{name:'TASI copilot'})).toBeNull();
+  await userEvent.click(screen.getByRole('link',{name:'Assistant'}));
   expect(screen.getByRole('complementary',{name:'TASI copilot'})).toBeTruthy();
-  expect(screen.getByRole('region',{name:'My holdings'})).toBeTruthy();
 });
 
-test('shows the delayed market pulse with its source observation time',()=>{
+test('keeps available delayed quote observations in Research with their original times',async()=>{
   const pulsePayload={...payload,marketPulse:{
     schemaVersion:1,artifactKind:'market-pulse',artifactId:`sha256:${'a'.repeat(64)}`,
     asOf:'2026-09-16T07:10:00Z',dataStatus:'delayed-intraday',source:'yahoo',status:'available',
@@ -275,9 +277,12 @@ test('shows the delayed market pulse with its source observation time',()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json(pulsePayload)));
   render(<ActionCockpit dashboard={pulsePayload}/>);
 
+  expect(screen.queryByRole('region',{name:'Delayed market pulse'})).toBeNull();
+  await userEvent.click(screen.getByRole('link',{name:'Research'}));
+  await userEvent.click(screen.getByText('Saved delayed quote observations'));
   const pulse=screen.getByRole('region',{name:'Delayed market pulse'});
   expect(within(pulse).getByText('EIC')).toBeTruthy();
   expect(within(pulse).getByText('14.73 SAR')).toBeTruthy();
   expect(within(pulse).getByText(/Observed .*Asia\/Riyadh/i)).toBeTruthy();
-  expect(within(pulse).getByText(/5-minute delayed quote/i)).toBeTruthy();
+  expect(within(pulse).getByText(/Delayed quote observations/i)).toBeTruthy();
 });

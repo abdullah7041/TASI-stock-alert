@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { ActionCockpit } from "@/app/components/ActionCockpit";
 import { PriceVolumeChart } from "@/app/components/PriceVolumeChart";
+import { AlertBoard } from "@/app/components/AlertBoard";
 import type { DashboardPayload, DashboardSnapshotV2, DashboardSnapshotV3 } from "@/app/lib/dashboard-types";
 import type { MovementAlert } from "@/app/lib/evidence-types";
 
@@ -82,11 +83,12 @@ afterEach(() => {
   // without this every render leaks into the next test's queries.
   cleanup();
   vi.unstubAllGlobals();
+  window.history.replaceState({}, '', '/');
 });
 
 test("ten repeated observations of one company collapse into a single card", async () => {
   const alerts = Array.from({ length: 10 }, (_, index) => alert(index));
-  renderCockpit(payload({ alerts }));
+  renderAlertBoard(payload({ alerts }));
 
   const toggles = await screen.findAllByRole("button", { expanded: false, name: /Nahdi Medical/ });
   expect(toggles).toHaveLength(1);
@@ -95,7 +97,7 @@ test("ten repeated observations of one company collapse into a single card", asy
 
 test("the newest observation of a company leads the card", async () => {
   const alerts = [alert(0), alert(5), alert(2)];
-  renderCockpit(payload({ alerts }));
+  renderAlertBoard(payload({ alerts }));
 
   const toggle = await screen.findByRole("button", { name: /Nahdi Medical/ });
   const region = toggle.closest("[data-code='4164']") as HTMLElement;
@@ -108,7 +110,7 @@ test("the newest observation of a company leads the card", async () => {
 });
 
 test("the company name is primary and the code is secondary", async () => {
-  renderCockpit(payload({ alerts: [alert(0)] }));
+  renderAlertBoard(payload({ alerts: [alert(0)] }));
 
   const toggle = await screen.findByRole("button", { name: /Nahdi Medical/ });
   expect(toggle.textContent).toMatch(/Nahdi Medical\s*\(4164\)/);
@@ -116,14 +118,14 @@ test("the company name is primary and the code is secondary", async () => {
 });
 
 test("an unresolved code reads as unavailable rather than as a name", async () => {
-  renderCockpit(payload({ alerts: [alert(0, { code: "9999", name: "Company name unavailable" })] }));
+  renderAlertBoard(payload({ alerts: [alert(0, { code: "9999", name: "Company name unavailable" })] }));
 
   const toggle = await screen.findByRole("button", { name: /Company name unavailable/ });
   expect(toggle.textContent).toContain("(9999)");
 });
 
 test("clicking an alert expands its evidence and delayed-data warning", async () => {
-  renderCockpit(payload({ alerts: [alert(0), alert(1)] }));
+  renderAlertBoard(payload({ alerts: [alert(0), alert(1)] }));
 
   const toggle = await screen.findByRole("button", { name: /Nahdi Medical/ });
   expect(toggle.getAttribute("aria-expanded")).toBe("false");
@@ -147,7 +149,7 @@ test("clicking an alert expands its evidence and delayed-data warning", async ()
 test("volume is omitted when the producer recorded none", async () => {
   const withoutVolume = alert(0);
   delete withoutVolume.volumeRatio;
-  renderCockpit(payload({ alerts: [withoutVolume] }));
+  renderAlertBoard(payload({ alerts: [withoutVolume] }));
 
   await userEvent.click(await screen.findByRole("button", { name: /Nahdi Medical/ }));
 
@@ -155,7 +157,7 @@ test("volume is omitted when the producer recorded none", async () => {
 });
 
 test("the keyboard alone expands an alert", async () => {
-  renderCockpit(payload({ alerts: [alert(0)] }));
+  renderAlertBoard(payload({ alerts: [alert(0)] }));
 
   const toggle = await screen.findByRole("button", { name: /Nahdi Medical/ });
   toggle.focus();
@@ -168,7 +170,7 @@ test("the keyboard alone expands an alert", async () => {
 
 test("two companies stay separate and the newest company leads", async () => {
   const alerts = [alert(0), alert(6, { alertId: "jahez-1", code: "6017", name: "Jahez", direction: "downside" })];
-  renderCockpit(payload({ alerts }));
+  renderAlertBoard(payload({ alerts }));
 
   const cards = document.querySelectorAll("[data-code]");
   expect([...cards].map((card) => card.getAttribute("data-code"))).toEqual(["6017", "4164"]);
@@ -178,7 +180,7 @@ test("two companies stay separate and the newest company leads", async () => {
 test("keeps earlier delayed alerts out of the current daily alert result", async () => {
   const current = alert(0, { observedAt: "2026-08-19T10:10:00Z", receivedAt: "2026-08-19T10:10:30Z" });
   const earlier = alert(1, { alertId: "jahez-earlier", code: "6017", name: "Jahez", observedAt: "2026-08-18T10:10:00Z", receivedAt: "2026-08-18T10:10:30Z" });
-  renderCockpit(payload({ alerts: [current, earlier] }));
+  renderAlertBoard(payload({ alerts: [current, earlier] }));
 
   const currentAlerts = await screen.findByLabelText("Current delayed alerts");
   expect(within(currentAlerts).getByRole("button", { name: /Nahdi Medical/ })).toBeTruthy();
@@ -190,21 +192,26 @@ test("keeps earlier delayed alerts out of the current daily alert result", async
 });
 
 test("explains when the current daily snapshot produced no movement alert", async () => {
-  renderCockpit(payload({ alerts: [alert(0, { observedAt: "2026-08-18T10:10:00Z", receivedAt: "2026-08-18T10:10:30Z" })] }));
+  renderAlertBoard(payload({ alerts: [alert(0, { observedAt: "2026-08-18T10:10:00Z", receivedAt: "2026-08-18T10:10:30Z" })] }));
 
   const currentAlerts = await screen.findByLabelText("Current delayed alerts");
   expect(currentAlerts.textContent).toContain("No delayed movement alert was produced for this daily snapshot.");
 });
 
+
+function renderAlertBoard(dashboard:DashboardPayload) {
+  return render(<AlertBoard alerts={dashboard.alerts} tradeDate={dashboard.snapshot.tradeDate}/>);
+}
+
 test("an empty Top 10 offers no approval controls", async () => {
   renderCockpit(payload());
 
-  await userEvent.click(screen.getByRole('button', { name: /Data status/ }));
-  const top10 = document.querySelector("[data-label='Top 10']") as HTMLElement;
+  await userEvent.click(screen.getByRole('link', { name: 'Research' }));
+  const top10 = screen.getByRole('region',{name:'Evidence review'});
 
   expect(screen.queryByRole("button", { name: "Approve Top 10" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Reject Top 10" })).toBeNull();
-  expect(top10.textContent).toContain("nothing to approve or reject");
+  expect(top10.textContent).toContain("No reviewed company draft is available.");
 });
 
 test("a researched Top 10 draft does offer approval controls", async () => {
@@ -219,7 +226,7 @@ test("a researched Top 10 draft does offer approval controls", async () => {
   }];
   renderCockpit(payload({ snapshot: { ...snapshot, top10: { ...snapshot.top10, entries } } }));
 
-  await userEvent.click(screen.getByRole('button', { name: /Data status/ }));
+  await userEvent.click(screen.getByRole('link', { name: 'Research' }));
 
   expect(screen.getByRole("button", { name: "Approve Top 10" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Reject Top 10" })).toBeTruthy();
@@ -238,21 +245,20 @@ test.each(['approved','rejected'] as const)("Top 10 %s control submits the expli
   vi.stubGlobal('fetch',fetcher);
   render(<ActionCockpit dashboard={dashboard}/>);
 
-  await userEvent.click(screen.getByRole('button',{name:/Data status/}));
+  await userEvent.click(screen.getByRole('link',{name:'Research'}));
   await userEvent.click(screen.getByRole('button',{name:decision==='approved'?'Approve Top 10':'Reject Top 10'}));
   expect(await screen.findByText(`Top 10 ${decision}.`)).toBeTruthy();
   const request=fetcher.mock.calls.find(([input])=>String(input)==='/api/top10/approve');
   expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({proposalId:'p1',decision});
 });
 
-test("diagnostics are behind Data status and retain withheld forecast explanations", async () => {
+
+test("unsupported forecasts stay out of the interface while source diagnostics remain available", async () => {
   renderCockpit(payload());
-  expect(screen.queryByRole('heading', { name: 'Forecast' })).toBeNull();
-  expect(screen.getByText(/No scanner candidates met both research conditions/)).toBeTruthy();
-  await userEvent.click(screen.getByRole('button', { name: /Data status/ }));
-  const forecast = document.querySelector("[data-label='Forecast']") as HTMLElement;
-  expect(forecast.textContent).toContain("Forecast unavailable: validation gates have not passed.");
-  expect(forecast.textContent).toContain('validation gates not passed.');
+  expect(screen.queryByRole('heading',{name:'Forecast'})).toBeNull();
+  await userEvent.click(screen.getByRole('button',{name:/Data status/}));
+  expect(screen.queryByRole('heading',{name:'Forecast'})).toBeNull();
+  expect(screen.getByRole('dialog').textContent).toContain('Snapshot saved');
 });
 
 test("a stale snapshot still explains itself above the rail", async () => {
@@ -262,13 +268,14 @@ test("a stale snapshot still explains itself above the rail", async () => {
   expect(screen.getByText(/The expected pre-open refresh did not arrive/)).toBeTruthy();
 });
 
-test("holdings precede research and movement history in the overview", async () => {
-  renderCockpit(payload({ alerts: [alert(0)] }));
 
-  const holdings = screen.getByRole('region', { name: 'My holdings' });
-  const research = screen.getByRole('region', { name: 'Worth watching' });
-  expect(holdings.compareDocumentPosition(research) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(screen.queryByRole('heading', { name: /Everything else/ })).toBeNull();
+test("the overview keeps holdings visible and moves research and history into Research", async () => {
+  renderCockpit(payload({alerts:[alert(0)]}));
+  expect(screen.getByRole('region',{name:'My holdings'})).toBeTruthy();
+  expect(screen.queryByRole('region',{name:'Worth watching'})).toBeNull();
+  await userEvent.click(screen.getByRole('link',{name:'Research'}));
+  expect(screen.getByRole('region',{name:'Worth watching'})).toBeTruthy();
+  expect(screen.getByText(/Movement history/)).toBeTruthy();
 });
 
 test("a keyboard-accessible chart expands from the canonical three-month data", async () => {
@@ -295,5 +302,5 @@ test("a failed manual refresh retains the last-good cockpit view", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Refresh cockpit" }));
 
   expect(await screen.findByText("Refresh failed; the last good snapshot remains visible.")).toBeTruthy();
-  expect(screen.getByRole('heading', { name: /A little clarity/ })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Portfolio overview' })).toBeTruthy();
 });

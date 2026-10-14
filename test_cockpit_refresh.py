@@ -74,3 +74,24 @@ def test_relevant_updates_ignore_old_or_unrelated_events_and_deduplicate_status_
     old = {**event, "published_at": "2026-09-01T04:00:00Z"}
     assert not any(u["kind"] == "event" for u in summary_contract.notification_updates(
         snapshot, {}, tracked_codes={"4000"}, events=[old])[0])
+
+
+def test_uncollected_news_cannot_be_reported_as_restored_coverage():
+    """A refresh that skipped retrieval must not turn a previous outage into success."""
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = [{**snapshot["digestRecords"][0], "news": None}]
+    updates, state = summary_contract.notification_updates(snapshot, {"health": {"news": "failed"}},
+        tracked_codes={"4000"}, events=[])
+    assert not any("restored" in update["text"] for update in updates)
+    assert state["health"]["news"] == "unknown"
+
+
+def test_missing_tracked_records_cannot_restore_news_or_filing_coverage():
+    """An empty artifact contains no evidence that a failed provider recovered."""
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = []
+    updates, state = summary_contract.notification_updates(
+        snapshot, {"health": {"news": "failed", "filings": "failed"}},
+        tracked_codes={"4000"}, events=[])
+    assert not any("restored" in update["text"] for update in updates)
+    assert state["health"]["news"] == state["health"]["filings"] == "unknown"

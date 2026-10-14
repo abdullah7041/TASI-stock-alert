@@ -1,11 +1,6 @@
+import {previousTradingDate} from './trading-calendar.mjs';
 const finite = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 const reasons = (value) => Array.isArray(value) ? value.filter((s) => typeof s === 'string').join('. ') : typeof value === 'string' ? value : '';
-
-function previousTradingDate(date) {
-  const cursor=new Date(`${date}T00:00:00Z`);
-  do cursor.setUTCDate(cursor.getUTCDate()-1); while (![0,1,2,3,4].includes(cursor.getUTCDay()));
-  return cursor.toISOString().slice(0,10);
-}
 
 export function conditionReason(rule) {
   if (rule.rule === 'rsi_band') return Number(rule.actual) > 60

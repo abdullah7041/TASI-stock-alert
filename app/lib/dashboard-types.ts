@@ -10,6 +10,7 @@ export type DashboardSnapshot = {
   schemaVersion: 1;
   tradeDate: string;
   expectedPriceDate?: string;
+  indexUnavailable?: boolean;
   asOf: string;
   regime: string;
   dataStatus: "delayed-daily";
