@@ -4093,7 +4093,7 @@ def test_pending_company_policy_cannot_turn_technical_levels_into_trade_decision
     """Price weakness is a diagnostic, not an evaluated company sell case."""
     import artifacts
     rec = {"kind": "watch", "code": "1303", "name": "EIC", "price": 10,
-           "action": "SELL (STOP)", "policyStatus": "unconfigured", "rules": []}
+           "action": "SELL (STOP)", "policyStatus": "unconfigured", "priceDate": "2026-10-08", "rules": []}
     result = artifacts.decision_record(rec, [])
     assert result["decision"]["label"] == "Company assessment pending"
     text = nt.build_message([{**rec, "action": "WATCH"}], "digest", budget={"policyStatus": "unconfigured"})

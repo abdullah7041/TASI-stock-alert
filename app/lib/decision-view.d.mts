@@ -6,6 +6,7 @@ export type StockDecision = {
   reason:string; price:number|null; priceDate:string|null; dailyChange:number|null; pnl:number|null;
   conditionsMet:number|null; conditionsTotal:number|null; missing:string[];
   chart?:MarketChart; record:DigestRecord; shares:number|null; needsAttention:boolean; unavailable:boolean;
+  quoteState:'current'|'stale'|'unavailable';
 };
 export function conditionReason(rule: { rule:string; actual?:unknown; plain?:string }): string;
 export function buildDecisionView(snapshot:DashboardPayload['snapshot'], freshness:DashboardPayload['freshness'], livePortfolio?:PortfolioView|PortfolioAccountView|null): {

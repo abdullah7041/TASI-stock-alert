@@ -9,6 +9,7 @@ export type Candidate = {
 export type DashboardSnapshot = {
   schemaVersion: 1;
   tradeDate: string;
+  expectedPriceDate?: string;
   asOf: string;
   regime: string;
   dataStatus: "delayed-daily";

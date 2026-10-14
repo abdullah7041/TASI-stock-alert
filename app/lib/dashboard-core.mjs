@@ -92,6 +92,7 @@ export function parseDashboardSnapshot(value) {
   const common = {
     schemaVersion: 1,
     tradeDate: tradeDate(value.tradeDate),
+    ...(value.expectedPriceDate !== undefined ? { expectedPriceDate: tradeDate(value.expectedPriceDate) } : {}),
     asOf,
     regime: text(value, "regime"),
     dataStatus: "delayed-daily",

@@ -474,6 +474,7 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     ]
     ledger_view = ((_portfolio_ledger() or {}).get("view") or {})
     snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
+                "expectedPriceDate": session_gate.previous_trading_date(date.fromisoformat((scheduled_for or generated_at)[:10])),
                 "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
                 "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
                 "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
