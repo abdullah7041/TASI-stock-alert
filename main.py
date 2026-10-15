@@ -777,7 +777,9 @@ def _scanner_result() -> dict:
         index_code = cfg.REGIME["index_code"]
         hist = data.get_histories_adjusted(codes + [index_code], cfg.SCANNER["history_period"])
         index_df = hist.get(index_code)
-        index_unavailable = index_df is None or index_df.empty
+        # Yahoo can return one bar: non-empty is not enough for the scanner's 60-day return.
+        index_unavailable = (index_df is None or index_df.empty
+                             or not scanner.code_feature_series(index_df)["ret_60d"].notna().any())
         if index_unavailable:
             print(f"scanner: no data for the index ({index_code}) this run -- "
                   f"rel_strength cannot be computed, so only the squeeze "

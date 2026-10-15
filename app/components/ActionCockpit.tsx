@@ -146,7 +146,11 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
   const quotes=[...view.holdings,...view.watchlist], staleCount=quotes.filter(stock=>stock.quoteState==='stale').length;
   const priceDateLabel=view.priceDates.length===0?'Quotes unavailable':view.priceDates.length===1
     ?`Quotes dated ${view.priceDates[0]}`:`Quotes dated ${view.priceDates[0]} to ${view.priceDates.at(-1)}`;
-  const screeningUnavailable=Boolean(v2?.indexUnavailable)||snapshot.warnings.some(warning=>/scanner.*(failed|unavailable)/i.test(warning));
+  // Older snapshots called a one-bar index available; keep its explicit source warning useful.
+  const reportedIndexBars=/\bindex\b.*returned (\d+) usable bars/i.exec(snapshot.warnings.join('\n'));
+  const screeningUnavailable=Boolean(v2?.indexUnavailable)
+    ||(reportedIndexBars!==null&&Number(reportedIndexBars[1])<=60)
+    ||snapshot.warnings.some(warning=>/scanner.*(failed|unavailable)/i.test(warning));
   const researchEnabled=freshness==='current'&&!screeningUnavailable&&import.meta.env.VITE_AGENT_ENABLED!=='false';
   const delivery=data.delivery, review=v3?.top10Review??(v2?.top10.status==='draft'?v2.top10:null);
   const quotePrices=quotes.filter(stock=>stock.quoteState==='current'&&stock.price!==null)

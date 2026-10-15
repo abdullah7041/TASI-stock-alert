@@ -80,13 +80,19 @@ test('evidence review exposes labeled fields instead of requiring raw JSON', asy
   expect(screen.getByLabelText('Capital adequacy pct · current value')).toBeTruthy();
 });
 
-test('an unavailable screening source is distinguished from a valid empty shortlist', async () => {
-  const payload={snapshot:{...saved,qualified:[],indexUnavailable:true},freshness:'current',alerts:[]} as unknown as DashboardPayload;
+test.each([
+  {flag:true,bars:null,unavailable:true},
+  {flag:false,bars:0,unavailable:true},
+  {flag:false,bars:1,unavailable:true},
+  {flag:false,bars:90,unavailable:false},
+])('screening distinguishes unavailable from a valid empty shortlist: flag=$flag bars=$bars', async ({flag,bars,unavailable}) => {
+  const warnings=bars===null?[]:[`Market regime unavailable: the index (^TASI.SR) returned ${bars} usable bars this run, so no regime could be computed.`];
+  const payload={snapshot:{...saved,qualified:[],indexUnavailable:flag,warnings},freshness:'current',alerts:[]} as unknown as DashboardPayload;
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json(payload)));
   render(<ActionCockpit dashboard={payload}/>);
   await userEvent.click(screen.getByRole('link',{name:'Research'}));
-  expect(screen.getByText(/Screening unavailable/)).toBeTruthy();
-  expect(screen.queryByText(/No scanner candidate met/)).toBeNull();
+  expect(Boolean(screen.queryByText(/Screening unavailable/))).toBe(unavailable);
+  expect(Boolean(screen.queryByText(/No scanner candidate met/))).toBe(!unavailable);
 });
 
 test('reviewed evidence preserves Riyadh source times and the required metrics through a failed save and retry', async () => {
