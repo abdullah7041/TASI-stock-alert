@@ -36,6 +36,18 @@ test("accepts a valid saved dashboard snapshot", () => {
   assert.equal(snapshot.dataStatus, "delayed-daily");
 });
 
+test('the expected quote date survives parsing without requiring older artifacts to have it', () => {
+  assert.equal(parseDashboardSnapshot({...validSnapshot,expectedPriceDate:'2026-08-06'}).expectedPriceDate,'2026-08-06');
+  assert.equal(parseDashboardSnapshot(validSnapshot).expectedPriceDate,undefined);
+  assert.throws(()=>parseDashboardSnapshot({...validSnapshot,expectedPriceDate:'not-a-date'}),/date/i);
+  assert.throws(()=>parseDashboardSnapshot({...validSnapshot,expectedPriceDate:'2026-02-30'}),/date/i);
+});
+
+test('a recorded holiday does not falsely report a missed pre-open snapshot', () => {
+  assert.equal(dashboardFreshness({...validSnapshot,tradeDate:'2026-09-22'},
+    new Date('2026-09-23T11:00:00+03:00'),new Set(['2026-09-23'])),'current');
+});
+
 test("accepts separately dated market, research, portfolio, alert, and forecast evidence", () => {
   const snapshot = parseDashboardSnapshot({
     ...validSnapshot,

@@ -300,13 +300,15 @@ def test_discord_smoke_returns_failure_when_delivery_fails(monkeypatch):
     assert main.mode_discord_smoke() == 1
 
 
-def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch):
+def test_session_mode_is_silent_and_successful_without_new_movement_or_source_updates(monkeypatch, tmp_path):
+    """A quiet session must not read the developer's generated notification state."""
     saved = {}
     _stub_market_pulse(monkeypatch)
+    monkeypatch.setattr(main, "DASHBOARD_FILE", tmp_path / "absent-dashboard.json")
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [], {"monthly_cap": 500.0}))
     monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
-    monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("no movement must not post")))
+    monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("no relevant update must not post")))
 
     assert main.mode_run() == 0
     assert saved[main.ALERTS_FILE]["artifactKind"] == "movement"
@@ -336,18 +338,8 @@ def test_session_mode_persists_delayed_movement_alerts_for_separate_ingestion(mo
     assert saved[main.ALERTS_FILE]["alerts"][0]["alertId"] == "a1"
 
 
-def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
-    """The digest must carry the per-name reads, not only the summary cards.
-
-    Replaces test_digest_sends_the_canonical_snapshot_summary, which pinned the
-    four summaryV1 cards as the whole message. That contract was the defect: it
-    made the digest structurally incapable of reporting a price, a level, a
-    volume reading or a day-over-day change, so it said "no action required"
-    every day while the engine computed all of it and threw it away.
-
-    The legacy `build_message` guard is kept -- reviving that formatter is still
-    the wrong direction; build_digest_embeds is the supported path.
-    """
+def test_digest_sends_one_brief_and_retains_diagnostics_in_the_canonical_artifact(monkeypatch):
+    """The approved concise brief must not discard the facts needed in the cockpit."""
     saved = {}
     sent = []
     rec = {
@@ -365,7 +357,7 @@ def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
     }
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("ok", [rec], {"monthly_cap": 500}))
     monkeypatch.setattr(main, "_scanner_result", lambda: {"candidates": [], "names": {}})
-    monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
+    monkeypatch.setattr(main, "_save", lambda path, value: saved.__setitem__(path, value))
     monkeypatch.setattr(main.nt, "send_discord",
                         lambda *_a, **kw: sent.append(kw.get("embeds")) or True)
     monkeypatch.setattr(main.nt, "build_message", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy formatter must not be used")))
@@ -373,13 +365,13 @@ def test_digest_sends_per_name_embeds_not_a_four_card_summary(monkeypatch):
     assert main.mode_digest() == 0
 
     embeds = sent[0]
-    assert embeds, "the digest must send embeds"
-    blob = json.dumps(embeds)
-    # The four things the old four-card message could never say.
-    assert "1303 EIC" in blob and "15.09" in blob
-    assert "3.2x" in blob                      # volume vs its own median
-    assert "trend flipped" in blob             # compute_delta, previously discarded
-    assert "up 21.6% on what you paid" in blob  # P/L on a holding, in words
+    assert len(embeds) == 1
+    assert len(embeds[0]["title"] + embeds[0]["description"]) <= 900
+    record = saved[main.DASHBOARD_FILE]["digestRecords"][0]
+    assert record["price"] == 15.09
+    assert record["volume"]["ratio"] == 3.2
+    assert record["delta"]["trend_flipped"] is True
+    assert record["unrealized_pct"] == 21.6
 
 
 def test_digest_reports_a_discord_outage_after_writing_state(monkeypatch):
@@ -1896,7 +1888,7 @@ def test_mode_digest_collects_and_records_history(monkeypatch):
         ),
     )
     chart_calls = []
-    monkeypatch.setattr(m, "_chart_bundle", lambda _recs, completed_before=None: chart_calls.append(completed_before) or ({}, {}, []))
+    monkeypatch.setattr(m, "_chart_bundle", lambda _recs, completed_before=None, render_images=True: chart_calls.append(completed_before) or ({}, {}, []))
     monkeypatch.setattr(m.nt, "send_discord", lambda *_a, **_kw: True)
     monkeypatch.setattr(m, "_scanner_result", lambda: {"candidates": [], "names": {}, "indexUnavailable": False, "warning": "scanner unavailable: test"})
     monkeypatch.setattr(m, "_save", lambda *_: None)
@@ -3544,7 +3536,7 @@ def test_digest_persists_the_lean_attached_after_daily_snapshot(monkeypatch):
     monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
         "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
                         or {"ok": True, "provider": "gemini", "model": "test"})
-    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None: ({}, {}, []))
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None, render_images=True: ({}, {}, []))
     monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
 
     assert main.mode_digest() == 0
@@ -3564,7 +3556,7 @@ def test_digest_sends_embeds_from_the_saved_v3_artifact(monkeypatch):
     monkeypatch.setattr(main, "_attach_leans", lambda recs: recs[0].update({
         "lean": {"lean": "positive", "confidence": "high", "take": "t", "drivers": []}})
                         or {"ok": True, "provider": "gemini", "model": "test"})
-    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None: ({}, {}, [{
+    monkeypatch.setattr(main, "_chart_bundle", lambda _recs, completed_before=None, render_images=True: ({}, {}, [{
         "code": "1303", "name": "EIC", "status": "unavailable", "reason": "history failed"}]))
     monkeypatch.setattr(main.nt, "build_digest_embeds", lambda **kwargs: rendered.append(kwargs["artifact"]) or [])
     monkeypatch.setattr(main.nt, "send_discord", lambda **_kwargs: True)
@@ -3716,7 +3708,7 @@ def test_stale_holding_quote_is_unavailable_in_artifact_summary_and_discord():
     assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
     assert "holding check" in artifact["summary"][0]
     embeds = nt.build_digest_embeds(artifact=artifact)
-    assert any("Insufficient data" in (embed.get("title") or "") for embed in embeds)
+    assert "Insufficient data" in embeds[0]["description"]
 
 
 def test_missing_holding_chart_is_an_unavailable_shared_decision():
@@ -3749,8 +3741,8 @@ def test_missing_producer_record_still_reaches_artifact_summary_and_discord():
             for record in artifact["digestRecords"]] == [("8313", "Insufficient data")]
     assert artifact["summaryV1"]["cards"][0]["state"] == "unavailable"
     embeds = nt.build_digest_embeds(artifact=artifact)
-    assert any("Insufficient data" in (embed.get("title") or "")
-               and "8313 Rasan" in embed["title"] for embed in embeds)
+    assert "Rasan (8313)" in embeds[0]["description"]
+    assert "Insufficient data" in embeds[0]["description"]
 
 
 def test_movement_artifact_v1_names_alerts_and_has_its_own_identity():
@@ -3798,14 +3790,11 @@ def test_a_name_keeps_its_levels_even_when_its_chart_cannot_be_drawn():
     assert charts[0]["status"] == "unavailable"
     assert charts[0]["levels"] == {"stop": 9.5, "trim": 11.5, "target": 12.5,
                                    "price_at_derivation": 10.0}
-    # price_at_derivation is what _fmt_levels compares against to warn that the
-    # levels are stale. Without it that warning can never fire.
-    blob = json.dumps(nt.build_digest_embeds(artifact={
-        "digestRecords": [_lean_rec(price=13.0)], "regime": "neutral",
-        "tradeDate": "2026-08-25", "monthlyBudgetSar": 500, "warnings": [],
-        "charts": charts}), ensure_ascii=False)
-    assert "9.50" in blob
-    assert "re-run `autolevels`" in blob
+    # Detailed levels now belong in the cockpit. The legacy per-name renderer
+    # remains readable without changing what the routine brief includes.
+    detail = nt._fmt_levels(charts[0]["levels"], 13.0)
+    assert "9.50" in detail
+    assert "re-run `autolevels`" in detail
 
 
 def test_chart_renders_a_png_with_levels(tmp_path):
@@ -4093,7 +4082,7 @@ def test_pending_company_policy_cannot_turn_technical_levels_into_trade_decision
     """Price weakness is a diagnostic, not an evaluated company sell case."""
     import artifacts
     rec = {"kind": "watch", "code": "1303", "name": "EIC", "price": 10,
-           "action": "SELL (STOP)", "policyStatus": "unconfigured", "rules": []}
+           "action": "SELL (STOP)", "policyStatus": "unconfigured", "priceDate": "2026-10-08", "rules": []}
     result = artifacts.decision_record(rec, [])
     assert result["decision"]["label"] == "Company assessment pending"
     text = nt.build_message([{**rec, "action": "WATCH"}], "digest", budget={"policyStatus": "unconfigured"})

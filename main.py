@@ -45,7 +45,7 @@ from research.company_evidence import load_evidence_records
 from research.entry_forecast import unavailable_forecast
 from research.top10 import score_company, select_top10
 from research import official_sources
-from summary_contract import build_summary_v1, summary_lines
+from summary_contract import build_summary_v1, summary_lines, notification_updates
 
 HERE = Path(__file__).parent
 SYMBOLS_FILE = HERE / "symbols.json"
@@ -474,6 +474,7 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
     ]
     ledger_view = ((_portfolio_ledger() or {}).get("view") or {})
     snapshot = {"schemaVersion": 2, "tradeDate": generated_at[:10], "asOf": generated_at,
+                "expectedPriceDate": session_gate.previous_trading_date(date.fromisoformat((scheduled_for or generated_at)[:10])),
                 "regime": regime, "dataStatus": "delayed-daily", "warnings": warnings,
                 "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
                 "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
@@ -804,7 +805,7 @@ def _scanner_block(result: dict | None = None) -> str:
 CHART_DIR = HERE / ".charts"
 
 
-def _chart_bundle(recs: list, completed_before: str | None = None) -> tuple[dict, dict, list[dict]]:
+def _chart_bundle(recs: list, completed_before: str | None = None, *, render_images: bool = True) -> tuple[dict, dict, list[dict]]:
     """Render one candlestick+volume chart per name for the pre-open digest.
 
     Returns ({code: filename}, {filename: Path}) -- the first for the embeds,
@@ -830,6 +831,8 @@ def _chart_bundle(recs: list, completed_before: str | None = None) -> tuple[dict
         return {}, {}, artifacts.chart_artifacts(recs, {}, stored_levels)
 
     chart_data = artifacts.chart_artifacts(recs, frames, stored_levels)
+    if not render_images:
+        return {}, {}, chart_data
     try:
         import charts as chartmod
     except Exception as exc:
@@ -1000,7 +1003,7 @@ def mode_digest() -> int:
     _persist_attached_leans(recs)
 
     charts_by_code, chart_files, chart_data = _chart_bundle(
-        recs, completed_before=(scheduled or _today())[:10])
+        recs, completed_before=(scheduled or _today())[:10], render_images=False)
     artifact = artifacts.build_digest_artifact(
         snapshot, recs=recs, lean_status=lean_status, charts=chart_data,
         scheduled_for=os.environ.get("SCHEDULED_FOR"),
@@ -1009,7 +1012,7 @@ def mode_digest() -> int:
     embeds = nt.build_digest_embeds(
         artifact=artifact, charts_by_code=charts_by_code,
     )
-    ok = nt.send_discord(embeds=embeds, files=chart_files)
+    ok = nt.send_discord(embeds=embeds)
     # Record the outcome ON the artifact. "deliveries" is excluded from the
     # identity hash, so this is the one fact about a digest that can be written
     # after the fact without changing which digest it is -- which is what lets
@@ -1247,7 +1250,27 @@ def mode_run() -> int:
         ok = nt.send_discord(msg)
         print("movement alert sent:", ok, "| alerts:", len(movement_alerts))
         return 0 if ok else 1
-    print("no new unusual movement; nothing sent.")
+    return _notify_relevant_updates(as_of)
+
+
+def _notify_relevant_updates(as_of: str) -> int:
+    """Use existing scheduled observations without activating experimental publishers."""
+    snapshot = _load(DASHBOARD_FILE, None)
+    if not isinstance(snapshot, dict) or not snapshot.get("tradeDate") or not snapshot.get("asOf"):
+        return 0
+    tracked = {str(item["code"]) for item in _holdings() + cfg.WATCHLIST}
+    # The scheduled research job commits this fetched queue. Its local event
+    # archive is offline evidence and does not survive a fresh Actions checkout.
+    queue = _load(EVIDENCE_QUEUE_FILE, {})
+    events = [event for event in queue.get("announcements", []) if isinstance(event, dict)] if isinstance(queue, dict) else []
+    state = _load(STATE_FILE, {})
+    updates, next_state = notification_updates(snapshot, state.get("cockpitUpdates") or {},
+                                             tracked_codes=tracked, events=events, observed_at=as_of)
+    if updates and not nt.send_discord(nt.build_relevant_update_message(updates, as_of)):
+        return 1
+    state["cockpitUpdates"] = next_state
+    _save(STATE_FILE, state)
+    print(f"relevant updates: {len(updates)}; unchanged state is quiet.")
     return 0
 
 

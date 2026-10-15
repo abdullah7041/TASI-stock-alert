@@ -8,7 +8,7 @@ runs identically in the GitHub fallback and in the Cloud Run job.
 from __future__ import annotations
 
 import json
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 RIYADH = timezone(timedelta(hours=3))
@@ -50,6 +50,15 @@ def is_trading_day(now: datetime | None = None, holidays: set[str] | None = None
     local = riyadh_now(now)
     closed = load_holidays() if holidays is None else holidays
     return local.weekday() in TRADING_WEEKDAYS and local.date().isoformat() not in closed
+
+
+def previous_trading_date(before: date, holidays: set[str] | None = None) -> str:
+    """The completed session before a daily-data cutoff, including recorded holidays."""
+    closed = load_holidays() if holidays is None else holidays
+    cursor = before - timedelta(days=1)
+    while cursor.weekday() not in TRADING_WEEKDAYS or cursor.isoformat() in closed:
+        cursor -= timedelta(days=1)
+    return cursor.isoformat()
 
 
 def is_session_open(now: datetime | None = None, holidays: set[str] | None = None) -> bool:

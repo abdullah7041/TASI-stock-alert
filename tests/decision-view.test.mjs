@@ -2,6 +2,34 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildDecisionView } from '../app/lib/decision-view.mjs';
 
+test('an old watchlist quote cannot imply current entry conditions in a fresh snapshot', () => {
+  const raw={tradeDate:'2026-10-13',expectedPriceDate:'2026-10-12',warnings:[],qualified:[],
+    digestRecords:[{kind:'watchlist',code:'4016',name:'Avalon',action:'WATCH',verified:true,
+      price:63.35,priceDate:'2026-10-11',rules_met:3,rules_total:3}],charts:[]};
+  const stock=buildDecisionView(raw,'current').watchlist[0];
+  assert.equal(stock.unavailable,true);
+  assert.equal(stock.conditionsMet,null);
+  assert.equal(stock.price,63.35);
+  assert.match(stock.reason,/2026-10-11/);
+});
+
+test('dated watchlist quotes contribute to the home price dates without confirmed holdings', () => {
+  const raw={tradeDate:'2026-10-13',expectedPriceDate:'2026-10-12',warnings:[],qualified:[],
+    digestRecords:[{kind:'watchlist',code:'4016',name:'Avalon',action:'WATCH',verified:true,
+      price:63.35,priceDate:'2026-10-12'}],charts:[]};
+  const view=buildDecisionView(raw,'current',{policyStatus:'unconfigured',holdings:[]});
+  assert.deepEqual(view.priceDates,['2026-10-12']);
+});
+
+test('a recorded holiday cutoff is honored and an undated price is unavailable', () => {
+  const raw={tradeDate:'2026-09-24',expectedPriceDate:'2026-09-22',warnings:[],qualified:[],
+    digestRecords:[{kind:'watchlist',code:'4016',name:'Avalon',action:'WATCH',verified:true,
+      price:63.35,priceDate:'2026-09-22'}],charts:[]};
+  assert.equal(buildDecisionView(raw,'current').watchlist[0].unavailable,false);
+  raw.digestRecords[0].priceDate=undefined;
+  assert.equal(buildDecisionView(raw,'current').watchlist[0].unavailable,true);
+});
+
 const snapshot = {
   schemaVersion: 3, tradeDate: '2026-09-06', asOf: '2026-09-06T09:37:00Z', warnings: [], urgent: [], changed: [], qualified: [],
   portfolio: { holdings: [{code:'1303',name:'EIC',shares:4,avgCostSar:10},{code:'2320',name:'Al-Babtain',shares:2}], cashSar:0 },
@@ -87,7 +115,7 @@ test('a holding without sufficient chart history is unavailable',()=>{
   assert.equal(view.incomplete,true);
 });
 test('watchlist condition failure explains overbought accurately and keeps all candidates', () => {
-  const current={...snapshot,digestRecords:[...snapshot.digestRecords,{code:'4016',name:'Avalon',kind:'watchlist',action:'WATCH',verified:true,price:67,rules:[{rule:'rsi_band',passed:false,actual:71,required:'25-60'}],rules_met:2,rules_total:3}],qualified:Array.from({length:5},(_,i)=>({code:String(i),name:`Candidate ${i}`,conditionsMet:2,relativeStrengthPct:15,squeeze:true}))};
+  const current={...snapshot,digestRecords:[...snapshot.digestRecords,{code:'4016',name:'Avalon',kind:'watchlist',action:'WATCH',verified:true,price:67,priceDate:'2026-09-03',rules:[{rule:'rsi_band',passed:false,actual:71,required:'25-60'}],rules_met:2,rules_total:3}],qualified:Array.from({length:5},(_,i)=>({code:String(i),name:`Candidate ${i}`,conditionsMet:2,relativeStrengthPct:15,squeeze:true}))};
   const view=buildDecisionView(current,'current');
   assert.match(view.watchlist[0].reason,/overbought/i);
   assert.equal(view.candidates.length,5);

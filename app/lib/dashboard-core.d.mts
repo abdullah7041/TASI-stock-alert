@@ -9,4 +9,4 @@
 import type { DashboardSnapshot, DashboardSnapshotV2 } from "@/app/lib/dashboard-types";
 
 export function parseDashboardSnapshot(value: unknown): DashboardSnapshot | DashboardSnapshotV2;
-export function dashboardFreshness(snapshot: DashboardSnapshot | DashboardSnapshotV2, now?: Date): "current" | "stale";
+export function dashboardFreshness(snapshot: DashboardSnapshot | DashboardSnapshotV2, now?: Date, holidays?: Set<string>): "current" | "stale";

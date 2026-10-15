@@ -96,7 +96,8 @@ def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict
         })
     if (snapshot.get("portfolio") or {}).get("policyStatus") == "unconfigured":
         complete_recs = [{**r, "policyStatus": "unconfigured", "sizing": None} for r in complete_recs]
-    records = [decision_record(rec, charts, trade_date=snapshot.get("tradeDate"))
+    records = [decision_record(rec, charts, trade_date=snapshot.get("tradeDate"),
+                               expected_price_date=snapshot.get("expectedPriceDate"))
                for rec in complete_recs]
     unavailable_codes = {
         str(record.get("code")) for record in records
@@ -146,14 +147,12 @@ def build_digest_artifact(snapshot: dict, *, recs: list[dict], lean_status: dict
 
 
 def _previous_trading_date(value: str) -> str:
-    cursor = datetime.fromisoformat(value).date()
-    while True:
-        cursor = date.fromordinal(cursor.toordinal() - 1)
-        if cursor.weekday() not in (4, 5):
-            return cursor.isoformat()
+    import session_gate
+    return session_gate.previous_trading_date(datetime.fromisoformat(value).date())
 
 
-def decision_record(rec: dict, charts: list[dict], *, trade_date: str | None = None) -> dict:
+def decision_record(rec: dict, charts: list[dict], *, trade_date: str | None = None,
+                    expected_price_date: str | None = None) -> dict:
     """One plain-language decision for both dashboard and Discord readers."""
     import explain
     price = _finite_number(rec, "price")
@@ -167,15 +166,15 @@ def decision_record(rec: dict, charts: list[dict], *, trade_date: str | None = N
     rules = rec.get("rules")
     rules_ready = not holding or (isinstance(rules, list) and bool(rules)
                                   and all(rule.get("available") is not False for rule in rules))
-    quote_stale = bool(holding and trade_date and price_date
-                       and price_date < _previous_trading_date(trade_date))
+    expected_date = expected_price_date or (_previous_trading_date(trade_date) if trade_date else None)
+    quote_stale = bool(expected_date and price_date and price_date < expected_date)
     if quote_stale:
         label = "Insufficient data"
         reason = (f"This quote ({price_date}) is older than the expected previous session. "
                   "Check your broker before reviewing a decision.")
     elif not chart_ready:
         label, reason = "Insufficient data", "Required chart history is unavailable."
-    elif price is None or price <= 0 or rec.get("verified") is False or not known or not rules_ready:
+    elif price is None or price <= 0 or not price_date or rec.get("verified") is False or not known or not rules_ready:
         label, reason = "Insufficient data", "A verified price or complete rule check is unavailable."
     elif rec.get("policyStatus") == "unconfigured":
         label, reason = "Company assessment pending", "Company policy is not evaluated. Technical observations do not establish a buy, hold, or sell case."

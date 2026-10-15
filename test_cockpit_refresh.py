@@ -1,0 +1,135 @@
+"""Regression guarantees for the dated cockpit and concise notification contract."""
+
+from datetime import date
+
+import artifacts
+import session_gate
+import notify
+import summary_contract
+
+
+def test_an_old_watchlist_quote_cannot_be_presented_as_a_current_opportunity():
+    """A new artifact save time must not refresh a quote from two sessions ago."""
+    record = artifacts.decision_record(
+        {"kind": "watchlist", "code": "4016", "name": "Avalon", "action": "WATCH",
+         "verified": True, "price": 63.35, "priceDate": "2026-10-11"},
+        [], trade_date="2026-10-13",
+    )
+    assert record["decision"]["label"] == "Insufficient data"
+    assert "2026-10-11" in record["decision"]["reason"]
+
+
+def test_the_previous_completed_trading_date_skips_weekends_and_recorded_holidays():
+    """Both delivery surfaces need the same calendar cutoff, not duplicate guesses."""
+    assert session_gate.previous_trading_date(date(2026, 10, 11), holidays=set()) == "2026-10-08"
+    assert session_gate.previous_trading_date(date(2026, 9, 24), holidays={"2026-09-23"}) == "2026-09-22"
+
+
+def brief_fixture():
+    return {
+        "tradeDate": "2026-10-13", "asOf": "2026-10-13T05:30:00Z",
+        "expectedPriceDate": "2026-10-12", "regime": "unknown", "warnings": [],
+        "portfolio": {"policyStatus": "unconfigured", "accountBook": {"accounts": [
+            {"initialized": False}, {"initialized": False}]}},
+        "summaryV1": {"cards": [{"kind": "portfolio", "state": "evidence-pending",
+                               "text": "Confirm your broker account opening snapshots."}]},
+        "digestRecords": [{"code": str(4000 + i), "name": "A long company name " * 10,
+                           "kind": "watchlist", "price": 60, "priceDate": "2026-10-12",
+                           "delta": {"trend_flipped": True}, "news": {"ok": False}}
+                          for i in range(8)],
+    }
+
+
+def test_the_normal_daily_digest_is_one_short_message_with_dated_quotes_and_no_chart_dump():
+    """Long company names must not cause the everyday digest to become several posts."""
+    embeds = notify.build_digest_embeds(artifact=brief_fixture())
+    assert len(embeds) == 1
+    text = embeds[0]["title"] + embeds[0]["description"]
+    assert len(text) <= 900
+    assert "2026-10-12" in text
+    assert "opening" in text
+    assert "news" in text.lower() and "unavailable" in text.lower()
+    assert "attachment://" not in text and "Forecast" not in text
+    assert text.count("Trend changed") <= 3
+    assert "workers.dev" in text
+
+
+def test_relevant_updates_ignore_old_or_unrelated_events_and_deduplicate_status_transitions():
+    """A repeated news item or provider failure must not notify on every scheduled run."""
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = [snapshot["digestRecords"][0]]
+    event = {"symbol": "4000", "title": "Results published",
+             "url": "https://www.saudiexchange.sa/wps/issuer-announcements-details/result",
+             "published_at": "2026-10-13T04:00:00Z"}
+    prior = {}
+    updates, next_state = summary_contract.notification_updates(snapshot, prior, tracked_codes={"4000"},
+                                               events=[event, {**event, "symbol": "9999"}])
+    assert len([u for u in updates if u["kind"] == "event"]) == 1
+    assert any(u["kind"] == "health" for u in updates)
+    repeated, _ = summary_contract.notification_updates(snapshot, next_state, tracked_codes={"4000"}, events=[event])
+    assert repeated == []
+    snapshot["digestRecords"][0]["news"] = {"ok": True, "headlines": []}
+    recovered, _ = summary_contract.notification_updates(snapshot, next_state, tracked_codes={"4000"}, events=[])
+    assert len(recovered) == 1 and "restored" in recovered[0]["text"]
+    old = {**event, "published_at": "2026-09-01T04:00:00Z"}
+    assert not any(u["kind"] == "event" for u in summary_contract.notification_updates(
+        snapshot, {}, tracked_codes={"4000"}, events=[old])[0])
+
+
+def test_uncollected_news_cannot_be_reported_as_restored_coverage():
+    """A refresh that skipped retrieval must not turn a previous outage into success."""
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = [{**snapshot["digestRecords"][0], "news": None}]
+    updates, state = summary_contract.notification_updates(snapshot, {"health": {"news": "failed"}},
+        tracked_codes={"4000"}, events=[])
+    assert not any("restored" in update["text"] for update in updates)
+    assert state["health"]["news"] == "unknown"
+
+
+def test_missing_tracked_records_cannot_restore_news_or_filing_coverage():
+    """An empty artifact contains no evidence that a failed provider recovered."""
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = []
+    updates, state = summary_contract.notification_updates(
+        snapshot, {"health": {"news": "failed", "filings": "failed"}},
+        tracked_codes={"4000"}, events=[])
+    assert not any("restored" in update["text"] for update in updates)
+    assert state["health"]["news"] == state["health"]["filings"] == "unknown"
+
+
+def test_a_partly_missing_watchlist_cannot_restore_full_source_coverage():
+    """A healthy surviving record says nothing about a missing followed company."""
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = [{**snapshot["digestRecords"][0], "news": {"ok": True},
+                                  "disclosures": {"ok": True}}]
+    updates, state = summary_contract.notification_updates(snapshot,
+        {"health": {"prices": "failed", "news": "failed", "filings": "failed"}},
+        tracked_codes={"4000", "4001"}, events=[])
+    assert not any("restored" in update["text"] for update in updates)
+    assert state["health"]["prices"] == "failed"
+
+
+def test_scheduled_updates_consume_the_official_queue_that_survives_between_jobs(monkeypatch, tmp_path):
+    """The research job persists its queue, while the offline archive is not committed."""
+    import json
+    import main
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = [{**snapshot["digestRecords"][0], "news": {"ok": True},
+                                  "disclosures": {"ok": True}}]
+    dashboard, queue, state = (tmp_path / name for name in ("dashboard.json", "queue.json", "state.json"))
+    dashboard.write_text(json.dumps(snapshot), encoding="utf-8")
+    queue.write_text(json.dumps({"announcements": [{"symbol": "4000", "title": "Results published",
+        "url": "https://www.saudiexchange.sa/wps/issuer-announcements-details/result",
+        "published_at": "2026-10-13T04:00:00Z"}]}), encoding="utf-8")
+    monkeypatch.setattr(main, "DASHBOARD_FILE", dashboard)
+    monkeypatch.setattr(main, "EVIDENCE_QUEUE_FILE", queue)
+    monkeypatch.setattr(main, "EVENT_ARCHIVE_FILE", tmp_path / "absent.jsonl")
+    monkeypatch.setattr(main, "STATE_FILE", state)
+    monkeypatch.setattr(main, "_holdings", lambda: [{"code": "4000"}])
+    monkeypatch.setattr(main.cfg, "WATCHLIST", [])
+    sent = []
+    monkeypatch.setattr(main.nt, "send_discord", lambda text: sent.append(text) or True)
+    assert main._notify_relevant_updates("2026-10-13T06:00:00Z") == 0
+    assert len(sent) == 1 and "Results published" in sent[0]
+    assert main._notify_relevant_updates("2026-10-13T06:15:00Z") == 0
+    assert len(sent) == 1

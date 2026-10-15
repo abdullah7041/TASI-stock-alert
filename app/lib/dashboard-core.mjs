@@ -1,5 +1,6 @@
 import { resolveAlertName } from "./alert-names.mjs";
 import {parsePortfolioBook} from './portfolio-core.mjs';
+import {isTradingDate,previousTradingDate} from './trading-calendar.mjs';
 
 const RIYADH = "Asia/Riyadh";
 
@@ -20,6 +21,8 @@ function number(item, field) {
 
 function tradeDate(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("tradeDate must use YYYY-MM-DD.");
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0,10) !== value) throw new Error("tradeDate must be a real calendar date.");
   return value;
 }
 
@@ -54,19 +57,11 @@ function riyadhParts(now) {
   };
 }
 
-function previousTradingDate(date) {
-  const cursor = new Date(`${date}T00:00:00Z`);
-  do {
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
-  } while (![0, 1, 2, 3, 4].includes(cursor.getUTCDay()));
-  return cursor.toISOString().slice(0, 10);
-}
-
-function expectedSnapshotDateInRiyadh(now) {
+function expectedSnapshotDateInRiyadh(now, holidays) {
   const current = riyadhParts(now);
-  const isTradingDay = ["Sun", "Mon", "Tue", "Wed", "Thu"].includes(current.weekday);
+  const isTradingDay = isTradingDate(current.date, holidays);
   const beforeDeadline = current.hour < 10 || (current.hour === 10 && current.minute < 15);
-  return isTradingDay && !beforeDeadline ? current.date : previousTradingDate(current.date);
+  return isTradingDay && !beforeDeadline ? current.date : previousTradingDate(current.date, holidays);
 }
 
 export function parseDashboardSnapshot(value) {
@@ -92,6 +87,8 @@ export function parseDashboardSnapshot(value) {
   const common = {
     schemaVersion: 1,
     tradeDate: tradeDate(value.tradeDate),
+    ...(typeof value.indexUnavailable === 'boolean' ? { indexUnavailable: value.indexUnavailable } : {}),
+    ...(value.expectedPriceDate !== undefined ? { expectedPriceDate: tradeDate(value.expectedPriceDate) } : {}),
     asOf,
     regime: text(value, "regime"),
     dataStatus: "delayed-daily",
@@ -231,6 +228,6 @@ export function parseDashboardSnapshot(value) {
   };
 }
 
-export function dashboardFreshness(snapshot, now = new Date()) {
-  return snapshot.tradeDate >= expectedSnapshotDateInRiyadh(now) ? "current" : "stale";
+export function dashboardFreshness(snapshot, now = new Date(), holidays) {
+  return snapshot.tradeDate >= expectedSnapshotDateInRiyadh(now, holidays) ? "current" : "stale";
 }

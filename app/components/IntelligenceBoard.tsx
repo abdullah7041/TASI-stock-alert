@@ -6,8 +6,27 @@ import styles from "./FriendlyCockpit.module.css";
 
 const signed = (value: number | null) => value === null ? "Unavailable" : `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 
-export function IntelligenceBoard({ snapshot, alerts, marketPulse }: { snapshot: DashboardPayload["snapshot"]; alerts: MovementAlert[]; marketPulse?: DashboardPayload["marketPulse"] }) {
-  const intelligence = buildMarketIntelligence(snapshot, alerts, marketPulse);
+export function IntelligenceBoard({ snapshot, alerts, marketPulse, currentOnly = false }: { snapshot: DashboardPayload["snapshot"]; alerts: MovementAlert[]; marketPulse?: DashboardPayload["marketPulse"]; currentOnly?: boolean }) {
+  const cutoff = Date.parse(`${snapshot.expectedPriceDate ?? snapshot.tradeDate}T00:00:00+03:00`);
+  const through = Date.parse(snapshot.asOf);
+  // Classify movements using the same dated headlines the user can see.
+  const datedSnapshot = currentOnly && snapshot.schemaVersion === 3 ? {...snapshot,
+    digestRecords: snapshot.digestRecords.map(record => ({...record, news: record.news ? {...record.news,
+      headlines: record.news.headlines?.filter(headline => {
+        const published = Date.parse(headline.published ?? '');
+        return Number.isFinite(published) && published >= cutoff && published <= through;
+      })} : record.news})),
+  } : snapshot;
+  const intelligence = buildMarketIntelligence(datedSnapshot, alerts, marketPulse);
+  if (currentOnly) {
+    intelligence.anomalies = intelligence.anomalies.filter(alert => {
+      const observed = Date.parse(alert.observedAt);
+      return observed >= cutoff && observed <= Math.max(through, Date.parse(`${snapshot.tradeDate}T23:59:59+03:00`));
+    });
+    if (!intelligence.events.length && !intelligence.anomalies.length) return <p className={styles.sectionNote}>
+      No current verified event is linked. Source availability is shown in company details; earlier movements remain in history.
+    </p>;
+  }
   return <section className={styles.intelligence} aria-label="Market intelligence">
     <div className={styles.sectionHead}>
       <div><p className={styles.eyebrow}>MARKET INTELLIGENCE</p><h2>Events and unusual moves</h2></div>

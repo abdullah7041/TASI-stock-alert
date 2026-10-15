@@ -1,11 +1,6 @@
+import {previousTradingDate} from './trading-calendar.mjs';
 const finite = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
 const reasons = (value) => Array.isArray(value) ? value.filter((s) => typeof s === 'string').join('. ') : typeof value === 'string' ? value : '';
-
-function previousTradingDate(date) {
-  const cursor=new Date(`${date}T00:00:00Z`);
-  do cursor.setUTCDate(cursor.getUTCDate()-1); while (![0,1,2,3,4].includes(cursor.getUTCDay()));
-  return cursor.toISOString().slice(0,10);
-}
 
 export function conditionReason(rule) {
   if (rule.rule === 'rsi_band') return Number(rule.actual) > 60
@@ -36,9 +31,9 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
       && record.rules.every((rule) => rule?.available !== false));
     const chartReady = !owned || (chart?.status === 'available' && bars.length >= 5);
     const priceDate=record.priceDate ?? latest?.date ?? null;
-    const quoteStale=owned && Boolean(priceDate) && priceDate < previousTradingDate(snapshot.tradeDate);
+    const quoteStale=Boolean(priceDate) && priceDate < (snapshot.expectedPriceDate ?? previousTradingDate(snapshot.tradeDate));
     const quoteReady=price!==null&&price>0&&Boolean(priceDate)&&record.verified!==false&&freshness!=='stale'&&!quoteStale;
-    const unavailable = price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady || !chartReady || quoteStale || positionChanged;
+    const unavailable = !priceDate || price === null || price <= 0 || record.verified === false || freshness === 'stale' || !known || !decisionChecksReady || !chartReady || quoteStale || positionChanged;
     const stop = ['SELL','SELL (STOP)','STOP','STOP_LOSS','EXIT'].includes(action);
     const profit = ['SELL (TARGET)','TRIM','TAKE_PROFIT','TARGET'].includes(action);
     const label = unavailable ? 'Insufficient data' : accountMode ? 'Company assessment pending' : stop ? 'Review stop' : profit ? 'Review profit level' : owned ? 'Hold' : 'Watching';
@@ -57,18 +52,19 @@ export function buildDecisionView(snapshot, freshness, livePortfolio = null) {
     return { code:identity.code, name:identity.name, owned, label, reason, price: price !== null && price > 0 ? price : null,
       priceDate,
       dailyChange:finite(record.delta?.price_pct), pnl:accountMode ? (owned && quoteReady && finite(identity.avgCostSar)>0 ? (price-identity.avgCostSar)/identity.avgCostSar*100 : null) : positionChanged ? null : finite(record.unrealized_pct),
-      conditionsMet:finite(record.rules_met), conditionsTotal:finite(record.rules_total),
+      conditionsMet:quoteReady?finite(record.rules_met):null, conditionsTotal:quoteReady?finite(record.rules_total):null,
       missing, chart, record, shares:identity.shares ?? null,
+      quoteState: !priceDate || price === null || price <= 0 || record.verified === false ? 'unavailable' : freshness === 'stale' || quoteStale ? 'stale' : 'current',
       needsAttention: !unavailable && !accountMode && (stop || profit), unavailable,
     };
   }
   const holdingViews = holdings.map((h) => stock(h, true)).sort((a,b) => Number(b.needsAttention)-Number(a.needsAttention));
   const holdingCodes = new Set(holdings.map((h) => h.code));
   const watchlist = records.filter((r) => r.kind === 'watchlist' && !holdingCodes.has(r.code)).map((r) => stock(r));
-  const dates = [...new Set(holdingViews.map((h) => h.priceDate).filter(Boolean))].sort();
+  const dates = [...new Set([...holdingViews,...watchlist].filter((h)=>h.price!==null).map((h) => h.priceDate).filter(Boolean))].sort();
   return { holdings:holdingViews, watchlist, candidates:snapshot.qualified ?? [],
     attention:holdingViews.filter((h) => h.needsAttention).length,
-    incomplete:freshness === 'stale' || holdingViews.some((h) => h.unavailable)
+    incomplete:freshness === 'stale' || [...holdingViews,...watchlist].some((h) => h.unavailable)
       || (snapshot.warnings ?? []).some((warning) => /late|price|market|stale|data source/i.test(warning)),
     priceDate:dates[0] ?? null, priceDates:dates,
   };

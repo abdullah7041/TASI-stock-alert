@@ -285,12 +285,30 @@ def build_dashboard_digest(snapshot: dict) -> str:
     summary = dict(snapshot.get("summaryV1") or {})
     cards = list(summary.get("cards") or [])
     if not cards:
-        raise ValueError("dashboard summaryV1 cards are required for the daily digest")
-    lines = [f"__**TASI delayed digest ({snapshot['tradeDate']})**__"]
-    lines.extend(f"- {card['text']}" for card in cards)
-    lateness = summary.get("latenessMinutes")
-    if lateness:
-        lines.append(f"- Digest started {lateness} minutes after its scheduled time.")
+        cards = [{"kind": "portfolio", "text": "Review the dated observations in the cockpit."}]
+    from summary_contract import daily_changes, data_notes
+    portfolio = next((card for card in cards if card.get("kind") == "portfolio"), cards[0])
+    dates = sorted({r["priceDate"] for r in snapshot.get("digestRecords") or [] if r.get("priceDate")})
+    date_label = "unavailable" if not dates else dates[0] if len(dates) == 1 else f"{dates[0]} to {dates[-1]}"
+    lines = [f"Delayed quotes: {date_label}", _clip(str(portfolio["text"]), 170)]
+    changes = daily_changes(snapshot)
+    lines.extend(f"• {_clip(change, 125)}" for change in changes[:3])
+    if len(changes) > 3:
+        lines.append(f"{len(changes) - 3} more changes in the cockpit.")
+    notes = data_notes(snapshot)
+    if notes:
+        lines.append("Data: " + "; ".join(notes))
+    lines.append(f"[Open cockpit]({COCKPIT_URL})")
+    return "\n".join(lines)
+
+
+def build_relevant_update_message(updates: list[dict], as_of: str) -> str:
+    """Short notice; complete source records remain in the cockpit."""
+    lines = [f"**TASI update · {as_of[:10]}**"]
+    lines.extend(f"• {_clip(update['text'], 180)}" for update in updates[:3])
+    if len(updates) > 3:
+        lines.append(f"{len(updates) - 3} more updates in the cockpit.")
+    lines.append(f"[Review details]({COCKPIT_URL}/?view=research)")
     return "\n".join(lines)
 
 
@@ -617,32 +635,17 @@ def build_digest_embeds(recs: list | None = None, *, regime: str | None = None,
                         early_movers: list | None = None,
                         index_unavailable: bool = False,
                         artifact: dict | None = None) -> list:
-    """The pre-open digest as embeds: a header, then one embed per name.
+    """One routine brief from the canonical artifact; legacy embeds remain compatible.
 
-    Replaces build_dashboard_digest's four-card message as the digest body.
-    Holdings always appear -- you own them, so "nothing changed" is itself the
-    answer you came for. Watchlist names appear when they are actionable or
-    when something about them moved; the rest are named in one trailing line so
-    a quiet name is visibly quiet rather than silently missing.
+    The records-only path retains the earlier header/per-name renderer for old
+    callers. Artifact-based scheduled digests retain company evidence in the
+    cockpit and use one concise message.
     """
     if artifact is not None:
-        # The Discord view must not compose an independent truth.  The v3
-        # artifact is also what the cockpit stores and renders.
-        recs = artifact["digestRecords"]
-        regime = artifact["regime"]
-        trade_date = artifact["tradeDate"]
-        budget = {"monthly_cap": artifact.get("monthlyBudgetSar"), "policyStatus": (artifact.get("portfolio") or {}).get("policyStatus")}
-        warnings = artifact.get("warnings") or []
-        early_movers = artifact.get("earlyMovers") or []
-        index_unavailable = bool(artifact.get("indexUnavailable"))
-        # Every charts entry, not only the drawable ones. Whether there was
-        # enough history to plot a name says nothing about whether it has a
-        # stop, and filtering on it silently stripped the levels -- the most
-        # actionable numbers in the embed -- from every thin-history name.
-        levels_by_code = {
-            item["code"]: item.get("levels") or {}
-            for item in artifact.get("charts") or []
-        }
+        # Full per-company charts and diagnostics are retained in the canonical
+        # artifact. The routine Discord surface is deliberately one concise brief.
+        return [{"title": f"TASI daily brief · {artifact['tradeDate']}",
+                 "color": COLOR_FLAT, "description": build_dashboard_digest(artifact)}]
     if recs is None or regime is None or trade_date is None:
         raise ValueError("Digest embeds require records, regime, and trade date.")
     early_movers = early_movers or []
@@ -841,6 +844,7 @@ def send_discord(content: str | None = None, webhook_url: str | None = None,
 
     ok = True
     for payload, batch_files in zip(payloads, by_batch):
+        payload["allowed_mentions"] = {"parse": []}
         try:
             if batch_files:
                 r = requests.post(url, timeout=60, data={"payload_json": json.dumps(payload)},

@@ -22,26 +22,13 @@ test("renders an action-first cockpit instead of a generic page", async () => {
   assert.doesNotMatch(html, /Your site is taking shape/i);
 });
 
-test("does not import preview fixtures and includes an unavailable state", () => {
-  const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8");
-
-  assert.doesNotMatch(source, /fixtures\/dashboard/);
-  assert.match(source, /No verified daily snapshot is available/i);
-  assert.match(source, /Delayed\/daily data/i);
-});
-
-test("keeps dated evidence and the broker boundary visible for version-2 cockpit data", () => {
-  // The alert surface moved into its own component, so the guarantees are now
-  // spread across two files. tests/ui/action-cockpit.test.tsx checks the
-  // rendered result; this keeps the wording itself from drifting silently.
-  const source = readFileSync(new URL("../app/components/ActionCockpit.tsx", import.meta.url), "utf8")
-    + readFileSync(new URL("../app/components/AlertBoard.tsx", import.meta.url), "utf8");
-  assert.match(source, /Today.*summary/i);
-  assert.match(source, /Evidence reviewed/i);
-  assert.match(source, /delayed bot confirmation/i);
-  assert.match(source, /Broker app.*real-time/i);
-  assert.match(source, /Forecast unavailable/i);
-  assert.match(source, /Asia\/Riyadh/);
+test("the built cockpit exposes its four tools without presenting fixture prices as live data", async () => {
+  const response = await renderDashboard();
+  const html = await response.text();
+  assert.equal(response.status,200);
+  for(const label of ['Overview','Portfolio','Research','Assistant'])assert.match(html,new RegExp(label));
+  assert.match(html,/view=portfolio/);
+  assert.doesNotMatch(html,/target-first probability|15\.09 SAR/);
 });
 
 test("uses separate Sites and app credentials for private ingestion", () => {

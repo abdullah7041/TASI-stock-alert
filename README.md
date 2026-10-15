@@ -12,7 +12,7 @@ buy/hold/sell case and no trade quantity is proposed in account-book mode.
 
 ## Broker account records
 
-Open the cockpit's **Broker accounts** panel. The initial combined view is
+Open the cockpit's **Portfolio** view and its **Broker accounts** panel. The initial combined view is
 reporting only. Select Al Rajhi or Al Ahli, enter that broker's actual opening
 cash and positions, and provide the snapshot time in Riyadh. Nothing is
 prefilled from config or the old ledger. Leave unknown average costs blank;
@@ -70,10 +70,21 @@ Discord; the separate legacy ChatGPT Site is outside this release.
 5. Scans Tadawul's full universe (~265 names) daily for breakout candidates.
 6. De-dupes so you get one alert per level per day.
 
-## What the pre-open digest actually contains
+## Daily brief and cockpit
 
-One Discord embed per name, plus a chart. Every field below is computed from
-data the run already pulls:
+Discord receives one concise pre-open brief: snapshot and quote dates, portfolio
+setup/review state, up to three relevant changes, compact source availability,
+and a cockpit link. There are no routine per-company chart attachments.
+Additional updates cover tracked holdings/watchlist official events and data
+loss/recovery transitions; repeated updates are suppressed.
+
+The cockpit has four views: **Overview** for your daily review and accounts,
+**Portfolio** for manual account records, **Research** for watchlist/screening
+and source review, and **Assistant** for questions and saved decision notes.
+Older quotes remain visible with their dates but do not establish current
+conditions. Missing sources remain distinct from successfully empty results.
+
+Company details retain the following dated evidence:
 
 | Field | What it is |
 |---|---|
@@ -87,8 +98,9 @@ data the run already pulls:
 | News / filings | recent headlines and Tadawul disclosures |
 | Pre-open lean | a model's directional read, labelled as judgement — see below |
 
-Attached to each embed: a 90-session candlestick with a volume subplot, the
-stop/trim/target drawn on it, and unusually busy sessions highlighted.
+Company details include a 90-session candlestick with volume, configured
+stop/trim/target levels, and unusually busy sessions highlighted. These are
+observations; account-book mode proposes no trade quantity.
 
 **On volume.** The ratio is reported as an observation, not a signal.
 `docs/scanner-findings-2026-07-30.md` measured it against forward return over
