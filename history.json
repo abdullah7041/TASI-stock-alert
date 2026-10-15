@@ -1587,8 +1587,8 @@
         "momentum_floor",
         "trend"
       ],
-      "lean": "neutral",
-      "lean_confidence": "low"
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4016": [
@@ -2079,8 +2079,8 @@
       "blocking": [
         "trend"
       ],
-      "lean": "neutral",
-      "lean_confidence": "low"
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4164": [
@@ -2636,8 +2636,8 @@
         "momentum_floor",
         "trend"
       ],
-      "lean": "negative",
-      "lean_confidence": "medium"
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4262": [
@@ -3218,8 +3218,8 @@
         "rsi_band",
         "trend"
       ],
-      "lean": "negative",
-      "lean_confidence": "medium"
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4017": [
@@ -3708,8 +3708,8 @@
         "momentum_floor",
         "trend"
       ],
-      "lean": "neutral",
-      "lean_confidence": "low"
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "6017": [
@@ -4251,8 +4251,8 @@
         "momentum_floor",
         "trend"
       ],
-      "lean": "negative",
-      "lean_confidence": "medium"
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4263": [
@@ -4768,8 +4768,8 @@
         "momentum_floor",
         "trend"
       ],
-      "lean": "negative",
-      "lean_confidence": "medium"
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4018": [
@@ -5331,8 +5331,8 @@
         "momentum_floor",
         "trend"
       ],
-      "lean": "neutral",
-      "lean_confidence": "low"
+      "lean": null,
+      "lean_confidence": null
     }
   ]
 }
