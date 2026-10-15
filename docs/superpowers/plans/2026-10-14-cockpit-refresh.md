@@ -32,14 +32,14 @@ app/lib/decision-view.mjs, app/lib/decision-view.d.mts, test_core.py,
 tests/decision-view.test.mjs, tests/dashboard-core.test.mjs.
 **Interfaces:** optional expectedPriceDate: YYYY-MM-DD; existing stock view gains
 quote state; existing buildDecisionView signature stays compatible.
-- [ ] Add red tests: old watchlist quote is unavailable; missing quote date is
+- [x] Add red tests: old watchlist quote is unavailable; missing quote date is
   unavailable; priceDates includes watchlist with no holdings; explicit expected
   date supports recorded holidays; parser round-trip preserves the field.
-- [ ] Run targeted Node/pytest tests and observe the intended failures.
-- [ ] Compute expected price date using the existing calendar and job cutoff;
+- [x] Run targeted Node/pytest tests and observe the intended failures.
+- [x] Compute expected price date using the existing calendar and job cutoff;
   preserve artifact identity and v1/v2/v3 parsing. Suppress current-condition
   reassurance for stale/missing quotes; retain dated historical values.
-- [ ] Run targeted suites, compile and patch check; commit the change.
+- [x] Run targeted suites, compile and patch check; commit the change.
 
 ### Task 2: Concise shared brief and notification relevance
 
@@ -48,14 +48,14 @@ app/lib/discord-interactions.mjs, test_core.py, test_runtime.py,
 tests/discord-interactions.test.mjs.
 **Interfaces:** preserve summaryV1 card kinds and version; concise Discord renderer
 consumes the canonical artifact. Additional update identity uses existing state.
-- [ ] Add red cases for <=900-character normal brief with three changes, long
+- [x] Add red cases for <=900-character normal brief with three changes, long
   Unicode content, missing/stale sources, unconfigured account state, unrelated
   companies and repeat event/status transitions.
-- [ ] Observe failures; produce one brief without routine chart attachments.
+- [x] Observe failures; produce one brief without routine chart attachments.
   Keep full chart data in artifact. Scope permitted updates to tracked companies;
   retain existing publication gates and dedup/failure semantics.
-- [ ] Keep command replies short and link unsupported recording to the Portfolio view.
-- [ ] Verify Python/Node notification and producer contracts; commit.
+- [x] Keep command replies short and link unsupported recording to the Portfolio view.
+- [x] Verify Python/Node notification and producer contracts; commit.
 
 ### Task 3: Four light card views and usable forms
 
@@ -65,23 +65,23 @@ tests/ui/friendly-cockpit.test.tsx, portfolio-accounts.test.tsx,
 tests/ui/cockpit-refresh.test.tsx.
 **Interfaces:** four client views controlled by view query parameter, preserving
 the existing root route and API endpoints; accountId selects an independent broker.
-- [ ] Add red UI tests for navigation, setup instead of false zero count, dated
+- [x] Add red UI tests for navigation, setup instead of false zero count, dated
   watchlist data, status failures, readable account activity, structured evidence
   validation and dialog return/focus behavior.
-- [ ] Observe failures; compose Overview/Portfolio/Research/Assistant from retained
+- [x] Observe failures; compose Overview/Portfolio/Research/Assistant from retained
   components, light tokens and accessible cards. Use existing backend validation.
-- [ ] Remove unused duplicate visual code after searching callers; retain stored
+- [x] Remove unused duplicate visual code after searching callers; retain stored
   history and keep technical diagnostics out of primary flows.
-- [ ] Run UI suite, lint/typecheck, npm test and patch check; commit.
+- [x] Run UI suite, lint/typecheck, npm test and patch check; commit.
 
 ### Task 4: Feature audit, browser QA and release preview
 
 **Files:** docs/research/2026-10-14-cockpit-refresh-verification.md.
 **Interfaces:** no production mutation during preview; canonical Worker build.
-- [ ] Run documented Python compile/tests and current CI research/producer tests.
+- [x] Run documented Python compile/tests and current CI research/producer tests.
   Run npm lint/typecheck/test and production build/package dry-run.
-- [ ] Use Browser/IAB to exercise four views, details, accounts, forms and retries at
+- [x] Use Browser/IAB to exercise four views, details, accounts, forms and retries at
   desktop/mobile sizes with a clearly labeled local fixture, not fake live results.
-- [ ] Fix reproduced defects with regression tests; capture preview screenshots.
-- [ ] Obtain one independent whole-branch review; resolve important findings.
-- [ ] Commit verification report and prepare a concrete release approval request.
+- [x] Fix reproduced defects with regression tests; capture preview screenshots.
+- [x] Obtain one independent whole-branch review; resolve important findings.
+- [x] Commit verification report and prepare a concrete release approval request.
