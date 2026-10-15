@@ -300,13 +300,15 @@ def test_discord_smoke_returns_failure_when_delivery_fails(monkeypatch):
     assert main.mode_discord_smoke() == 1
 
 
-def test_session_mode_is_silent_and_successful_without_new_movement(monkeypatch):
+def test_session_mode_is_silent_and_successful_without_new_movement_or_source_updates(monkeypatch, tmp_path):
+    """A quiet session must not read the developer's generated notification state."""
     saved = {}
     _stub_market_pulse(monkeypatch)
+    monkeypatch.setattr(main, "DASHBOARD_FILE", tmp_path / "absent-dashboard.json")
     monkeypatch.setattr(main, "_collect_recs", lambda **_: ("range", [], {"monthly_cap": 500.0}))
     monkeypatch.setattr(main, "_movement_alerts", lambda _recs: [])
     monkeypatch.setattr(main, "_save", lambda path, value: saved.setdefault(path, value))
-    monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("no movement must not post")))
+    monkeypatch.setattr(main.nt, "send_discord", lambda *_: (_ for _ in ()).throw(AssertionError("no relevant update must not post")))
 
     assert main.mode_run() == 0
     assert saved[main.ALERTS_FILE]["artifactKind"] == "movement"

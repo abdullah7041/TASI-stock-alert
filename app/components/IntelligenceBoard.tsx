@@ -7,14 +7,18 @@ import styles from "./FriendlyCockpit.module.css";
 const signed = (value: number | null) => value === null ? "Unavailable" : `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 
 export function IntelligenceBoard({ snapshot, alerts, marketPulse, currentOnly = false }: { snapshot: DashboardPayload["snapshot"]; alerts: MovementAlert[]; marketPulse?: DashboardPayload["marketPulse"]; currentOnly?: boolean }) {
-  const intelligence = buildMarketIntelligence(snapshot, alerts, marketPulse);
+  const cutoff = Date.parse(`${snapshot.expectedPriceDate ?? snapshot.tradeDate}T00:00:00+03:00`);
+  const through = Date.parse(snapshot.asOf);
+  // Classify movements using the same dated headlines the user can see.
+  const datedSnapshot = currentOnly && snapshot.schemaVersion === 3 ? {...snapshot,
+    digestRecords: snapshot.digestRecords.map(record => ({...record, news: record.news ? {...record.news,
+      headlines: record.news.headlines?.filter(headline => {
+        const published = Date.parse(headline.published ?? '');
+        return Number.isFinite(published) && published >= cutoff && published <= through;
+      })} : record.news})),
+  } : snapshot;
+  const intelligence = buildMarketIntelligence(datedSnapshot, alerts, marketPulse);
   if (currentOnly) {
-    const cutoff = Date.parse(`${snapshot.expectedPriceDate ?? snapshot.tradeDate}T00:00:00+03:00`);
-    const through = Date.parse(snapshot.asOf);
-    intelligence.events = intelligence.events.filter(event => {
-      const published = Date.parse(event.publishedAt ?? "");
-      return Number.isFinite(published) && published >= cutoff && published <= through;
-    });
     intelligence.anomalies = intelligence.anomalies.filter(alert => {
       const observed = Date.parse(alert.observedAt);
       return observed >= cutoff && observed <= Math.max(through, Date.parse(`${snapshot.tradeDate}T23:59:59+03:00`));

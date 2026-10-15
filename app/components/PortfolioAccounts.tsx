@@ -2,6 +2,7 @@
 import {useRef,useState} from 'react';
 import type {AccountEventPayload,AccountPreview,AccountRecordInput,BrokerAccountId,PortfolioAccountView,PortfolioBook} from '@/app/lib/evidence-types';
 import styles from './FriendlyCockpit.module.css';
+import {formatCockpitTimestamp} from './AlertBoard';
 
 export const brokerName=(id:BrokerAccountId)=>id==='al_rajhi'?'Al Rajhi':'Al Ahli';
 const money=(n:number|null)=>n===null?'Unconfirmed':`${n.toFixed(2)} SAR`;
@@ -10,7 +11,9 @@ const emptyRow=():HoldingRow=>({code:'',name:'',shares:'',avgCostSar:''});
 
 function activitySummary(record:AccountRecordInput):string {
   if(record.kind==='reconciliation')return `Statement comparison · ${record.payload.statementAsOf.slice(0,10)} · ${record.payload.holdings.length} holdings`;
-  if(record.kind==='correction')return `${record.payload.replacement?'Correction':'Void'} · ${record.payload.reason}`;
+  if(record.kind==='correction')return record.payload.replacement
+    ?`Correction · ${activitySummary({kind:'event',operationId:record.operationId,payload:record.payload.replacement})} · ${record.payload.reason}`
+    :`Void · ${record.payload.reason}`;
   const event=record.payload,kind=event.kind.replaceAll('_',' ');
   if(event.kind==='buy'||event.kind==='sell')return `${event.kind==='buy'?'Bought':'Sold'} ${event.shares} ${event.name??event.code} (${event.code}) at ${money(event.priceSar??null)} · fees ${money(event.feesSar??null)}`;
   return `${kind.charAt(0).toUpperCase()+kind.slice(1)} · ${money(event.cashSar??null)}${event.kind==='opening_balance'?` · ${event.holdings?.length??0} holdings`:''}`;
@@ -64,7 +67,7 @@ export function AccountRecordForm({account,onSaved,tradeOnly=false}:{account:Por
       <label>{tradeOnly?'Action':'Activity'}<select value={activity} onChange={e=>setActivity(e.target.value)}>
         {tradeOnly?<><option value="buy">Bought</option><option value="sell">Sold</option></>:<><option value="opening_balance">Opening snapshot</option><option value="contribution">Deposit</option><option value="withdrawal">Withdrawal</option><option value="dividend">Dividend</option><option value="fee">Standalone fee</option><option value="buy">Bought</option><option value="sell">Sold</option><option value="correction">Correction / void</option><option value="reconciliation">Statement comparison</option></>}
       </select></label>
-      {activity==='correction'&&<><label>Original event<select value={target} onChange={e=>setTarget(e.target.value)} required><option value="">Select event</option>{account.records.filter(r=>r.kind==='event').map(r=><option key={r.operationId} value={r.operationId}>{r.operationId} · {r.kind==='event'?r.payload.kind:''}</option>)}</select></label><label>Correction reason<input value={reason} onChange={e=>setReason(e.target.value)} required/></label><label><input type="checkbox" checked={voided} onChange={e=>setVoided(e.target.checked)}/>Void original event</label>{!voided&&<label>Replacement activity<select value={eventKind} onChange={e=>setEventKind(e.target.value as AccountEventPayload['kind'])}>{['opening_balance','contribution','withdrawal','dividend','fee','buy','sell'].map(k=><option key={k} value={k}>{k}</option>)}</select></label>}</>}
+      {activity==='correction'&&<><label>Original event<select value={target} onChange={e=>setTarget(e.target.value)} required><option value="">Select event</option>{account.records.filter(r=>r.kind==='event').map(r=><option key={r.operationId} value={r.operationId}>{activitySummary(r)} · {r.kind==='event'?formatCockpitTimestamp(r.payload.occurredAt):''} · Revision {r.revision}</option>)}</select></label><label>Correction reason<input value={reason} onChange={e=>setReason(e.target.value)} required/></label><label><input type="checkbox" checked={voided} onChange={e=>setVoided(e.target.checked)}/>Void original event</label>{!voided&&<label>Replacement activity<select value={eventKind} onChange={e=>setEventKind(e.target.value as AccountEventPayload['kind'])}>{['opening_balance','contribution','withdrawal','dividend','fee','buy','sell'].map(k=><option key={k} value={k}>{k}</option>)}</select></label>}</>}
       {!(activity==='correction'&&voided)&&<>
         <label>{activity==='reconciliation'?'Statement time (Riyadh)':'Transaction time (Riyadh)'}<input type="datetime-local" value={time} onChange={e=>setTime(e.target.value)} required/></label>
         {trade?<><label>Stock code<input pattern="[0-9]{4}" value={code} onChange={e=>setCode(e.target.value)} required/></label>{!account.holdings.some(h=>h.code===code)&&<label>Company name<input value={name} onChange={e=>setName(e.target.value)} required/></label>}<label>Executed shares<input type="number" min="1" step="1" value={shares} onChange={e=>setShares(e.target.value)} required/></label><label>Execution price (SAR)<input type="number" min="0.0001" step="any" value={price} onChange={e=>setPrice(e.target.value)} required/></label><label>Fees (SAR)<input type="number" min="0" step="any" value={fees} onChange={e=>setFees(e.target.value)} required/></label></>:<label>Amount (SAR)<input type="number" min={kind==='opening_balance'||activity==='reconciliation'?'0':'0.01'} step="any" value={amount} onChange={e=>setAmount(e.target.value)} required/></label>}

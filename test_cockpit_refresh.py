@@ -95,3 +95,41 @@ def test_missing_tracked_records_cannot_restore_news_or_filing_coverage():
         tracked_codes={"4000"}, events=[])
     assert not any("restored" in update["text"] for update in updates)
     assert state["health"]["news"] == state["health"]["filings"] == "unknown"
+
+
+def test_a_partly_missing_watchlist_cannot_restore_full_source_coverage():
+    """A healthy surviving record says nothing about a missing followed company."""
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = [{**snapshot["digestRecords"][0], "news": {"ok": True},
+                                  "disclosures": {"ok": True}}]
+    updates, state = summary_contract.notification_updates(snapshot,
+        {"health": {"prices": "failed", "news": "failed", "filings": "failed"}},
+        tracked_codes={"4000", "4001"}, events=[])
+    assert not any("restored" in update["text"] for update in updates)
+    assert state["health"]["prices"] == "failed"
+
+
+def test_scheduled_updates_consume_the_official_queue_that_survives_between_jobs(monkeypatch, tmp_path):
+    """The research job persists its queue, while the offline archive is not committed."""
+    import json
+    import main
+    snapshot = brief_fixture()
+    snapshot["digestRecords"] = [{**snapshot["digestRecords"][0], "news": {"ok": True},
+                                  "disclosures": {"ok": True}}]
+    dashboard, queue, state = (tmp_path / name for name in ("dashboard.json", "queue.json", "state.json"))
+    dashboard.write_text(json.dumps(snapshot), encoding="utf-8")
+    queue.write_text(json.dumps({"announcements": [{"symbol": "4000", "title": "Results published",
+        "url": "https://www.saudiexchange.sa/wps/issuer-announcements-details/result",
+        "published_at": "2026-10-13T04:00:00Z"}]}), encoding="utf-8")
+    monkeypatch.setattr(main, "DASHBOARD_FILE", dashboard)
+    monkeypatch.setattr(main, "EVIDENCE_QUEUE_FILE", queue)
+    monkeypatch.setattr(main, "EVENT_ARCHIVE_FILE", tmp_path / "absent.jsonl")
+    monkeypatch.setattr(main, "STATE_FILE", state)
+    monkeypatch.setattr(main, "_holdings", lambda: [{"code": "4000"}])
+    monkeypatch.setattr(main.cfg, "WATCHLIST", [])
+    sent = []
+    monkeypatch.setattr(main.nt, "send_discord", lambda text: sent.append(text) or True)
+    assert main._notify_relevant_updates("2026-10-13T06:00:00Z") == 0
+    assert len(sent) == 1 and "Results published" in sent[0]
+    assert main._notify_relevant_updates("2026-10-13T06:15:00Z") == 0
+    assert len(sent) == 1

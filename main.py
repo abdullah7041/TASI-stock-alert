@@ -1259,15 +1259,10 @@ def _notify_relevant_updates(as_of: str) -> int:
     if not isinstance(snapshot, dict) or not snapshot.get("tradeDate") or not snapshot.get("asOf"):
         return 0
     tracked = {str(item["code"]) for item in _holdings() + cfg.WATCHLIST}
-    events = []
-    if EVENT_ARCHIVE_FILE.exists():
-        for line in EVENT_ARCHIVE_FILE.read_text(encoding="utf-8").splitlines()[-500:]:
-            try:
-                event = json.loads(line)
-                if isinstance(event, dict):
-                    events.append(event)
-            except ValueError:
-                continue
+    # The scheduled research job commits this fetched queue. Its local event
+    # archive is offline evidence and does not survive a fresh Actions checkout.
+    queue = _load(EVIDENCE_QUEUE_FILE, {})
+    events = [event for event in queue.get("announcements", []) if isinstance(event, dict)] if isinstance(queue, dict) else []
     state = _load(STATE_FILE, {})
     updates, next_state = notification_updates(snapshot, state.get("cockpitUpdates") or {},
                                              tracked_codes=tracked, events=events, observed_at=as_of)

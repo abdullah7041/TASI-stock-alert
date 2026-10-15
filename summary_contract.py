@@ -173,10 +173,11 @@ def notification_updates(snapshot: dict, prior: dict, *, tracked_codes: set[str]
                         "url": url, "publishedAt": str(event["published_at"])})
     tracked = {**snapshot, "digestRecords": [r for r in snapshot.get("digestRecords") or []
                                              if str(r.get("code")) in tracked_codes]}
+    incomplete = tracked_codes != {str(r.get("code")) for r in tracked["digestRecords"]}
     notes = data_notes(tracked)
-    health = {"prices": "failed" if any("price" in n.lower() or "quote" in n.lower() for n in notes) else "available",
-              "news": "failed" if any("News unavailable" in n for n in notes) else "unknown" if not tracked["digestRecords"] or any("News not collected" in n for n in notes) else "available",
-              "filings": "failed" if any("Filings unavailable" in n for n in notes) else "unknown" if not tracked["digestRecords"] or any("Filings not collected" in n for n in notes) else "available"}
+    health = {"prices": "failed" if incomplete or any("price" in n.lower() or "quote" in n.lower() for n in notes) else "available",
+              "news": "failed" if any("News unavailable" in n for n in notes) else "unknown" if incomplete or not tracked["digestRecords"] or any("News not collected" in n for n in notes) else "available",
+              "filings": "failed" if any("Filings unavailable" in n for n in notes) else "unknown" if incomplete or not tracked["digestRecords"] or any("Filings not collected" in n for n in notes) else "available"}
     previous_health = prior.get("health") or {}
     for source, status in health.items():
         previous = previous_health.get(source)

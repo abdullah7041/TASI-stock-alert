@@ -3,12 +3,26 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, expect, test, vi } from 'vitest';
 import { ActionCockpit } from '@/app/components/ActionCockpit';
 import { EvidenceReviewForm } from '@/app/components/EvidenceReviewForm';
+import { IntelligenceBoard } from '@/app/components/IntelligenceBoard';
 import { buildPortfolioBook } from '@/app/lib/portfolio-core.mjs';
 import type { DashboardPayload } from '@/app/lib/dashboard-types';
 import saved from '../fixtures/friendly-dashboard.json';
 import { evidenceMetricFields, validateEvidenceRecord } from '@/app/lib/evidence-review-core.mjs';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); window.history.replaceState({}, '', '/'); });
+
+test.each([true,false])('historical headlines never explain a current movement when news retrieval succeeded=%s',ok=>{
+ const snapshot={...saved,tradeDate:'2026-10-15',asOf:'2026-10-15T09:00:00Z',expectedPriceDate:'2026-10-14',
+   digestRecords:[{...saved.digestRecords[0],news:{ok,headlines:[{title:'Historical results',link:'https://www.saudiexchange.sa/old-results',published:'2026-09-01T06:00:00Z'}]}}]};
+ render(<IntelligenceBoard currentOnly snapshot={snapshot as unknown as DashboardPayload['snapshot']} alerts={[{
+   alertId:'current',code:saved.digestRecords[0].code,name:'Example',direction:'upside',
+   observedAt:'2026-10-15T08:00:00Z',receivedAt:'2026-10-15T08:05:00Z',latency:'delayed-intraday',
+   excessMovePct:3,robustZ:4,volumeRatio:2,reason:'Dated movement',
+ }]}/>);
+ expect(screen.queryByText('News also present')).toBeNull();
+ expect(screen.getByText('No verified explanation')).toBeTruthy();
+ expect(screen.getByText(ok?/No timely verified news/:/News retrieval failed/)).toBeTruthy();
+});
 
 test('the home distinguishes unconfirmed accounts from no review and keeps tools in separate views', async () => {
   const snapshot={...saved,tradeDate:'2026-10-13',expectedPriceDate:'2026-10-12',

@@ -1,4 +1,4 @@
-import {cleanup,render,screen,fireEvent} from '@testing-library/react';
+import {cleanup,render,screen,fireEvent,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {afterEach,expect,test,vi} from 'vitest';
 import {PortfolioAccounts} from '@/app/components/PortfolioAccounts';
@@ -6,6 +6,20 @@ import {buildPortfolioBook} from '@/app/lib/portfolio-core.mjs';
 import type {AccountRecord} from '@/app/lib/evidence-types';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const records: AccountRecord[]=['al_rajhi','al_ahli'].map((accountId,i)=>({accountId,operationId:accountId,revision:1,recordedAt:'2026-10-08T08:00:00Z',kind:'event',payload:{kind:'opening_balance',cashSar:i?400:300,holdings:[],occurredAt:'2026-10-01T08:00:00Z',provenance:{source:'manual'}}})) as AccountRecord[];
+
+test('correction targets identify the actual transaction and history shows the replacement details',async()=>{
+ const activity:AccountRecord[]=[...records,...[25,40].map((cashSar,i)=>({accountId:'al_rajhi',operationId:`opaque-${i}`,revision:i+2,recordedAt:'2026-10-08T08:00:00Z',kind:'event',payload:{kind:'contribution',cashSar,occurredAt:`2026-10-0${i+2}T08:00:00Z`,provenance:{source:'manual'}}})) as AccountRecord[],
+ {accountId:'al_rajhi',operationId:'opaque-correction',revision:4,recordedAt:'2026-10-08T08:00:00Z',kind:'correction',payload:{targetOperationId:'opaque-1',reason:'Corrected receipt amount',replacement:{kind:'contribution',cashSar:45,occurredAt:'2026-10-03T08:00:00Z',provenance:{source:'manual'}}}}];
+ render(<PortfolioAccounts book={buildPortfolioBook(activity,[])} accountId="al_rajhi" onAccountChange={()=>{}} onSaved={()=>{}}/>);
+ await userEvent.selectOptions(screen.getByLabelText('Activity'),'correction');
+ const targets=screen.getByLabelText('Original event');
+ expect(within(targets).getByRole('option',{name:/25.00 SAR.*2 Oct 2026.*Revision 2/})).toBeTruthy();
+ expect(within(targets).getByRole('option',{name:/40.00 SAR.*3 Oct 2026.*Revision 3/})).toBeTruthy();
+ await userEvent.selectOptions(targets,'opaque-1');
+ expect((targets as HTMLSelectElement).value).toBe('opaque-1');
+ await userEvent.click(screen.getByText('Al Rajhi activity history (4)'));
+ expect(screen.getByText(/Correction.*45.00 SAR.*Corrected receipt amount/)).toBeTruthy();
+});
 test('combined reporting shows both brokers and requires explicit selection before any write',()=>{
  render(<PortfolioAccounts book={buildPortfolioBook(records,[])} accountId={null} onAccountChange={()=>{}} onSaved={()=>{}}/>);
  expect(screen.getByText('Select a broker account to record activity.')).toBeTruthy();
