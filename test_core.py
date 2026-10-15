@@ -2460,6 +2460,21 @@ def test_format_scanner_block_index_unavailable_defaults_false():
     assert "unavailable" not in block.lower()
 
 
+def test_scanner_coverage_requires_an_actual_sixty_day_index_return(monkeypatch):
+    """Yahoo's one-bar index response must not look like a valid empty screen."""
+    import universe
+    monkeypatch.setattr(universe, "load", lambda: ["4016"])
+    for bars, unavailable in [(1, True), (60, True), (61, False)]:
+        close = pd.Series(range(100, 100 + bars), index=pd.date_range("2026-01-01", periods=bars))
+        frame = pd.DataFrame({"Close": close, "High": close + 1,
+                              "Low": close - 1, "Volume": 100000})
+        monkeypatch.setattr(data, "get_histories_adjusted",
+                            lambda *_: {cfg.REGIME["index_code"]: frame})
+        result = main._scanner_result()
+        assert result["indexUnavailable"] is unavailable, f"index bars: {bars}"
+        assert bool(result["warning"]) is unavailable
+
+
 # --- data.get_histories_adjusted ---------------------------------------------
 def test_get_histories_adjusted_passes_auto_adjust_true(monkeypatch):
     import yfinance as yf
