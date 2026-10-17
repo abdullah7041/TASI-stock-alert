@@ -31,10 +31,11 @@ Saved at `2026-10-15T18:41:24Z` (21:41 Riyadh); actual quotes dated
 
 ![Live overview](assets/cockpit-live-overview.jpg)
 
-The bounded live Assistant question failed with an explicit OpenRouter HTTP
-401. The owner is replacing the existing Worker secret through Wrangler's
-interactive prompt; no credential is requested in chat or written into source.
-Assistant success is not yet claimed. The producer's optional Gemini perspective
+The initial bounded live Assistant question failed with an explicit OpenRouter
+HTTP 401. The owner subsequently replaced the existing Worker secret through
+Wrangler's interactive prompt; no credential was requested in chat or written
+into source. Successful post-replacement qualification is recorded below.
+The producer's optional Gemini perspective
 also returned an upstream 503; dated facts and delivery remained available.
 
 ## Screening coverage follow-up
@@ -77,9 +78,9 @@ then passed. No index history, policy, schedule or credential was fabricated.
 
 ![Confirmed production delivery](assets/cockpit-live-delivery.jpg)
 
-The Assistant was retested on 17 October and still returned OpenRouter HTTP 401.
-It is not functional until its configured key is replaced. The owner can enter
-the replacement in Wrangler's hidden interactive prompt, without putting the
+Before the key replacement on 17 October, the Assistant still returned
+OpenRouter HTTP 401. The owner entered the replacement in Wrangler's hidden
+interactive prompt, without putting the
 value in chat, source, command arguments or command history:
 
 ```powershell
@@ -87,10 +88,25 @@ cd 'C:\Users\NoteBook Pc\.codex\worktrees\tasi-cockpit-refresh\tasi-alert-system
 npx wrangler secret put OPENROUTER_API_KEY --config wrangler.cloudflare.json
 ```
 
-After the owner confirms the update, perform one bounded Assistant question and
-verify a saved reply. Do not rotate unrelated credentials or copy keys from
-other projects. Both broker opening snapshots and reviewed company evidence
-also remain user inputs; release approval does not supply those facts.
+Both broker opening snapshots and reviewed company evidence remain user inputs;
+release approval does not supply those facts.
+
+## Assistant key replacement verified, 17 October 2026
+
+After the owner confirmed the update, a live request reached OpenRouter using
+the project's replacement key. Provider metadata showed HTTP 200. The first
+application request returned a generic failure despite that upstream response;
+content logging was not enabled, and its exact cause was not established.
+
+A bounded retry asked: "In one short sentence, which inputs are missing? Do not
+draft a decision." The Assistant returned a dated answer identifying unconfirmed
+broker openings and missing company/policy/source evidence. Reloading the page
+and waiting for conversation history confirmed that both the question and reply
+were saved. The reply did not create a decision note or change portfolio records.
+This verifies the key, live response and conversation persistence; it does not
+claim every provider request succeeds or that missing financial evidence exists.
+
+![Persisted live Assistant reply](assets/cockpit-live-assistant.jpg)
 
 The original checkout's unrelated changes remain unchanged. The final report
 and screenshots are saved in the implementation worktree; runtime code for both
