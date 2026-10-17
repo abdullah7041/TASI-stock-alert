@@ -52,5 +52,46 @@ is unavailable.
 
 Regression verification observed the Python one-bar case and two UI cases fail
 before the fix. The Python cases for 1/60/61 bars and four UI availability cases
-then passed. Full integration checks and follow-up deployment are recorded below
-when complete. No index history, policy, schedule or credential was fabricated.
+then passed. No index history, policy, schedule or credential was fabricated.
+
+## Final qualification, rechecked 17 October 2026
+
+- [Coverage PR #28](https://github.com/abdullah7041/TASI-stock-alert/pull/28)
+  merged as `ef0bfd10b63d5c11f4d7bf208b1db037c5d5e277`.
+- [CI on the merged coverage commit](https://github.com/abdullah7041/TASI-stock-alert/actions/runs/38789818386)
+  passed. The PR run recorded 428 Python tests, 160 Node tests, 87 UI tests
+  and four fresh-producer parser checks. The local Python run including the
+  additional refresh regressions passed 436 tests.
+- The canonical build deployed Worker version
+  `e0051c60-2218-4493-bfe4-13c4ac303e11`. Authenticated health returned the
+  matching `ef0bfd10b63d5c11f4d7bf208b1db037c5d5e277` commit and database ready.
+- The live Research view now says: "Screening unavailable: a required data source
+  is missing. Review data status." It does not claim a valid empty shortlist.
+- The live Portfolio view loads independent brokers and the opening-snapshot
+  form. A company detail dialog loads its delayed chart, dated sources and
+  explicit unavailable AI perspective. No real portfolio write was performed.
+- Anonymous portfolio access returned HTTP 302 to authentication. The access
+  boundary, existing D1 database and owner records were preserved.
+- No additional Discord message was sent for the coverage fix. The approved
+  single-embed digest and authenticated receipt above remain the delivery proof.
+
+![Confirmed production delivery](assets/cockpit-live-delivery.jpg)
+
+The Assistant was retested on 17 October and still returned OpenRouter HTTP 401.
+It is not functional until its configured key is replaced. The owner can enter
+the replacement in Wrangler's hidden interactive prompt, without putting the
+value in chat, source, command arguments or command history:
+
+```powershell
+cd 'C:\Users\NoteBook Pc\.codex\worktrees\tasi-cockpit-refresh\tasi-alert-system'
+npx wrangler secret put OPENROUTER_API_KEY --config wrangler.cloudflare.json
+```
+
+After the owner confirms the update, perform one bounded Assistant question and
+verify a saved reply. Do not rotate unrelated credentials or copy keys from
+other projects. Both broker opening snapshots and reviewed company evidence
+also remain user inputs; release approval does not supply those facts.
+
+The original checkout's unrelated changes remain unchanged. The final report
+and screenshots are saved in the implementation worktree; runtime code for both
+PRs is merged and deployed.
