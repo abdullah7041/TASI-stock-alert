@@ -1,1 +1,10 @@
-{}
+{
+  "cockpitUpdates": {
+    "seen": [],
+    "health": {
+      "prices": "available",
+      "news": "available",
+      "filings": "available"
+    }
+  }
+}
