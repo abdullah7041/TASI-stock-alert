@@ -31,10 +31,11 @@ Saved at `2026-10-15T18:41:24Z` (21:41 Riyadh); actual quotes dated
 
 ![Live overview](assets/cockpit-live-overview.jpg)
 
-The bounded live Assistant question failed with an explicit OpenRouter HTTP
-401. The owner is replacing the existing Worker secret through Wrangler's
-interactive prompt; no credential is requested in chat or written into source.
-Assistant success is not yet claimed. The producer's optional Gemini perspective
+The initial bounded live Assistant question failed with an explicit OpenRouter
+HTTP 401. The owner subsequently replaced the existing Worker secret through
+Wrangler's interactive prompt; no credential was requested in chat or written
+into source. Successful post-replacement qualification is recorded below.
+The producer's optional Gemini perspective
 also returned an upstream 503; dated facts and delivery remained available.
 
 ## Screening coverage follow-up
@@ -52,5 +53,61 @@ is unavailable.
 
 Regression verification observed the Python one-bar case and two UI cases fail
 before the fix. The Python cases for 1/60/61 bars and four UI availability cases
-then passed. Full integration checks and follow-up deployment are recorded below
-when complete. No index history, policy, schedule or credential was fabricated.
+then passed. No index history, policy, schedule or credential was fabricated.
+
+## Final qualification, rechecked 17 October 2026
+
+- [Coverage PR #28](https://github.com/abdullah7041/TASI-stock-alert/pull/28)
+  merged as `ef0bfd10b63d5c11f4d7bf208b1db037c5d5e277`.
+- [CI on the merged coverage commit](https://github.com/abdullah7041/TASI-stock-alert/actions/runs/38789818386)
+  passed. The PR run recorded 428 Python tests, 160 Node tests, 87 UI tests
+  and four fresh-producer parser checks. The local Python run including the
+  additional refresh regressions passed 436 tests.
+- The canonical build deployed Worker version
+  `e0051c60-2218-4493-bfe4-13c4ac303e11`. Authenticated health returned the
+  matching `ef0bfd10b63d5c11f4d7bf208b1db037c5d5e277` commit and database ready.
+- The live Research view now says: "Screening unavailable: a required data source
+  is missing. Review data status." It does not claim a valid empty shortlist.
+- The live Portfolio view loads independent brokers and the opening-snapshot
+  form. A company detail dialog loads its delayed chart, dated sources and
+  explicit unavailable AI perspective. No real portfolio write was performed.
+- Anonymous portfolio access returned HTTP 302 to authentication. The access
+  boundary, existing D1 database and owner records were preserved.
+- No additional Discord message was sent for the coverage fix. The approved
+  single-embed digest and authenticated receipt above remain the delivery proof.
+
+![Confirmed production delivery](assets/cockpit-live-delivery.jpg)
+
+Before the key replacement on 17 October, the Assistant still returned
+OpenRouter HTTP 401. The owner entered the replacement in Wrangler's hidden
+interactive prompt, without putting the
+value in chat, source, command arguments or command history:
+
+```powershell
+cd 'C:\Users\NoteBook Pc\.codex\worktrees\tasi-cockpit-refresh\tasi-alert-system'
+npx wrangler secret put OPENROUTER_API_KEY --config wrangler.cloudflare.json
+```
+
+Both broker opening snapshots and reviewed company evidence remain user inputs;
+release approval does not supply those facts.
+
+## Assistant key replacement verified, 17 October 2026
+
+After the owner confirmed the update, a live request reached OpenRouter using
+the project's replacement key. Provider metadata showed HTTP 200. The first
+application request returned a generic failure despite that upstream response;
+content logging was not enabled, and its exact cause was not established.
+
+A bounded retry asked: "In one short sentence, which inputs are missing? Do not
+draft a decision." The Assistant returned a dated answer identifying unconfirmed
+broker openings and missing company/policy/source evidence. Reloading the page
+and waiting for conversation history confirmed that both the question and reply
+were saved. The reply did not create a decision note or change portfolio records.
+This verifies the key, live response and conversation persistence; it does not
+claim every provider request succeeds or that missing financial evidence exists.
+
+![Persisted live Assistant reply](assets/cockpit-live-assistant.jpg)
+
+The original checkout's unrelated changes remain unchanged. The final report
+and screenshots are saved in the implementation worktree; runtime code for both
+PRs is merged and deployed.
