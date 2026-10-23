@@ -46,8 +46,9 @@ on:
     - cron: "15 12 * * 0,1,2,3,4"
     # A review draft is created only when its 3-calendar-month date is due.
     - cron: "30 12 * * 0,1,2,3,4"
-    # Wednesday 08:15 Riyadh official-source evidence collection. Review is still required.
-    - cron: "15 5 * * 3"
+    # Official-source checks at 08:15 Riyadh, Sun-Thu. The 12:30 UTC
+    # Top 10 job also collects independently at 15:30 Riyadh.
+    - cron: "15 5 * * 0,1,2,3,4"
 
 permissions:
   contents: write   # to commit state.json / levels.json back.
@@ -99,7 +100,7 @@ jobs:
           elif [ "${{ github.event.schedule }}" = "30 12 * * 0,1,2,3,4" ]; then
             echo "mode=top10-draft" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T12:30:00Z" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "15 5 * * 3" ]; then
+          elif [ "${{ github.event.schedule }}" = "15 5 * * 0,1,2,3,4" ]; then
             echo "mode=research-evidence" >> "$GITHUB_OUTPUT"
             echo "scheduled_for=$(date -u +%F)T05:15:00Z" >> "$GITHUB_OUTPUT"
           else
@@ -243,6 +244,21 @@ jobs:
               json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
           PY
 
+      - name: Load holding reviews for the morning brief
+        if: contains('digest,digest-guard,cockpit-refresh', steps.mode.outputs.mode)
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
+        run: |
+          source .github/cockpit-auth.sh
+          if ! cockpit_auth_ready || ! curl --fail --silent --show-error \
+            "${COCKPIT_AUTH_HEADERS[@]}" "$COCKPIT_ORIGIN/api/holding-reviews" > .holding-reviews.json; then
+            printf '%s\n' '{"collection":null,"items":[],"notices":[{"id":"holding-reviews-unavailable","kind":"source","text":"Holding reviews unavailable; previous evidence has not been checked."}]}' > .holding-reviews.json
+          fi
+
       - name: Run
         id: run
         # State must survive a delivery failure. The final step restores the
@@ -264,6 +280,16 @@ jobs:
           TASI_LLM_MODEL_GEMINI: ${{ vars.TASI_LLM_MODEL_GEMINI }}
           TASI_PRODUCTION_DELIVERED: ${{ steps.delivery_guard.outputs.delivered }}
           TASI_REQUIRE_PORTFOLIO_LEDGER: ${{ contains('run,digest,digest-guard,suggest,autolevels,top10-draft,intraday-probe', steps.mode.outputs.mode) && 'true' || 'false' }}
+        run: python main.py
+
+      - name: Collect official evidence after close
+        id: collection
+        # Runs in the separate 15:30 job even if Top 10 drafting or the earlier
+        # 15:15 reconciliation failed. Every source attempt writes a receipt.
+        if: always() && steps.mode.outputs.mode == 'top10-draft'
+        continue-on-error: true
+        env:
+          MODE: research-evidence
         run: python main.py
 
       - name: Record job telemetry
@@ -299,7 +325,8 @@ jobs:
           PY
 
       - name: Persist official evidence review queue
-        if: steps.mode.outputs.mode == 'research-evidence' && steps.run.outcome == 'success'
+        id: evidence_ingest
+        if: always() && (steps.mode.outputs.mode == 'research-evidence' || steps.mode.outputs.mode == 'top10-draft')
         env:
           COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
           COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
@@ -308,15 +335,76 @@ jobs:
           COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
         run: |
           source .github/cockpit-auth.sh
-          if ! cockpit_auth_ready || [ ! -f research/evidence_queue.json ]; then
-            echo "review queue was not persisted because it was unavailable or unauthenticated"
-            exit 0
+          if ! cockpit_auth_ready || [ ! -f research/evidence_collection.json ]; then
+            echo "::error::Collection receipt was not persisted because it was unavailable or unauthenticated"
+            exit 1
           fi
           curl --fail --silent --show-error -X POST \
             "${COCKPIT_AUTH_HEADERS[@]}" \
             -H "Content-Type: application/json" \
-            --data-binary @research/evidence_queue.json \
+            --data-binary @research/evidence_collection.json \
             "$COCKPIT_ORIGIN/api/evidence/queue/ingest"
+
+      - name: Read persisted holding-review status
+        id: holding_status
+        # Read-only qualification works before the generation switch is enabled.
+        if: always() && steps.evidence_ingest.outcome == 'success'
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
+        run: |
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          curl --fail --silent --show-error "${COCKPIT_AUTH_HEADERS[@]}" \
+            "$COCKPIT_ORIGIN/api/holding-reviews" > .holding-reviews.json
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          summary = json.loads(Path(".holding-reviews.json").read_text(encoding="utf-8"))
+          if not isinstance(summary.get("items"), list) or not isinstance(summary.get("notices"), list):
+              raise RuntimeError("Invalid holding-review summary.")
+          collection = summary.get("collection") or {}
+          print("holding_summary_read=success")
+          print(f"holding_collection_status={collection.get('status', 'unavailable')}")
+          print(f"holding_collection_run={collection.get('runId', 'unavailable')}")
+          print(f"holding_summary_companies={len(summary['items'])}")
+          print(f"holding_summary_notices={len(summary['notices'])}")
+          PY
+
+      - name: Refresh held-company provisional reviews
+        id: holding_reviews
+        # Qualify the authenticated API and storage before enabling generation.
+        # Failed collections still reach the API to expose their source status.
+        if: always() && vars.HOLDING_REVIEWS_ENABLED == 'true' && steps.evidence_ingest.outcome == 'success'
+        env:
+          COCKPIT_SIWC_BYPASS_TOKEN: ${{ secrets.COCKPIT_SIWC_BYPASS_TOKEN }}
+          COCKPIT_INGEST_TOKEN: ${{ secrets.COCKPIT_INGEST_TOKEN }}
+          COCKPIT_ORIGIN: ${{ vars.COCKPIT_ORIGIN }}
+          COCKPIT_ACCESS_CLIENT_ID: ${{ secrets.COCKPIT_ACCESS_CLIENT_ID }}
+          COCKPIT_ACCESS_CLIENT_SECRET: ${{ secrets.COCKPIT_ACCESS_CLIENT_SECRET }}
+        run: |
+          source .github/cockpit-auth.sh
+          cockpit_auth_ready
+          python - <<'PY' > .holding-refresh-request.json
+          import json
+          from pathlib import Path
+          payload = json.loads(Path("research/evidence_collection.json").read_text(encoding="utf-8"))
+          print(json.dumps({"collectionRunId": payload["receipt"]["runId"]}))
+          PY
+          curl --fail --silent --show-error -X POST \
+            "${COCKPIT_AUTH_HEADERS[@]}" -H "Content-Type: application/json" \
+            --data-binary @.holding-refresh-request.json \
+            "$COCKPIT_ORIGIN/api/holding-reviews" > .holding-reviews.json
+
+      - name: Notify new held-company reviews after close
+        if: always() && steps.mode.outputs.mode == 'top10-draft' && steps.holding_reviews.outcome == 'success'
+        env:
+          MODE: holding-reviews-notify
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python main.py
 
       - name: Compare canonical dashboard with production
         id: dashboard
@@ -517,7 +605,7 @@ jobs:
           # the cockpit each run and DELETED when that read fails, so committing
           # it would land a transient outage in the repo as a deletion of the
           # approved list. Same reasoning as portfolio_active.json in .gitignore.
-          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json market_pulse.json budget_state.json llm_budget.json research/evidence_queue.json research/intraday_probe.json; do
+          for path in state.json levels.json symbols.json news_archive.jsonl history.json dashboard.json top10_draft.json movement_state.json movement_alerts.json market_pulse.json budget_state.json llm_budget.json research/evidence_queue.json research/evidence_collection.json research/event_archive.jsonl research/intraday_probe.json; do
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi
@@ -525,5 +613,5 @@ jobs:
           git push
 
       - name: Fail if runtime failed
-        if: always() && steps.run.outcome == 'failure'
+        if: always() && (steps.run.outcome == 'failure' || steps.collection.outcome == 'failure')
         run: exit 1

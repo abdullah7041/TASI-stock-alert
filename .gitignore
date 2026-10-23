@@ -30,3 +30,5 @@ research/evidence.json
 research/forecast_metrics.json
 market_pulse_v1.json
 .evidence-current.json
+.holding-reviews.json
+.holding-refresh-request.json

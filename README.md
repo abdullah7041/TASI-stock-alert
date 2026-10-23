@@ -61,6 +61,35 @@ and [deployment commands and targets](docs/research/2026-10-09-tasi-foundations-
 The configured website is the Cloudflare cockpit that shares its ledger with
 Discord; the separate legacy ChatGPT Site is outside this release.
 
+## Holdings secretary
+
+In **Assistant**, save your investor profile, then select a company from your
+confirmed broker holdings. Ask for a company-case draft or write your own.
+Review the reasons, evidence, risks and conditions for reconsidering ownership
+before confirming it. Company cases are your judgement; confirming one does not
+qualify a trading rule or change portfolio balances.
+
+Reviews compare dated evidence with that confirmed case. New interpretations
+remain provisional. You can acknowledge a review without changing the case, or
+confirm a revised case while preserving its earlier versions. Source dates,
+reviewed evidence revisions and collection receipts remain available in review
+details. Missing account records require broker setup rather than guessed holdings.
+
+Official-source checks run at **08:15 and 15:30 Riyadh, Sunday–Thursday**. The
+08:30 brief includes review context; after-close notifications report new review
+items or source-status transitions. Duplicate checks do not repeat AI work or
+notifications. Failed checks retain previous evidence with its original dates;
+an empty successful check is a separate state. Announcement titles alone cannot
+establish financial conclusions.
+
+Deploy and qualify the storage/API changes before setting the repository variable
+`HOLDING_REVIEWS_ENABLED=true`. That variable enables scheduled generation and
+after-close review notifications. The existing model configuration and monthly
+AI allowance apply. Budget/provider failures leave reviews pending. Cases must
+be explicitly confirmed before automatic monitoring; no quantities or orders
+are produced. The existing ledger, manual decision notes and daily schedules
+remain separate from case confirmation.
+
 ## What each run does
 
 1. Pulls daily history and a delayed quote for every holding and watchlist name (Yahoo Finance, free).

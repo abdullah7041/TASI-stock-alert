@@ -22,6 +22,7 @@ On GitHub Actions the workflow sets MODE.
 from __future__ import annotations
 
 import json
+import uuid
 import os
 import re
 import statistics
@@ -63,6 +64,8 @@ ALERTS_FILE = HERE / "movement_alerts.json"
 MARKET_PULSE_FILE = HERE / "market_pulse.json"
 EVIDENCE_FILE = HERE / "research" / "evidence.json"
 FORECAST_METRICS_FILE = HERE / "research" / "forecast_metrics.json"
+EVIDENCE_COLLECTION_FILE = HERE / "research" / "evidence_collection.json"
+HOLDING_REVIEWS_FILE = HERE / ".holding-reviews.json"
 EVIDENCE_QUEUE_FILE = HERE / "research" / "evidence_queue.json"
 EVENT_ARCHIVE_FILE = HERE / "research" / "event_archive.jsonl"
 PROBE_FILE = HERE / "research" / "intraday_probe.json"
@@ -352,7 +355,7 @@ def _evidence_top10(scanner_result: dict | None, recs: list, generated_at: str) 
                         "totalScore": item.total_score, "reasons": list(item.reasons),
                         "evidence": {"source": evidence.source_name, "observedAt": evidence.published_at,
                                      "receivedAt": evidence.retrieved_at, "latency": "official-filing",
-                                     "freshness": "current", "url": evidence.source_url}})
+                                     "freshness": "unknown", "url": evidence.source_url}})
     return {"proposalId": f"top10-{generated_at[:10]}-evidence", "status": "draft", "researchedAt": generated_at,
             "reviewWindow": "1-3 months", "entries": entries}
 
@@ -502,6 +505,9 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
             cashSar=round(total_cash, 2) if total_cash is not None and total_cash*100 <= 2**53-1 else None)
     if top10_review is not None:
         snapshot["top10Review"] = top10_review
+    holding_reviews = _load(HOLDING_REVIEWS_FILE, None)
+    if isinstance(holding_reviews, dict):
+        snapshot["holdingReviews"] = holding_reviews
     snapshot["summaryV1"] = build_summary_v1(snapshot, scheduled_for=scheduled_for)
     snapshot["summary"] = summary_lines(snapshot["summaryV1"])
     return snapshot
@@ -1034,21 +1040,56 @@ def mode_digest() -> int:
     return 0 if ok else 1
 
 
-def mode_research_evidence() -> int:
-    """Collect official announcement links into a human-review queue only."""
-    from curl_cffi import requests
-
-    retrieved_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+def mode_research_evidence(*, attempted_at: str | None = None, run_id: str | None = None) -> int:
+    """Persist every official-source attempt; a failure retains the last queue."""
+    retrieved_at = attempted_at or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    receipt = {"runId": run_id or str(uuid.uuid4()), "attemptedAt": retrieved_at, "status": "failed", "count": 0}
     try:
+        from curl_cffi import requests
         announcements = official_sources.collect_official_announcements(
             requests.Session(impersonate="chrome"), retrieved_at, lookback_days=7
         )
     except Exception as exc:
-        print(f"official evidence collection unavailable: {exc}")
+        # Exception text may contain request credentials; persist only its type.
+        receipt["error"] = f"Official source collection failed ({type(exc).__name__})."
+        EVIDENCE_COLLECTION_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _save(EVIDENCE_COLLECTION_FILE, {"receipt": receipt, "retrievedAt": retrieved_at, "announcements": []})
+        print(receipt["error"])
         return 1
-    official_sources.write_review_queue(EVIDENCE_QUEUE_FILE, announcements, retrieved_at)
+    receipt.update(status="content" if announcements else "empty", count=len(announcements))
+    # Persist the source result before optional local archive writes can fail.
+    official_sources.write_review_queue(EVIDENCE_COLLECTION_FILE, announcements, retrieved_at, receipt=receipt)
+    official_sources.write_review_queue(EVIDENCE_QUEUE_FILE, announcements, retrieved_at, receipt=receipt)
     official_sources.append_event_archive(EVENT_ARCHIVE_FILE, announcements)
     print(f"official evidence review queue and event archive written: {len(announcements)} candidates; no Top 10 was changed.")
+    return 0
+
+
+def mode_holding_reviews_notify() -> int:
+    """Send new provisional review notices and source transitions once, after close."""
+    summary = _load(HOLDING_REVIEWS_FILE, None)
+    if not isinstance(summary, dict) or not isinstance(summary.get("items"), list):
+        print("Holding review summary unavailable; no notification state advanced.")
+        return 1
+    state = _load(STATE_FILE, {})
+    prior = state.get("holdingReviews") or {}
+    seen = set(prior.get("reviewIds") or [])
+    updates = []
+    for item in summary["items"]:
+        if not isinstance(item, dict) or not item.get("reviewId") or not item.get("changed") or item["reviewId"] in seen:
+            continue
+        updates.append({"text": f"{item.get('name') or item.get('symbol')} ({item.get('symbol')}): {item.get('status', 'incomplete')} review. {item['changed']}"})
+        seen.add(item["reviewId"])
+    collection = summary.get("collection") or {}
+    status = collection.get("status")
+    previous_status = prior.get("sourceStatus")
+    if status in {"content", "empty", "failed"} and status != previous_status and (previous_status is not None or status == "failed"):
+        updates.append({"text": f"Official source collection: {status}. Check attempted {collection.get('attemptedAt', 'time unavailable')}; previous evidence is retained."})
+    if updates and not nt.send_discord(nt.build_relevant_update_message(updates, summary.get("generatedAt") or "time unavailable")):
+        return 1
+    state["holdingReviews"] = {"reviewIds": sorted(seen), "sourceStatus": status or previous_status}
+    _save(STATE_FILE, state)
+    print(f"holding review notices: {len(updates)}; unchanged reviews and source states are quiet.")
     return 0
 
 
@@ -1497,6 +1538,7 @@ MODES = {
     "digest": mode_digest,
     "digest-guard": mode_digest_guard,
     "research-evidence": mode_research_evidence,
+    "holding-reviews-notify": mode_holding_reviews_notify,
     "top10-draft": mode_top10_draft,
     "cockpit-refresh": mode_cockpit_refresh,
     "reconcile": mode_reconcile,

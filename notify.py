@@ -298,6 +298,17 @@ def build_dashboard_digest(snapshot: dict) -> str:
     notes = data_notes(snapshot)
     if notes:
         lines.append("Data: " + "; ".join(notes))
+    holding_reviews = snapshot.get("holdingReviews")
+    if isinstance(holding_reviews, dict):
+        collection = holding_reviews.get("collection") or {}
+        status = collection.get("status", "unavailable")
+        count = f" ({collection.get('count', 0)} candidates, unreviewed)" if status == "content" else ""
+        lines.append(f"Official source check: {status}{count}; attempted {collection.get('attemptedAt', 'unavailable')}.")
+        items = holding_reviews.get("items") or []
+        for item in items[:3]:
+            lines.append(f"• {_clip(str(item.get('name') or item.get('symbol')), 60)}: {item.get('status', 'incomplete')} review — {_clip(str(item.get('changed') or 'Review in cockpit.'), 120)}")
+        for notice in (holding_reviews.get("notices") or [])[:2]:
+            lines.append(f"• {_clip(str(notice.get('text') or ''), 160)}")
     lines.append(f"[Open cockpit]({COCKPIT_URL})")
     return "\n".join(lines)
 

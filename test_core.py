@@ -412,7 +412,7 @@ def test_workflow_has_separate_weekly_top10_draft_mode():
 def test_scheduler_records_lateness_and_does_not_hide_state_commit_failures():
     workflow = Path(".github/workflows/tasi.yml").read_text(encoding="utf-8")
     assert "research-evidence" in workflow
-    assert 'cron: "15 5 * * 3"' in workflow
+    assert 'cron: "15 5 * * 0,1,2,3,4"' in workflow
     assert "SCHEDULED_FOR" in workflow
     assert "for path in" in workflow and '[ -e "$path" ]' in workflow
     assert "git add state.json" not in workflow
