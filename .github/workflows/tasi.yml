@@ -71,6 +71,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:
@@ -609,7 +611,9 @@ jobs:
             if [ -e "$path" ]; then git add -- "$path"; fi
           done
           if ! git diff --cached --quiet; then git commit -m "state update [skip ci]"; fi
-          git pull --rebase origin main
+          # Manual release checks may run on a feature branch. Preserve its
+          # upstream/history rather than rebasing it onto main after delivery.
+          git pull --rebase origin "$(git branch --show-current)"
           git push
 
       - name: Fail if runtime failed

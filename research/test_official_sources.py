@@ -223,6 +223,16 @@ def test_workflow_can_qualify_authenticated_storage_before_enabling_ai_reviews()
     assert "holding_summary_read=success" in step["run"]
 
 
+def test_manual_release_checks_commit_state_to_their_checked_out_branch():
+    """A shallow feature checkout rebased on main produced add/add conflicts after successful ingestion."""
+    import yaml
+    steps = yaml.safe_load(Path(".github/workflows/tasi.yml").read_text(encoding="utf-8"))["jobs"]["watch"]["steps"]
+    checkout = next(step for step in steps if step.get("uses", "").startswith("actions/checkout@"))
+    commit = next(step for step in steps if step.get("name") == "Commit state")
+    assert checkout.get("with", {}).get("fetch-depth") == 0
+    assert 'git pull --rebase origin "$(git branch --show-current)"' in commit["run"]
+
+
 def test_malformed_official_feed_does_not_masquerade_as_successful_empty():
     """Feed schema drift must retain previous evidence and produce a failed receipt."""
     import pytest
