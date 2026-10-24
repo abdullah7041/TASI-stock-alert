@@ -35,9 +35,10 @@ lineage and provider input without claiming complete coverage.
 
 ## Local evidence
 
-All commands ran against the final implementation. The extra workflow status
-step was subsequently checked with its failing regression and the 44-test
-runtime/source suite.
+All commands ran against the final implementation. The later workflow status
+and branch-handling regressions both failed before their fixes, then passed
+with the 45-test runtime/source suite. GitHub CI also passed for implementation
+revision `0ea5d4a` (Python, web and fresh producer contract).
 
 | Check | Observed result |
 | --- | --- |
@@ -84,12 +85,32 @@ This proves collection, not authenticated ingestion, complete company coverage,
 review generation or Discord delivery. Its generated artifacts remain in
 ignored verification scratch. The tracked queue was restored afterwards.
 
-Authenticated collection ingestion and summary access are qualified through
-the existing `research-evidence` workflow. The separate read-only status step
-reports the saved collection run and company/setup counts even while automatic
-generation is disabled. Live qualification results must be recorded separately.
-Owner browser verification was not established: browser automation could not
-attach to the cockpit tab.
+Authenticated collection ingestion, summary access and generated state
+persistence passed in the existing `research-evidence` workflow
+[run 39945608414](https://github.com/abdullah7041/TASI-stock-alert/actions/runs/39945608414)
+on 2026-10-23. It collected and ingested 95 notices, read the saved summary,
+and committed the generated queue/receipt/archive as `7a66f41`. The saved
+receipt is `bf6458e9-2799-4074-b00c-4d800c7a1dbc`, attempted at
+`2026-10-23T11:23:04Z`. Generation and review-delivery steps were skipped by
+the disabled switch. A separate read-only D1 query also confirmed durable
+collection storage. Source/review/notification status remain separate.
+
+The first qualification attempt had already ingested successfully before its
+state-commit step failed: shallow feature history was rebased onto main. The
+workflow now fetches complete history and synchronizes its actual checked-out
+branch, preserving the existing main behavior and the digest guard's main
+checkout. The successful rerun above verifies that repair end to end.
+
+Discord accepted one clearly labeled synthetic smoke message in
+[run 39945226324](https://github.com/abdullah7041/TASI-stock-alert/actions/runs/39945226324)
+(`discord smoke sent: True`). That initial job subsequently hit the same
+state-commit failure. Delivery itself succeeded and was not repeated. This
+qualifies the existing webhook transport, not a real holding-review notice or
+proof that the owner read a message.
+
+Unauthenticated checks received HTTP 302 at the owner API's sign-in boundary
+and HTTP 403 at the machine gateway. Owner browser verification was not
+established: browser automation could not attach to the cockpit tab.
 
 After genuine broker setup and owner confirmation of the profile and at least
 one company case, verify a provisional review, reload/persisted lineage, exact
