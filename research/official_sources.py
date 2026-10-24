@@ -128,15 +128,17 @@ def _parse_feed(payload: object, retrieved_at: str) -> tuple[list[OfficialAnnoun
     except (TypeError, ValueError) as exc:
         raise ValueError("official announcement feed returned an invalid totalCount") from exc
 
+    if total_count < 0 or (total_count > 0 and not payload["announcementList"]):
+        raise ValueError("official feed returned an invalid announcement count")
     announcements: list[OfficialAnnouncement] = []
     for item in payload["announcementList"]:
         if not isinstance(item, dict):
-            continue
+            raise ValueError("official feed returned an invalid announcement")
         title = str(item.get("SHORT_DESC") or "").strip()
         raw_url = str(item.get("announcementUrl") or "").strip()
         url = urljoin(PORTAL_URL, raw_url)
         if not title or not is_official_url(url) or "issuer-announcements-details" not in url:
-            continue
+            raise ValueError("official feed returned an invalid announcement")
         source_published_at = item.get("newsDateStr")
         announcements.append(
             OfficialAnnouncement(
@@ -209,7 +211,7 @@ def collect_official_announcements(session, retrieved_at: str, lookback_days: in
     return list(found.values())
 
 
-def write_review_queue(path: Path, announcements: list[OfficialAnnouncement], retrieved_at: str) -> None:
+def write_review_queue(path: Path, announcements: list[OfficialAnnouncement], retrieved_at: str, *, receipt: dict | None = None) -> None:
     """Atomically replace a queue only after a successful collection."""
     payload = {
         "status": "review-required",
@@ -217,6 +219,8 @@ def write_review_queue(path: Path, announcements: list[OfficialAnnouncement], re
         "retrievedAt": retrieved_at,
         "announcements": [asdict(item) for item in announcements],
     }
+    if receipt is not None:
+        payload["receipt"] = receipt
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")

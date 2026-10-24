@@ -45,6 +45,11 @@ export class ResearchStore {
     await this.db.prepare("DELETE FROM agent_usage WHERE owner_id = ? AND operation_key = ?").bind(ownerId, operationKey).run();
   }
 
+  async releaseExpired(ownerId:string,operationKey:string,before:string){
+    await this.ensureReady();
+    await this.db.prepare('DELETE FROM agent_usage WHERE owner_id = ? AND operation_key = ? AND created_at < ?').bind(ownerId,operationKey,before).run();
+  }
+
   async saveReport(report: StoredReport) {
     await this.ensureReady();
     const now = new Date().toISOString();

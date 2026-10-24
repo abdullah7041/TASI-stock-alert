@@ -14,7 +14,9 @@ function activitySummary(record:AccountRecordInput):string {
   if(record.kind==='correction')return record.payload.replacement
     ?`Correction · ${activitySummary({kind:'event',operationId:record.operationId,payload:record.payload.replacement})} · ${record.payload.reason}`
     :`Void · ${record.payload.reason}`;
-  const event=record.payload,kind=event.kind.replaceAll('_',' ');
+  const event=record.payload;
+  if(!event||typeof event.kind!=='string')return 'Activity details unavailable · damaged account history';
+  const kind=event.kind.replaceAll('_',' ');
   if(event.kind==='buy'||event.kind==='sell')return `${event.kind==='buy'?'Bought':'Sold'} ${event.shares} ${event.name??event.code} (${event.code}) at ${money(event.priceSar??null)} · fees ${money(event.feesSar??null)}`;
   return `${kind.charAt(0).toUpperCase()+kind.slice(1)} · ${money(event.cashSar??null)}${event.kind==='opening_balance'?` · ${event.holdings?.length??0} holdings`:''}`;
 }

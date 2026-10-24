@@ -102,6 +102,9 @@ export const researchSchemaStatements = [
     scheduled_at TEXT PRIMARY KEY, fetched_at TEXT NOT NULL, attempt_json TEXT NOT NULL,
     status TEXT NOT NULL, error_json TEXT NOT NULL, recorded_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS evidence_collections (
+    run_id TEXT PRIMARY KEY, attempted_at TEXT NOT NULL, receipt_json TEXT NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS evidence_queue (
     source_url TEXT PRIMARY KEY, announcement_json TEXT NOT NULL, collected_at TEXT NOT NULL
   )`,

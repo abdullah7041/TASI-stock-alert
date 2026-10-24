@@ -7,6 +7,13 @@ import type {AccountRecord} from '@/app/lib/evidence-types';
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 const records: AccountRecord[]=['al_rajhi','al_ahli'].map((accountId,i)=>({accountId,operationId:accountId,revision:1,recordedAt:'2026-10-08T08:00:00Z',kind:'event',payload:{kind:'opening_balance',cashSar:i?400:300,holdings:[],occurredAt:'2026-10-01T08:00:00Z',provenance:{source:'manual'}}})) as AccountRecord[];
 
+test('damaged history remains visible as unavailable instead of crashing the broker account',()=>{
+ const damaged=structuredClone(records);delete (damaged[0].payload as Partial<{kind:string}>).kind;
+ render(<PortfolioAccounts book={buildPortfolioBook(damaged,[])} accountId="al_rajhi" onAccountChange={()=>{}} onSaved={()=>{}}/>);
+ expect(screen.getByText(/Activity details unavailable/)).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Preview record'})).toBeNull();
+});
+
 test('correction targets identify the actual transaction and history shows the replacement details',async()=>{
  const activity:AccountRecord[]=[...records,...[25,40].map((cashSar,i)=>({accountId:'al_rajhi',operationId:`opaque-${i}`,revision:i+2,recordedAt:'2026-10-08T08:00:00Z',kind:'event',payload:{kind:'contribution',cashSar,occurredAt:`2026-10-0${i+2}T08:00:00Z`,provenance:{source:'manual'}}})) as AccountRecord[],
  {accountId:'al_rajhi',operationId:'opaque-correction',revision:4,recordedAt:'2026-10-08T08:00:00Z',kind:'correction',payload:{targetOperationId:'opaque-1',reason:'Corrected receipt amount',replacement:{kind:'contribution',cashSar:45,occurredAt:'2026-10-03T08:00:00Z',provenance:{source:'manual'}}}}];

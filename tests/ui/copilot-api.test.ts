@@ -8,6 +8,8 @@ import { PortfolioStore } from '@/app/lib/portfolio-store';
 import { MarketPulseStore } from '@/app/lib/market-pulse-store';
 import { AlertStore } from '@/app/lib/alert-store';
 import {buildPortfolioBook} from '@/app/lib/portfolio-core.mjs';
+import { HoldingSecretaryStore } from '@/app/lib/holding-secretary-store';
+import { EvidenceStore } from '@/app/lib/evidence-store';
 
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();for(const key of Object.keys(env))delete env[key];});
 function setup() {
@@ -17,6 +19,10 @@ function setup() {
   vi.spyOn(MarketPulseStore.prototype,'latest').mockResolvedValue(null);
   vi.spyOn(AlertStore.prototype,'latest').mockResolvedValue([]);
   vi.spyOn(CopilotStore.prototype,'history').mockResolvedValue({messages:[],decisions:[]});
+  vi.spyOn(HoldingSecretaryStore.prototype,'view').mockResolvedValue({profile:null,cases:[],caseHistory:[],reviews:[],acknowledgedReviewIds:[]});
+  vi.spyOn(EvidenceStore.prototype,'currentWithRevisions').mockResolvedValue([]);
+  vi.spyOn(EvidenceStore.prototype,'latestCollection').mockResolvedValue(null);
+  vi.spyOn(EvidenceStore.prototype,'queue').mockResolvedValue([]);
   vi.spyOn(ResearchStore.prototype,'reserve').mockResolvedValue('reserved');
   const save=vi.spyOn(CopilotStore.prototype,'saveMessages').mockResolvedValue();
   const confirm=vi.spyOn(CopilotStore.prototype,'confirm').mockResolvedValue();

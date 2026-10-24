@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { decisionActions, type CopilotMessage, type DecisionDraft, type DecisionNote } from '@/app/lib/copilot-core';
+import { decisionActions, type DecisionDraft } from '@/app/lib/copilot-core';
 import styles from './FriendlyCockpit.module.css';
+import {HoldingSecretary,type SecretaryConversation} from './HoldingSecretary';
 
-type Conversation = {messages: CopilotMessage[]; decisions: DecisionNote[]};
+type Conversation = SecretaryConversation;
 export function CopilotRail() {
   const [conversation,setConversation] = useState<Conversation>({messages:[],decisions:[]});
   const [text,setText] = useState(''), [language,setLanguage] = useState('auto');
@@ -11,7 +12,7 @@ export function CopilotRail() {
   const [draft,setDraft] = useState<(DecisionDraft & {id:string}) | null>(null);
   async function request(body?: unknown, signal?: AbortSignal) {
     const r = await fetch('/api/copilot',{method:body?'POST':'GET',cache:'no-store',signal:signal ?? AbortSignal.timeout(55000),headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
-    if (!r.ok) { const message = await r.text(); try { throw new Error(JSON.parse(message).error); } catch(e) { if (e instanceof SyntaxError) throw new Error(message); throw e; } }
+    if (!r.ok) { const message = await r.text(); let detail=message;try{detail=JSON.parse(message).error??message;}catch{}throw Object.assign(new Error(detail),{status:r.status}); }
     const result = await r.json();
     if(!Array.isArray(result.messages)||!Array.isArray(result.decisions))throw new Error('Conversation response is unavailable.');
     return result as Conversation;
@@ -41,6 +42,7 @@ export function CopilotRail() {
     finally{setBusy(false);}
   }
   return <aside className={styles.copilotRail} aria-label="TASI copilot">
+    {conversation.secretary&&<HoldingSecretary view={conversation.secretary} companies={conversation.holdingCompanies??[]} collection={conversation.collection} request={request} onChange={setConversation}/>}
     <p className={styles.eyebrow}>TASI COPILOT</p><h2>Ask about the whole picture</h2>
     <label>Reply language<select value={language} onChange={e=>setLanguage(e.target.value)}><option value="auto">Automatic</option><option value="en">English</option><option value="ar">العربية</option></select></label>
     <div className={styles.chatHistory} role="log" aria-label="Portfolio conversation" aria-live="polite">{conversation.messages.map(m=><article key={m.id} dir="auto"><strong>{m.role==='user'?'You':'TASI'}</strong><p>{m.text}</p>{m.draft&&<button className={styles.textButton} disabled={busy} onClick={()=>setDraft({...m.draft!,id:crypto.randomUUID()})}>Review decision draft</button>}</article>)}</div>

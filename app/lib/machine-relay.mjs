@@ -3,9 +3,10 @@ const machineRoutes = new Set([
   'POST /api/dashboard/ingest', 'POST /api/alerts/ingest', 'POST /api/deliveries/ingest',
   'POST /api/discord/interactions', 'POST /api/pulse/ingest',
   'GET /api/evidence/current', 'POST /api/evidence/queue/ingest',
+  'GET /api/holding-reviews', 'POST /api/holding-reviews',
 ]);
 
-const same = (left, right) => {
+export const tokensEqual = (left, right) => {
   if (!left || !right) return false;
   const a = new TextEncoder().encode(left);
   const b = new TextEncoder().encode(right);
@@ -15,4 +16,4 @@ const same = (left, right) => {
 };
 
 export const isMachineRoute = request => machineRoutes.has(`${request.method} ${new URL(request.url).pathname}`);
-export const isMachineRelay = (request, env) => isMachineRoute(request) && same(request.headers.get('x-tasi-machine-relay'), env.MACHINE_RELAY_SECRET);
+export const isMachineRelay = (request, env) => isMachineRoute(request) && tokensEqual(request.headers.get('x-tasi-machine-relay'), env.MACHINE_RELAY_SECRET);

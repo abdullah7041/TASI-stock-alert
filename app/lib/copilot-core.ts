@@ -1,4 +1,5 @@
 export const decisionActions = ['WATCH', 'AVOID', 'HOLD', 'REDUCE', 'RESEARCH_MORE'] as const;
+const modelDecisionActions = ['WATCH','RESEARCH_MORE'] as const;
 export type DecisionDraft = { symbol: string; action: typeof decisionActions[number]; conditions: string; invalidation: string };
 export type CopilotMessage = { id: string; role: 'user' | 'assistant'; text: string; createdAt: string; draft?: DecisionDraft | null };
 export type DecisionNote = DecisionDraft & { id: string; confirmedAt: string };
@@ -17,7 +18,9 @@ export function parseDecision(value: unknown): DecisionDraft {
 export function parseCopilotReply(text: string): { answer: string; draft: DecisionDraft | null } {
   const result = JSON.parse(text);
   if (typeof result.answer !== 'string' || !result.answer.trim()) throw new Error('The assistant returned no answer.');
-  return { answer: result.answer.trim(), draft: result.draft === null ? null : parseDecision(result.draft) };
+  const draft = result.draft === null ? null : parseDecision(result.draft);
+  if (draft && !modelDecisionActions.some(action=>action===draft.action)) throw new Error('Company policy permits only WATCH or RESEARCH_MORE model drafts.');
+  return { answer: result.answer.trim(), draft };
 }
 
 export const copilotFormat = {
@@ -26,7 +29,7 @@ export const copilotFormat = {
     answer: { type: 'string' },
     draft: { anyOf: [{ type: 'null' }, { type: 'object', additionalProperties: false,
       required: ['symbol', 'action', 'conditions', 'invalidation'], properties: {
-        symbol: { type: 'string' }, action: { type: 'string', enum: [...decisionActions] },
+        symbol: { type: 'string' }, action: { type: 'string', enum: [...modelDecisionActions] },
         conditions: { type: 'string' }, invalidation: { type: 'string' },
       } }] },
   } },
