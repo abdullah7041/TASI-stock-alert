@@ -10,6 +10,22 @@ const caseDraft={symbol:'2320',reasons:'Owner reason',supportingEvidence:'Latest
 const empty={profile:null,cases:[],caseHistory:[],reviews:[],acknowledgedReviewIds:[]};
 const response=(secretary:unknown=empty,holdingCompanies:unknown[]=[company])=>({messages:[],decisions:[],secretary,holdingCompanies});
 
+test.each([
+  {collection:null,expected:/No official source collection attempt is recorded/i},
+  {collection:{runId:'empty',attemptedAt:'2026-10-23T05:15:00Z',status:'empty',count:0},expected:/completed with no announcements/i},
+  {collection:{runId:'content',attemptedAt:'2026-10-23T05:15:00Z',status:'content',count:95},expected:/95 announcement notices collected/i},
+  {collection:{runId:'failed',attemptedAt:'2026-10-23T05:15:00Z',status:'failed',count:0,error:'Official feed unavailable'},expected:/Official source collection failed/i},
+])('shows the latest source check independently of historical reviews: $collection.status',async({collection,expected})=>{
+  const review={id:'retained-review',symbol:'2320',fingerprint:'fp',caseRevision:1,profileRevision:1,createdAt:'2026-10-22T12:30:00Z',status:'provisional',action:'RESEARCH_MORE',changed:'Saved provisional review',supporting:'',contrary:'',implications:'',missing:'',questions:'',sourceRefs:[],accounts:company.accounts};
+  vi.stubGlobal('fetch',async()=>Response.json({...response({...empty,profile,reviews:[review]}),collection}));
+  render(<CopilotRail/>);
+  const check=await screen.findByRole('region',{name:'Latest official source check'});
+  expect(within(check).getByText(expected)).toBeTruthy();
+  if(collection)expect(within(check).getByText(collection.attemptedAt,{selector:'time'})).toBeTruthy();
+  if(collection?.status==='failed')expect(within(check).getByText(/Official feed unavailable/)).toBeTruthy();
+  expect(within(screen.getByRole('article',{name:'2320 review'})).getByText('2026-10-22T12:30:00Z',{selector:'time'})).toBeTruthy();
+});
+
 test('guides explicit profile and case confirmation using only confirmed holdings',async()=>{
   const bodies:Record<string,unknown>[]=[];
   vi.stubGlobal('fetch',async(_url:unknown,options?:RequestInit)=>{

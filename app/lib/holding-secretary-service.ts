@@ -75,7 +75,7 @@ function requireCompany(data:Awaited<ReturnType<typeof load>>,symbol:string){
 
 export async function secretaryConversation(context:SecretaryContext){
   const [history,data]=await Promise.all([new CopilotStore(context.db).history(context.ownerId),load(context)]);
-  return {...history,secretary:data.secretary,holdingCompanies:data.companies};
+  return {...history,secretary:data.secretary,holdingCompanies:data.companies,collection:data.collection};
 }
 
 export async function draftHoldingCase(context:SecretaryContext,symbol:string):Promise<CaseInput>{

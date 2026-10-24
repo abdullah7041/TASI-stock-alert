@@ -2,9 +2,10 @@
 import {useRef,useState} from 'react';
 import {defaultProfile,type AccountContext,type CaseInput,type HoldingCompany,type HoldingReview,type ProfileInput,type SecretaryView} from '@/app/lib/holding-secretary-core';
 import type {CopilotMessage,DecisionNote} from '@/app/lib/copilot-core';
+import type {CollectionReceipt} from '@/app/lib/evidence-store';
 import styles from './FriendlyCockpit.module.css';
 
-export type SecretaryConversation={messages:CopilotMessage[];decisions:DecisionNote[];secretary?:SecretaryView;holdingCompanies?:HoldingCompany[];caseDraft?:CaseInput};
+export type SecretaryConversation={messages:CopilotMessage[];decisions:DecisionNote[];secretary?:SecretaryView;holdingCompanies?:HoldingCompany[];caseDraft?:CaseInput;collection?:CollectionReceipt|null};
 const profileLabels:Record<keyof ProfileInput,string>={objective:'Investment objective',horizon:'Investment horizon',contributions:'Contributions',riskSettings:'Risk settings',constraints:'Constraints'};
 const caseLabels:Record<Exclude<keyof CaseInput,'symbol'|'sourceRefs'>,string>={reasons:'Reasons for holding',supportingEvidence:'Supporting evidence',risks:'Risks',reconsiderWhen:'When to reconsider'};
 function Accounts({accounts}:{accounts:AccountContext[]}){
@@ -20,7 +21,7 @@ function Sources({refs,dated=false,sources}:{refs:string[];dated?:boolean;source
   })}</ul>:<p>No supporting source references recorded.</p>;
 }
 
-export function HoldingSecretary({view,companies,request,onChange}:{view:SecretaryView;companies:HoldingCompany[];request:(body?:unknown)=>Promise<SecretaryConversation>;onChange:(next:SecretaryConversation)=>void}){
+export function HoldingSecretary({view,companies,collection,request,onChange}:{view:SecretaryView;companies:HoldingCompany[];collection?:CollectionReceipt|null;request:(body?:unknown)=>Promise<SecretaryConversation>;onChange:(next:SecretaryConversation)=>void}){
   const [profile,setProfile]=useState<ProfileInput>(()=>view.profile??{...defaultProfile});
   const [symbol,setSymbol]=useState(''),[draft,setDraft]=useState<CaseInput|null>(null);
   const [draftProfileRevision,setDraftProfileRevision]=useState(0),[draftRevision,setDraftRevision]=useState(0);
@@ -63,6 +64,13 @@ export function HoldingSecretary({view,companies,request,onChange}:{view:Secreta
   }
   return <section className={styles.section} aria-label="Holdings secretary"><h2>Holdings secretary</h2>
     <p>Confirm your profile, then review a case for a company you already hold. Cases record your judgement; reviews remain provisional. No orders are sent.</p>
+    <section className={styles.notice} aria-label="Latest official source check"><h3>Official source check</h3>
+      {!collection?<p>No official source collection attempt is recorded. Company coverage is unverified.</p>:<>
+        <p>Attempted <time dateTime={collection.attemptedAt}>{collection.attemptedAt}</time></p>
+        {collection.status==='failed'?<p role="alert">Official source collection failed. {collection.error??'Source unavailable.'} Previous evidence is retained with its original dates.</p>:collection.status==='empty'?<p>The check completed with no announcements. This does not establish complete company coverage.</p>:<p>{collection.count} announcement notices collected. Source content still requires review; company coverage may be incomplete.</p>}
+      </>}
+      {view.reviews.length>0&&<p>Saved reviews retain their original dates and may not cover this check.</p>}
+    </section>
     {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
     {busy&&<p role="status">{busy==='draft'?'Preparing company draft…':busy==='review'?'Checking holding evidence…':busy==='refresh'?'Loading saved context…':'Saving…'}</p>}
     {conflict&&<button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={()=>void refresh()}>Refresh saved context</button>}

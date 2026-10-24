@@ -168,6 +168,8 @@ def test_holding_notifications_deduplicate_updates_and_retry_failed_delivery(mon
     messages=[]
     monkeypatch.setattr(main.nt,"send_discord",lambda text: messages.append(text) or False)
     assert main.mode_holding_reviews_notify()==1
+    assert "?view=assistant" in messages[0]
+    assert "?view=research" in main.nt.build_relevant_update_message([{"text":"Research notice"}],payload["generatedAt"])
     assert not state.exists()
     monkeypatch.setattr(main.nt,"send_discord",lambda text: messages.append(text) or True)
     assert main.mode_holding_reviews_notify()==0

@@ -8,7 +8,7 @@ import { HoldingSecretaryStore } from '@/app/lib/holding-secretary-store';
 import { defaultProfile } from '@/app/lib/holding-secretary-core';
 import { PortfolioStore } from '@/app/lib/portfolio-store';
 import { EvidenceStore } from '@/app/lib/evidence-store';
-import { reviewHolding, draftHoldingCase, holdingReviewSummary } from '@/app/lib/holding-secretary-service';
+import { reviewHolding, draftHoldingCase, holdingReviewSummary, secretaryConversation } from '@/app/lib/holding-secretary-service';
 
 const {DatabaseSync}=createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 function database() {
@@ -60,6 +60,25 @@ async function seeded() {
   return {...databaseValue,store,evidence,context:{ownerId:'owner',db,apiKey:'test-only',chatModel:'configured'}};
 }
 const reviewReply=()=>({action:'RESEARCH_MORE',changed:'Reviewed company results available.',supporting:'Dated profitability evidence.',contrary:'Coverage is incomplete.',implications:'Compare hold and reduce scenarios after reviewing evidence.',missing:'Latest quarter may not be covered.',questions:'Has cash conversion changed?',sourceRefs:[source]});
+
+test('owner responses expose each latest collection outcome while preserving historical reviews',async()=>{
+  const {context,evidence,sqlite}=await seeded();
+  const fetchReply=vi.fn(async()=>Response.json({output_text:JSON.stringify(reviewReply())}));
+  vi.stubGlobal('fetch',fetchReply);
+  const review=await reviewHolding(context,'2320');
+  const emptyResponse=await secretaryConversation(context);
+  expect(emptyResponse).toHaveProperty('collection',{runId:'run-1',attemptedAt:'2026-10-22T05:15:00Z',status:'empty',count:0});
+  const content={runId:'content',attemptedAt:'2026-10-23T05:15:00Z',status:'content' as const,count:1};
+  await evidence.saveCollection(content,[{title:'New official notice',url:source,symbol:'2320',retrieved_at:content.attemptedAt}]);
+  expect(await secretaryConversation(context)).toHaveProperty('collection',content);
+  const failed={runId:'failed',attemptedAt:'2026-10-23T12:30:00Z',status:'failed' as const,count:0,error:'Official feed unavailable'};
+  await evidence.saveCollection(failed,[]);
+  const failedResponse=await secretaryConversation(context);
+  expect(failedResponse).toHaveProperty('collection',failed);
+  expect(failedResponse.secretary.reviews).toEqual([review]);
+  expect(fetchReply).toHaveBeenCalledTimes(1);
+  sqlite.close();
+});
 
 test('unchanged holding evidence reuses a provisional review without another AI charge',async()=>{
   const {context,store,db,evidence,sqlite}=await seeded();

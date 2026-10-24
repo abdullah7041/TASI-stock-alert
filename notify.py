@@ -313,13 +313,13 @@ def build_dashboard_digest(snapshot: dict) -> str:
     return "\n".join(lines)
 
 
-def build_relevant_update_message(updates: list[dict], as_of: str) -> str:
+def build_relevant_update_message(updates: list[dict], as_of: str, *, view: str = "research") -> str:
     """Short notice; complete source records remain in the cockpit."""
     lines = [f"**TASI update · {as_of[:10]}**"]
     lines.extend(f"• {_clip(update['text'], 180)}" for update in updates[:3])
     if len(updates) > 3:
         lines.append(f"{len(updates) - 3} more updates in the cockpit.")
-    lines.append(f"[Review details]({COCKPIT_URL}/?view=research)")
+    lines.append(f"[Review details]({COCKPIT_URL}/?view={view})")
     return "\n".join(lines)
 
 

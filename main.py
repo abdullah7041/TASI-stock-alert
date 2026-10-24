@@ -1085,7 +1085,7 @@ def mode_holding_reviews_notify() -> int:
     previous_status = prior.get("sourceStatus")
     if status in {"content", "empty", "failed"} and status != previous_status and (previous_status is not None or status == "failed"):
         updates.append({"text": f"Official source collection: {status}. Check attempted {collection.get('attemptedAt', 'time unavailable')}; previous evidence is retained."})
-    if updates and not nt.send_discord(nt.build_relevant_update_message(updates, summary.get("generatedAt") or "time unavailable")):
+    if updates and not nt.send_discord(nt.build_relevant_update_message(updates, summary.get("generatedAt") or "time unavailable", view="assistant")):
         return 1
     state["holdingReviews"] = {"reviewIds": sorted(seen), "sourceStatus": status or previous_status}
     _save(STATE_FILE, state)

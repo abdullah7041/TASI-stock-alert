@@ -42,7 +42,7 @@ export function CopilotRail() {
     finally{setBusy(false);}
   }
   return <aside className={styles.copilotRail} aria-label="TASI copilot">
-    {conversation.secretary&&<HoldingSecretary view={conversation.secretary} companies={conversation.holdingCompanies??[]} request={request} onChange={setConversation}/>}
+    {conversation.secretary&&<HoldingSecretary view={conversation.secretary} companies={conversation.holdingCompanies??[]} collection={conversation.collection} request={request} onChange={setConversation}/>}
     <p className={styles.eyebrow}>TASI COPILOT</p><h2>Ask about the whole picture</h2>
     <label>Reply language<select value={language} onChange={e=>setLanguage(e.target.value)}><option value="auto">Automatic</option><option value="en">English</option><option value="ar">العربية</option></select></label>
     <div className={styles.chatHistory} role="log" aria-label="Portfolio conversation" aria-live="polite">{conversation.messages.map(m=><article key={m.id} dir="auto"><strong>{m.role==='user'?'You':'TASI'}</strong><p>{m.text}</p>{m.draft&&<button className={styles.textButton} disabled={busy} onClick={()=>setDraft({...m.draft!,id:crypto.randomUUID()})}>Review decision draft</button>}</article>)}</div>
