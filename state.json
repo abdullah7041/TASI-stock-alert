@@ -1,6 +1,8 @@
 {
   "cockpitUpdates": {
-    "seen": [],
+    "seen": [
+      "d7cf3056f65dc2286b84ccb5faf876f2e02093ef56179863fe4b40e656899fa9"
+    ],
     "health": {
       "prices": "available",
       "news": "available",
