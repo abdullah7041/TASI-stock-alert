@@ -2,7 +2,8 @@
   "cockpitUpdates": {
     "seen": [
       "d7cf3056f65dc2286b84ccb5faf876f2e02093ef56179863fe4b40e656899fa9",
-      "0a18b4471039e6e5908784ea5f41a6f68f7a04fa21de65a0a463cb2e1aec4a18"
+      "0a18b4471039e6e5908784ea5f41a6f68f7a04fa21de65a0a463cb2e1aec4a18",
+      "b79b6b37364abc8c3542eb3285435bbb639397a07bbf8ac2a776fab0ba5169f1"
     ],
     "health": {
       "prices": "available",
