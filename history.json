@@ -1758,6 +1758,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 113.6,
+      "rsi": 25.1,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4016": [
@@ -2400,6 +2413,18 @@
       "date": "2026-11-03",
       "price": 60.0,
       "rsi": 44.3,
+      "trend": "down",
+      "rules_met": 2,
+      "blocking": [
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 61.25,
+      "rsi": 49.4,
       "trend": "down",
       "rules_met": 2,
       "blocking": [
@@ -3126,6 +3151,19 @@
       "date": "2026-11-03",
       "price": 91.0,
       "rsi": 54.2,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 90.05,
+      "rsi": 51.9,
       "trend": "down",
       "rules_met": 1,
       "blocking": [
@@ -3892,6 +3930,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 18.76,
+      "rsi": 26.5,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4017": [
@@ -4547,6 +4598,19 @@
       "date": "2026-11-03",
       "price": 30.34,
       "rsi": 34.9,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 30.5,
+      "rsi": 36.3,
       "trend": "down",
       "rules_met": 1,
       "blocking": [
@@ -5271,6 +5335,19 @@
       ],
       "lean": null,
       "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 9.24,
+      "rsi": 26.8,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
     }
   ],
   "4263": [
@@ -5944,6 +6021,19 @@
       "date": "2026-11-03",
       "price": 147.9,
       "rsi": 34.4,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 153.7,
+      "rsi": 43.4,
       "trend": "down",
       "rules_met": 1,
       "blocking": [
@@ -6678,6 +6768,19 @@
       "date": "2026-11-03",
       "price": 104.9,
       "rsi": 41.7,
+      "trend": "down",
+      "rules_met": 1,
+      "blocking": [
+        "momentum_floor",
+        "trend"
+      ],
+      "lean": null,
+      "lean_confidence": null
+    },
+    {
+      "date": "2026-11-04",
+      "price": 102.4,
+      "rsi": 37.6,
       "trend": "down",
       "rules_met": 1,
       "blocking": [
