@@ -2,14 +2,14 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Candidate, DashboardPayload } from '@/app/lib/dashboard-types';
-import type { PortfolioBook, BrokerAccountId } from '@/app/lib/evidence-types';
-import { buildPortfolioBook, parsePortfolioBook } from '@/app/lib/portfolio-core.mjs';
+import type { SavedPortfolio } from '@/app/lib/evidence-types';
+import { savedPortfolio, parseSavedPortfolio, parsePortfolioBook, PortfolioConflict } from '@/app/lib/portfolio-core.mjs';
 import { buildDecisionView } from '@/app/lib/decision-view.mjs';
 import type { StockDecision } from '@/app/lib/decision-view.mjs';
-import { PortfolioAccounts, brokerName } from './PortfolioAccounts';
+import { SavedPortfolioPanel, PortfolioActivityForm } from './SavedPortfolio';
 import { AlertBoard, formatCockpitTimestamp } from './AlertBoard';
 import { ResearchWorkspace } from './ResearchWorkspace';
-import { DetailDialog, ExecutedTradeForm, StockDetails } from './CockpitDetails';
+import { DetailDialog, StockDetails } from './CockpitDetails';
 import { IntelligenceBoard } from './IntelligenceBoard';
 import { MarketPulse } from './MarketPulse';
 import { CopilotRail } from './CopilotRail';
@@ -55,8 +55,8 @@ function StockCard({stock,onOpen}:{stock:StockDecision;onOpen:()=>void}) {
 export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
   const [data,setData]=useState(dashboard), [error,setError]=useState<string|null>(null), [busy,setBusy]=useState(false);
   const [refreshStatus,setRefreshStatus]=useState('');
-  const [book,setBook]=useState<PortfolioBook|null>(null), [ledgerError,setLedgerError]=useState(false);
-  const [accountId,setAccountId]=useState<BrokerAccountId|null>(null);
+  const [portfolio,setPortfolio]=useState<SavedPortfolio|null>(null), [ledgerError,setLedgerError]=useState(false);
+  const [ledgerConflict,setLedgerConflict]=useState<string|null>(null);
   const [viewId,setViewId]=useState<CockpitView>('overview');
   const [selected,setSelected]=useState<StockDecision|null>(null), [panel,setPanel]=useState<'status'|'trade'|null>(null);
   const [candidate,setCandidate]=useState<Candidate|null>(null), [all,setAll]=useState(false);
@@ -71,7 +71,8 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
     try {
       const [ledgerResult,dashboardResult]=await Promise.allSettled([
         fetch('/api/portfolio',{cache:'no-store',signal:controller.signal}).then(async r=>{
-          if(!r.ok)throw new Error('Ledger unavailable');return parsePortfolioBook(await r.json());
+          if(r.status===409)throw new PortfolioConflict('Saved records require reconciliation before using one portfolio.');
+          if(!r.ok)throw new Error('Ledger unavailable');return parseSavedPortfolio(await r.json());
         }),
         fetch('/api/dashboard',{cache:'no-store',signal:controller.signal}).then(async r=>{
           const value=await r.json();if(!r.ok||!value.snapshot)throw new Error('Snapshot unavailable');return value as DashboardPayload;
@@ -79,11 +80,10 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
       ]);
       if(ledgerResult.status==='fulfilled') {
         const next=ledgerResult.value;
-        setBook(current=>current?buildPortfolioBook(next.accounts.flatMap((account,index)=>
-          !account.error&&account.revision<current.accounts[index].revision
-            ?current.accounts[index].records:account.records),next.legacy.events):next);
+        setPortfolio(next);
+        setLedgerConflict(null);
         setLedgerError(false);
-      } else setLedgerError(true);
+      } else {setLedgerError(true);if(ledgerResult.reason instanceof PortfolioConflict){setLedgerConflict(ledgerResult.reason.message);setPortfolio(null);}}
       if(dashboardResult.status==='rejected')throw new Error('Snapshot unavailable');
       const next=dashboardResult.value, previous=dataRef.current?.snapshot;
       const priorKey=previous?.schemaVersion===3?previous.artifactId:previous?`${previous.tradeDate}:${previous.asOf}`:null;
@@ -126,22 +126,26 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
   if(!data)return <main className={styles.page}>{header}{navigation}
     <section className={styles.empty}><h1>{error?'No verified daily snapshot is available.':'Loading the latest saved daily digest…'}</h1>
       {error&&<button className={styles.primaryButton} onClick={()=>void refresh(true)}>Try again</button>}</section>
-    {ledgerError&&<p className={styles.notice} role="status">Account refresh failed. Last confirmed account data may be stale.</p>}
-    {book&&viewId!=='assistant'&&<PortfolioAccounts book={book} accountId={accountId} onAccountChange={setAccountId} onSaved={()=>void refresh()}/>}
+    {ledgerError&&<p className={styles.notice} role="status">{ledgerConflict??'Portfolio refresh failed. Saved records may be stale.'}</p>}
+    {portfolio&&viewId!=='assistant'&&<SavedPortfolioPanel portfolio={portfolio} onSaved={()=>void refresh()} readOnly={ledgerError}/>}
     {viewId==='assistant'&&<CopilotRail/>}
   </main>;
 
   const {snapshot,freshness}=data, v2=snapshot.schemaVersion===1?null:snapshot, v3=snapshot.schemaVersion===3?snapshot:null;
-  const selectedAccount=book?.accounts.find(account=>account.accountId===accountId);
-  const combinedHoldings=book?[...new Set(book.accounts.flatMap(account=>account.holdings.map(h=>h.code)))].map(code=>{
-    const positions=book.accounts.flatMap(account=>account.holdings.filter(h=>h.code===code));
-    return {code,name:positions[0].name,shares:positions.reduce((n,h)=>n+h.shares,0)};
-  }):[];
-  const livePortfolio=selectedAccount??(book?{confirmedAt:snapshot.asOf,cashSar:book.combined.cashSar,
-    contributionMonth:null,holdings:combinedHoldings,proposal:null,policyStatus:'unconfigured' as const}:null);
+  let fallback:SavedPortfolio|null=null;
+  if(!portfolio&&!ledgerConflict&&v2){try{
+    const historical=v2.portfolio.accountBook?parsePortfolioBook(v2.portfolio.accountBook):null;
+    if(!historical?.accounts.some(account=>account.records.length))fallback=v2.portfolio.savedPortfolio
+      ?parseSavedPortfolio(v2.portfolio.savedPortfolio):historical?savedPortfolio(historical.legacy.events as SavedPortfolio['events']):null;
+  }catch{/* Invalid saved history is unavailable. */}}
+  const displayedPortfolio=portfolio??fallback;
+  const livePortfolio={...(displayedPortfolio??savedPortfolio([])).view,confirmedAt:displayedPortfolio?.view.confirmedAt??snapshot.asOf};
   const view=buildDecisionView(snapshot,freshness,livePortfolio), candidates=all?view.candidates:view.candidates.slice(0,3);
-  const setupRequired=Boolean(book?.accounts.some(account=>!account.initialized));
-  const policyPending=Boolean(book||v2?.portfolio.policyStatus==='unconfigured');
+  const policyPending=true;
+  const statusWarnings=[...new Set(snapshot.warnings.filter(warning=>!/^Top 10 draft unavailable:/i.test(warning)))];
+  const indexWarning=statusWarnings.some(warning=>/TASI index unavailable|Market regime unavailable:.*index/i.test(warning));
+  const visibleWarnings=statusWarnings.filter(warning=>!/TASI index unavailable|Market regime unavailable:.*index/i.test(warning));
+  if(indexWarning)visibleWarnings.unshift('TASI index unavailable; market regime and relative strength cannot be calculated.');
   const reviews=view.holdings.filter(stock=>stock.unavailable||stock.needsAttention);
   const quotes=[...view.holdings,...view.watchlist], staleCount=quotes.filter(stock=>stock.quoteState==='stale').length;
   const priceDateLabel=view.priceDates.length===0?'Quotes unavailable':view.priceDates.length===1
@@ -153,9 +157,16 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
     ||snapshot.warnings.some(warning=>/scanner.*(failed|unavailable)/i.test(warning));
   const researchEnabled=freshness==='current'&&!screeningUnavailable&&import.meta.env.VITE_AGENT_ENABLED!=='false';
   const delivery=data.delivery, review=v3?.top10Review??(v2?.top10.status==='draft'?v2.top10:null);
-  const quotePrices=quotes.filter(stock=>stock.quoteState==='current'&&stock.price!==null)
-    .map(stock=>({code:stock.code,price:stock.price!,asOf:stock.priceDate!}));
-  const sourceFailures=v3?.digestRecords.filter(record=>record.news?.ok===false).length??0;
+  const sourceFailures=v3?.digestRecords.filter(record=>record.news?.ok===false||record.disclosures?.ok===false).length??0;
+  const sourceStatuses=(['news','disclosures'] as const).map(field=>{
+    const counts=new Map<string,number>();
+    for(const record of v3?.digestRecords??[]){
+      const source=record[field],items=field==='news'?record.news?.headlines:record.disclosures?.items;
+      const state=!source||typeof source.ok!=='boolean'?'not collected':!source.ok?'failed':field==='news'&&record.news?.status==='partial'?'partial coverage':items?.length?'supplied dated content':'successful empty';
+      counts.set(state,(counts.get(state)??0)+1);
+    }
+    return `${field==='news'?'News':'Filings'}: ${counts.size?[...counts].map(([state,count])=>`${count} ${state}`).join('; '):'collection status unavailable'}.`;
+  });
 
   async function decide(decision:'approved'|'rejected') {
     if(!review?.entries.length||actionBusy)return;setActionBusy(true);setActionStatus('');
@@ -169,59 +180,53 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
   }
   const holdings=<section className={styles.section} aria-label="My holdings">
     <div className={styles.sectionHead}><h2>My holdings <span>{view.holdings.length}</span></h2>
-      <div className={styles.toolbar}>{selectedAccount&&<span className={styles.cash}>{money(selectedAccount.cashSar)} cash</span>}
-        {selectedAccount?.initialized&&!ledgerError&&!selectedAccount.error&&
+      <div className={styles.toolbar}>{portfolio&&<span className={styles.cash}>{money(portfolio.view.cashSar)} recorded cash</span>}
+        {portfolio?.eventCount&&!ledgerError&&
           <button className={styles.textButton} onClick={()=>setPanel('trade')}>Record a trade ↗</button>}</div></div>
     {view.holdings.length?<div className={styles.grid}>{view.holdings.map(stock=>
       <StockCard key={stock.code} stock={stock} onOpen={()=>setSelected(stock)}/>)}</div>:
-      <div className={styles.empty}><h3>{setupRequired?'Your portfolio starts with a confirmed account':'No confirmed holdings'}</h3>
-        <p>{setupRequired?'Add the cash and holdings shown in each broker account.':'Your ledger currently has no owned stocks. Watchlist companies remain in Research.'}</p>
-        <button className={styles.secondaryButton} onClick={()=>navigate('portfolio')}>Set up accounts</button></div>}
-    {!book&&<p className={styles.sectionNote}>Saved holdings are unassigned legacy data. Confirm broker accounts before using account totals.</p>}
+      <div className={styles.empty}><h3>{portfolio?'No holdings in your saved portfolio.':'Saved holdings are unavailable.'}</h3>
+        <p>Watchlist companies remain in Research.</p></div>}
+    {!portfolio&&fallback&&<p className={styles.sectionNote}>Showing dated saved history. Refresh before recording activity.</p>}
   </section>;
 
   return <main className={styles.page}>{header}{navigation}
     {error&&<p className={styles.notice} role="status">{error}</p>}
-    {ledgerError&&<p className={styles.notice} role="status">Live portfolio ledger is unavailable. Last confirmed account data may be stale; refresh before recording activity.</p>}
+    {ledgerError&&<p className={styles.notice} role="status">{ledgerConflict??'Live portfolio ledger is unavailable. Saved records retain their original dates; refresh before recording activity.'}</p>}
     {refreshStatus&&<p className={styles.refreshStatus} role="status" aria-live="polite">{refreshStatus}</p>}
     {viewId==='overview'&&<>
       <section className={styles.today} aria-label="Daily freshness">
         <div className={styles.briefing}><h1>Portfolio overview</h1>
-          <p className={styles.takeaway}>{setupRequired?'Complete account setup':view.incomplete?'Some checks unavailable':
+          <p className={styles.takeaway}>{view.incomplete?'Some checks unavailable':
             policyPending?'Company reviews are pending':reviews.length?'Review the dated observations below':'Your daily check-in is ready'}</p>
-          <p className={styles.muted}>{setupRequired?'Confirm each broker account to see your holdings and cash.':
-            policyPending?'Use the dated evidence to review your companies. No trade quantity is proposed.':'Review what changed, then check current prices in your broker.'}</p>
+          <p className={styles.muted}>Use the dated evidence to review your companies. No trade quantity is proposed.</p>
           <p className={styles.date}>Daily snapshot for {snapshot.tradeDate}</p>
           <p className={styles.date}>{priceDateLabel} · Saved {formatCockpitTimestamp(snapshot.asOf)}</p>
         </div>
-        <div className={styles.briefAction}><button className={styles.primaryButton} onClick={()=>navigate(setupRequired?'portfolio':'research')}>
-          {setupRequired?'Set up accounts':'Review company evidence'}</button></div>
+        <div className={styles.briefAction}><button className={styles.primaryButton} onClick={()=>navigate('research')}>Review company evidence</button></div>
       </section>
       <div className={styles.metricGrid}>
-        <article className={styles.metricCard}><span>{book?'Confirmed holdings':'Unassigned holdings'}</span><strong>{setupRequired?'Setup required':view.holdings.length}</strong><small>{selectedAccount?brokerName(selectedAccount.accountId):book?'Across your broker accounts':'Broker records unavailable'}</small></article>
-        <article className={styles.metricCard}><span>Account cash</span><strong>{money(selectedAccount?.cashSar??book?.combined.cashSar??null)}</strong><small>Combined totals are reporting only</small></article>
+        <article className={styles.metricCard}><span>Saved holdings</span><strong>{displayedPortfolio?view.holdings.length:'Unavailable'}</strong><small>{displayedPortfolio?.view.confirmedAt?`Recorded ${formatCockpitTimestamp(displayedPortfolio.view.confirmedAt)}`:'Waiting for saved records'}</small></article>
+        <article className={styles.metricCard}><span>Recorded cash</span><strong>{money(displayedPortfolio?.view.cashSar??null)}</strong><small>Check your broker for current balances</small></article>
         <article className={styles.metricCard}><span>Quote coverage</span><strong>{staleCount?'Stale quotes':quotes.some(stock=>stock.quoteState==='unavailable')?'Partial data':quotes.length?'Dated daily quotes':'Unavailable'}</strong><small>{snapshot.expectedPriceDate?`Expected session ${snapshot.expectedPriceDate}`:'Check the date beside each company'}</small></article>
       </div>
       {freshness==='stale'&&<p className={styles.notice} aria-label="Stale data warning">The expected pre-open refresh did not arrive. This is the last successful daily snapshot; research is disabled.</p>}
-      {freshness!=='stale'&&(staleCount>0||sourceFailures>0||snapshot.warnings.length>0)&&
+      {freshness!=='stale'&&(staleCount>0||sourceFailures>0||statusWarnings.length>0)&&
         <p className={styles.notice} aria-label="Data quality warning">{staleCount?`${staleCount} quote(s) are older than the expected session. `:''}
-          {sourceFailures?`News retrieval failed for ${sourceFailures} stock(s). `:''}
+          {sourceFailures?`Source retrieval failed for ${sourceFailures} stock(s). `:''}
           <button className={styles.textButton} onClick={()=>setPanel('status')}>Review data status</button></p>}
-      {book&&<PortfolioAccounts book={book} accountId={accountId} onAccountChange={setAccountId}
-        onSaved={()=>void refresh()} prices={quotePrices} compact/>}
       <section className={styles.section} aria-label="Review items"><div className={styles.sectionHead}><h2>Needs review</h2>
         <button className={styles.textButton} onClick={()=>navigate('research')}>Open Research ↗</button></div>
-        {setupRequired?<p className={styles.sectionNote}>Account setup is incomplete. Confirm opening snapshots in Portfolio.</p>:
-          reviews.length?<div className={styles.reviewList}>{reviews.map(stock=><button key={stock.code} onClick={()=>setSelected(stock)}>
+        {reviews.length?<div className={styles.reviewList}>{reviews.map(stock=><button key={stock.code} onClick={()=>setSelected(stock)}>
             <strong>{stock.name}</strong><span>{stock.reason}</span><span>View evidence ↗</span></button>)}</div>:
           <p className={styles.sectionNote}>{policyPending?'Company assessments are pending. Review sources before reaching an investment conclusion.':
             view.incomplete?'Review coverage is incomplete; check source availability.':'No new review item in this dated snapshot.'}</p>}
       </section>
       {holdings}
     </>}
-    {viewId==='portfolio'&&<><div className={styles.viewHeading}><h1>Portfolio</h1><p>Confirm your accounts and keep a clear record of completed activity.</p></div>
-      {book?<PortfolioAccounts book={book} accountId={accountId} onAccountChange={setAccountId} onSaved={()=>void refresh()} prices={quotePrices}/>:
-        <p className={styles.notice}>Account records are unavailable. Refresh before recording activity.</p>}
+    {viewId==='portfolio'&&<><div className={styles.viewHeading}><h1>Portfolio</h1><p>Your saved holdings and completed activity.</p></div>
+      {displayedPortfolio?<SavedPortfolioPanel portfolio={displayedPortfolio} onSaved={()=>void refresh()} readOnly={!portfolio||ledgerError}/>:
+        <p className={styles.notice}>Saved records are unavailable. Refresh before recording activity.</p>}
       {holdings}</>}
     {viewId==='research'&&<><div className={styles.viewHeading}><h1>Research</h1><p>Follow your companies, review dated evidence, and explore screening ideas.</p></div>
       <section className={styles.section} aria-label="Your watchlist"><div className={styles.sectionHead}><h2>Your watchlist <span>{view.watchlist.length}</span></h2>
@@ -240,7 +245,7 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
       {data.marketPulse&&(data.marketPulse.status==='available'||data.marketPulse.status==='partial')&&
         <details className={styles.movement}><summary>Saved delayed quote observations</summary><MarketPulse pulse={data.marketPulse}/></details>}
       {v2&&<section className={styles.section} aria-label="Evidence review"><div className={styles.sectionHead}><h2>Company evidence</h2></div>
-        {(review??v2.top10).entries.length===0&&<p className={styles.sectionNote}>No reviewed company draft is available.</p>}
+        {(review??v2.top10).entries.length===0&&<p className={styles.sectionNote}>Top 10 draft unavailable. No reviewed company draft is available.</p>}
         {(review??v2.top10).entries.length>0&&<><p>{review?.status==='draft'?'Research draft awaiting your review.':'Saved company research.'}</p>
           <ul className={styles.detailList}>{(review??v2.top10).entries.map(entry=><li key={entry.code}><div><strong>{entry.name} · {entry.code}</strong>
             <p>{entry.reasons.join(' ')}</p><small>{entry.evidence.source} · {entry.evidence.observedAt}</small>
@@ -254,19 +259,21 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
     {viewId==='assistant'&&<><div className={styles.viewHeading}><h1>Assistant</h1><p>Ask about your evidence and save a decision note for later review.</p></div><CopilotRail/></>}
     <footer className={styles.footer}><span>TASI · Evidence for your next review</span><p>Delayed analysis. Check live prices in your broker. Every trade remains yours to execute.</p></footer>
     {selected&&<DetailDialog title={selected.name} onClose={close}><StockDetails stock={selected}/></DetailDialog>}
-    {!selected&&panel==='trade'&&selectedAccount&&!ledgerError&&<DetailDialog title="Record an executed trade" onClose={close}>
-      <ExecutedTradeForm portfolio={selectedAccount} onSaved={()=>void refresh()}/></DetailDialog>}
+    {!selected&&panel==='trade'&&portfolio&&!ledgerError&&<DetailDialog title="Record completed activity" onClose={close}>
+      <PortfolioActivityForm portfolio={portfolio} onSaved={()=>void refresh()}/></DetailDialog>}
     {!selected&&panel==='status'&&<DetailDialog title="Data status" onClose={close}>
       <section><h3>Prices</h3><p>{priceDateLabel}. {staleCount?`${staleCount} quote(s) are stale.`:'Quote dates are shown beside each company.'}</p>
         <p>Snapshot saved {formatCockpitTimestamp(snapshot.asOf)}.</p></section>
-      <section data-label="Delivery"><h3>Delivery</h3><p>Producer {delivery?.producer.status??'unknown'} · Discord {delivery?.discord.status??'unknown'} · Cockpit {delivery?.cockpit.status??'unknown'}</p>
-        <small>Discord is confirmed by an authenticated receipt.</small></section>
-      <section><h3>News and filings</h3><p>{sourceFailures? `News unavailable for ${sourceFailures} stock(s). This does not mean there was no news.`:
-        'Open a company to see whether sources were collected, returned no content, or supplied dated evidence.'}</p></section>
+      <details data-label="Delivery"><summary>Delivery details</summary><p>Producer {delivery?.producer.status??'unknown'} · Discord {delivery?.discord.status??'unknown'} · Cockpit {delivery?.cockpit.status??'unknown'}</p>
+        {delivery?.discord.status==='confirmed'&&<small>Discord is confirmed by an authenticated receipt.</small>}</details>
+      <section><h3>News and filings</h3>{sourceStatuses.map(line=><p key={line}>{line}</p>)}
+        {sourceFailures>0&&<p>A failed check does not establish that nothing changed.</p>}<small>Open a company for evidence and publication dates.</small></section>
       {data.marketPulse&&<section><h3>Delayed observations</h3><p>Saved observation status: {data.marketPulse.status}. Daily quote coverage is assessed separately.</p></section>}
-      <section data-label="AI perspective"><h3>AI perspective</h3><p>{v3?.leanStatus.ok?'Available as an optional interpretation.':'Unavailable. Dated market facts remain visible.'}</p>
-        {v3?.leanStatus.reason&&<details><summary>Provider details</summary><p>{v3.leanStatus.reason}</p></details>}</section>
-      {snapshot.warnings.length>0&&<section><h3>Source notes</h3><ul>{snapshot.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul></section>}
+      <section data-label="AI perspective"><h3>AI perspective</h3><p>{v3?.leanStatus.ok?'Available as an optional interpretation.':`No AI interpretation for this snapshot.${v3?.leanStatus.httpStatus===504?' The provider timed out.':v3?.leanStatus.reason?` ${v3.leanStatus.reason}`:' Generation status is unavailable.'}`}</p>
+        {v3?.leanStatus.reason&&<details><summary>Provider details</summary><p>{v3.leanStatus.reason}</p>
+          <ul>{v3.leanStatus.attempts?.map((attempt,i)=><li key={i}>{attempt.provider}: {attempt.reason}{attempt.httpStatus?` (${attempt.httpStatus})`:''}</li>)}</ul></details>}</section>
+      {visibleWarnings.length>0&&<section><h3>Source notes</h3><ul>{visibleWarnings.map(warning=><li key={warning}>{/scheduled pre-open digest did not run/i.test(warning)?`Snapshot ${snapshot.tradeDate}: ${warning}`:warning}</li>)}</ul></section>}
+      {indexWarning&&<details><summary>Index diagnostics</summary><ul>{statusWarnings.filter(warning=>/TASI index unavailable|Market regime unavailable:.*index/i.test(warning)).map(warning=><li key={warning}>{warning}</li>)}</ul></details>}
       <button className={styles.secondaryButton} onClick={()=>void refresh(true)} disabled={busy}>Refresh data</button>
     </DetailDialog>}
   </main>;

@@ -4,67 +4,35 @@ Watches your TASI holdings and watchlist during the trading session (Sun-Thu, 10
 
 It automates your rules. It does not place orders and it is not financial advice. You execute every trade yourself.
 
-The new portfolio workflow is **account foundations only**. Al Rajhi and Al Ahli
-have separate cash, positions, audit history, and statement comparisons. Company
-assessment, signal evaluation, financial-strength criteria, fee assumptions,
-and sizing remain unconfigured; technical levels do not establish a company
-buy/hold/sell case and no trade quantity is proposed in account-book mode.
+## One saved portfolio
 
-## Broker account records
+The cockpit reuses your recorded holdings and completed activity. No broker
+account setup, broker selector or repeat holdings upload is needed. **Portfolio**
+shows the recorded cash, dated positions and immutable transaction history.
+Recorded sales stay applied: a fully sold company is not restored from config.
+These are saved records, not a live statement of your broker balances.
 
-Open the cockpit's **Portfolio** view and its **Broker accounts** panel. The initial combined view is
-reporting only. Select Al Rajhi or Al Ahli, enter that broker's actual opening
-cash and positions, and provide the snapshot time in Riyadh. Nothing is
-prefilled from config or the old ledger. Leave unknown average costs blank;
-earlier performance is unavailable across an opening snapshot boundary.
-Use only Saudi main-market individual stocks; REITs, funds, and international
-instruments are outside this workflow. There is no Sharia screen.
+Record completed buys, sells, deposits, withdrawals, dividends and fees in
+Portfolio. Enter actual trade fees, including an intentional zero, and the time
+in Riyadh. Preview the result, then confirm it. Unknown costs remain unknown.
+Concurrent changes require another preview; unchanged retries reuse the same
+operation. No order is sent and company policy, risk numbers and sizing remain
+unconfigured. Check your broker for current balances and live prices.
 
-Record variable deposits, withdrawals, dividends, standalone fees, and trades
-already executed in your broker. Multiple deposits per month are allowed and
-cash carries forward. Enter each fee once: attach it to its trade or record it
-separately. Actual trade fees are required, including an intentional zero.
-Transaction/statement times use Riyadh (+03:00); the server assigns a separate
-audit timestamp. **Preview record** validates cash, positions, history, and
-differences; **Confirm record** is the separate save action. Neither sends an
-order. Use your broker app to verify live prices and actual balances.
+Failed refreshes retain the last saved records and their dates. An empty ledger,
+an invalid record and a failed read remain distinct. Archived broker records are
+preserved; if any exist, the system requires reconciliation instead of silently
+merging them into this ledger. No portfolio data is deleted by this change.
 
-To correct an error, select the original event and enter a complete replacement
-or void it with a reason. Originals remain in immutable history. All later
-transactions are replayed; corrections that create historical overspending or
-overselling are rejected. A statement comparison requires a statement time,
-reference, cash, and positions. It reports statement-minus-ledger differences
-without adjusting balances. Corrections after comparison require another check.
-These are manual inputs; broker-file parsing and batch imports are not available.
-
-Every write uses the selected account's revision. Conflicting concurrent writes
-require refresh and another preview, retaining the form draft. An unchanged
-retry uses the same operation ID; changing inputs starts a new operation. Old
-`portfolio_events` remain **unassigned** and are excluded from broker balances;
-no inferred migration assigns them to an account. The new D1 table is additive.
-
-The ledger loads independently of market snapshots. Failed refreshes preserve
-the last account book and its timestamps with a visible notice. Missing quotes
-make value/exposure totals incomplete; unknown cost makes P/L unavailable.
-Combined cash is never available for spending. `/portfolio` and `/budget` report
-accounts separately; old Discord `/bought` and `/sold` commands direct you to
-the cockpit until separately authorized account/fee command registration.
-
-No production migration, deployment, schedule activation, provider change, or
-notification delivery is part of this local implementation. Company policy,
-qualified sizing, concentration warnings, performance methodology, routines,
-broker-file adapters, and live release qualification need follow-on work.
-
-The account-foundations branch has completed independent review and local
-release checks. See the [verification record](docs/research/2026-10-08-tasi-portfolio-foundations-verification.md)
-and [deployment commands and targets](docs/research/2026-10-09-tasi-foundations-deployment-readiness.md).
-The configured website is the Cloudflare cockpit that shares its ledger with
-Discord; the separate legacy ChatGPT Site is outside this release.
+Top 10 and its availability explanation remain in **Research**. Data status
+retains quote dates and actual source gaps, combines duplicate index warnings,
+and keeps delivery/provider diagnostics in expandable details. A provider error
+or missing index data remains a failure until independently verified as recovered.
 
 ## Holdings secretary
 
 In **Assistant**, save your investor profile, then select a company from your
-confirmed broker holdings. Ask for a company-case draft or write your own.
+saved holdings. Ask for a company-case draft or write your own.
 Review the reasons, evidence, risks and conditions for reconsidering ownership
 before confirming it. Company cases are your judgement; confirming one does not
 qualify a trading rule or change portfolio balances.
@@ -73,7 +41,7 @@ Reviews compare dated evidence with that confirmed case. New interpretations
 remain provisional. You can acknowledge a review without changing the case, or
 confirm a revised case while preserving its earlier versions. Source dates,
 reviewed evidence revisions and collection receipts remain available in review
-details. Missing account records require broker setup rather than guessed holdings.
+details. Missing saved records remain unavailable rather than being guessed from configuration.
 
 Official-source checks run at **08:15 and 15:30 Riyadh, Sunday–Thursday**. The
 08:30 brief includes review context; after-close notifications report new review
@@ -107,8 +75,8 @@ and a cockpit link. There are no routine per-company chart attachments.
 Additional updates cover tracked holdings/watchlist official events and data
 loss/recovery transitions; repeated updates are suppressed.
 
-The cockpit has four views: **Overview** for your daily review and accounts,
-**Portfolio** for manual account records, **Research** for watchlist/screening
+The cockpit has four views: **Overview** for your daily review and saved holdings,
+**Portfolio** for completed activity, **Research** for watchlist/screening
 and source review, and **Assistant** for questions and saved decision notes.
 Older quotes remain visible with their dates but do not establish current
 conditions. Missing sources remain distinct from successfully empty results.
@@ -129,7 +97,7 @@ Company details retain the following dated evidence:
 
 Company details include a 90-session candlestick with volume, configured
 stop/trim/target levels, and unusually busy sessions highlighted. These are
-observations; account-book mode proposes no trade quantity.
+observations; unconfigured policy proposes no trade quantity.
 
 **On volume.** The ratio is reported as an observation, not a signal.
 `docs/scanner-findings-2026-07-30.md` measured it against forward return over

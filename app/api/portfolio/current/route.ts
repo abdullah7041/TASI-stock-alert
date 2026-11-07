@@ -12,8 +12,8 @@ export async function GET(request: Request) {
   try {
     const store = new PortfolioStore(env.DB);
     const ownerId = await store.soleOwnerId();
-    const book = ownerId ? await store.book(ownerId) : (await import('@/app/lib/portfolio-core.mjs')).buildPortfolioBook([],[]);
-    return Response.json({schemaVersion:2,book,eventCount:book.accounts.reduce((n,a)=>n+a.revision,0)}, { headers: { "Cache-Control": "no-store" } });
+    const saved = ownerId ? await store.saved(ownerId) : (await import('@/app/lib/portfolio-core.mjs')).savedPortfolio([]);
+    return Response.json(saved, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Portfolio is unavailable." }, { status: 502 });
   }

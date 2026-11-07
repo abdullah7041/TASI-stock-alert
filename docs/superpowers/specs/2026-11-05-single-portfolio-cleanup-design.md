@@ -1,6 +1,6 @@
 # One saved portfolio and useful data status
 
-Date: 2026-11-05, Riyadh. Status: proposed design; implementation has not begun.
+Date: 2026-11-05, Riyadh. Approved by the owner on 2026-11-07.
 
 ## Intent and decisions
 

@@ -52,7 +52,7 @@ async function seeded() {
   const databaseValue=database(), {db,sqlite}=databaseValue;
   const store=new HoldingSecretaryStore(db);
   await store.saveProfile('owner',defaultProfile,0,'profile');
-  await new PortfolioStore(db).appendAccountRecord('owner','al_rajhi',{operationId:'opening',kind:'event',payload:{kind:'opening_balance',cashSar:100,holdings:[{code:'2320',name:'Al-Babtain',shares:2,avgCostSar:25}],occurredAt:'2026-10-01T08:00:00Z',provenance:{source:'manual'}}},0);
+  await new PortfolioStore(db).append('owner',{operationId:'opening',kind:'opening_balance',cashSar:100,holdings:[{code:'2320',name:'Al-Babtain',shares:2,avgCostSar:25}],confirmedAt:'2026-10-01T08:00:00Z'});
   await store.confirmCase('owner',{symbol:'2320',reasons:'Long-term company case',supportingEvidence:'Reviewed results',risks:'Demand and leverage',reconsiderWhen:'Cash conversion weakens',sourceRefs:[source]},0,'case',1);
   const evidence=new EvidenceStore(db);await evidence.ensureReady();
   sqlite.prepare('INSERT INTO evidence_records (revision_id,owner_id,symbol,report_period,evidence_json,reviewed_at) VALUES (?,?,?,?,?,?)').run('evidence-1','owner','2320','2026-Q2',JSON.stringify({symbol:'2320',sourceUrl:source,publishedAt:'2026-08-01T08:00:00Z',retrievedAt:'2026-10-20T08:00:00Z',reportPeriod:'2026-Q2',metrics:{profitability_direction:{raw_value:'10',prior_value:'9',grade:3,explanation:'Reviewed growth',source_url:source}}}),'2026-10-20T08:00:00Z');

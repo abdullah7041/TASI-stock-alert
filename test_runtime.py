@@ -43,6 +43,25 @@ def alert(index: int = 0, **overrides) -> dict:
 
 
 # --- session gate -----------------------------------------------------------
+@pytest.mark.parametrize('first_kind', ['opening_balance','contribution'])
+def test_the_actual_workflow_portfolio_loader_accepts_the_new_saved_contract(tmp_path,monkeypatch,first_kind):
+    """Exercise the deployed shell step's Python, not just main's private reader."""
+    import json
+    import main  # load before changing cwd, exactly as the workflow does
+    workflow=yaml.safe_load(Path('.github/workflows/tasi.yml').read_text(encoding='utf-8'))
+    steps=[step for job in workflow['jobs'].values() for step in job.get('steps',[])]
+    loader=next(step['run'] for step in steps if '.portfolio-current.json' in step.get('run',''))
+    script=loader.split("python - <<'PY'\n",1)[1].split('\nPY',1)[0]
+    payload={"schemaVersion":3,"status":"saved","eventCount":1,"events":[{"operationId":"open","kind":"opening_balance","cashSar":0,"confirmedAt":"2026-09-07T00:00:00Z"}],"view":{"policyStatus":"unconfigured","proposal":None,"cashSar":0,"holdings":[],"confirmedAt":"2026-09-07T00:00:00Z"}}
+    if first_kind=='contribution':
+        payload['events'][0].update(kind='contribution',cashSar=500,month='2026-09')
+        payload['view'].update(cashSar=500,contributionMonth='2026-09')
+    monkeypatch.chdir(tmp_path)
+    Path('.portfolio-current.json').write_text(json.dumps(payload),encoding='utf-8')
+    exec(compile(script,'workflow-portfolio-loader','exec'),{'__name__':'workflow_contract'})
+    assert json.loads(Path('portfolio_active.json').read_text(encoding='utf-8'))==payload
+
+
 def test_sunday_session_is_open_and_friday_is_not():
     # 2026-08-16 is a Sunday, 2026-08-21 a Friday.
     assert session_gate.is_session_open(riyadh(2026, 8, 16, 11), holidays=set())

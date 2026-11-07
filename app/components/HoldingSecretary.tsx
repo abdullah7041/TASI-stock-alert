@@ -8,8 +8,8 @@ import styles from './FriendlyCockpit.module.css';
 export type SecretaryConversation={messages:CopilotMessage[];decisions:DecisionNote[];secretary?:SecretaryView;holdingCompanies?:HoldingCompany[];caseDraft?:CaseInput;collection?:CollectionReceipt|null};
 const profileLabels:Record<keyof ProfileInput,string>={objective:'Investment objective',horizon:'Investment horizon',contributions:'Contributions',riskSettings:'Risk settings',constraints:'Constraints'};
 const caseLabels:Record<Exclude<keyof CaseInput,'symbol'|'sourceRefs'>,string>={reasons:'Reasons for holding',supportingEvidence:'Supporting evidence',risks:'Risks',reconsiderWhen:'When to reconsider'};
-function Accounts({accounts}:{accounts:AccountContext[]}){
-  return <ul>{accounts.map(a=><li key={a.accountId}>{a.accountId==='al_rajhi'?'Al Rajhi':a.accountId==='al_ahli'?'Al Ahli':a.accountId} · {a.shares} shares · revision {a.revision}</li>)}</ul>;
+function Accounts({accounts,portfolioContext}:{accounts:AccountContext[];portfolioContext?:HoldingReview['portfolioContext']}){
+  return <p>{portfolioContext?`${portfolioContext.shares} recorded shares · ${portfolioContext.recordedAt} · portfolio revision ${portfolioContext.revision}`:`Historical position: ${accounts.reduce((sum,a)=>sum+a.shares,0)} shares`}</p>;
 }
 function Sources({refs,dated=false,sources}:{refs:string[];dated?:boolean;sources?:HoldingReview['sources']}){
   const urls=refs.map(ref=>ref.trim()).filter(Boolean);
@@ -82,10 +82,10 @@ export function HoldingSecretary({view,companies,collection,request,onChange}:{v
       <button className={styles.primaryButton} disabled={conflict}>Confirm investor profile</button>
     </fieldset></form>
     <h3>2. Company case</h3>
-    {!companies.length?<p className={styles.notice}>Confirmed holdings are unavailable. Confirm a broker opening snapshot or resolve its account history before creating a company case.</p>:<>
+    {!companies.length?<p className={styles.notice}>Saved holdings are unavailable. Refresh your portfolio before creating a company case.</p>:<>
       <label>Confirmed holding<select value={symbol} disabled={Boolean(busy)||!view.profile} onChange={e=>{setSymbol(e.target.value);setDraft(null);caseSave.current=null;}}><option value="">Select a confirmed holding</option>{companies.map(c=><option key={c.symbol} value={c.symbol}>{c.symbol} · {c.name}</option>)}</select></label>
       {!view.profile&&<p>Confirm your investor profile before drafting a company case.</p>}
-      {company&&<><Accounts accounts={company.accounts}/><button className={styles.secondaryButton} disabled={Boolean(busy)||conflict} onClick={()=>void draftCase()}>Draft company case</button>
+      {company&&<><Accounts accounts={company.accounts} portfolioContext={company.portfolioContext}/><button className={styles.secondaryButton} disabled={Boolean(busy)||conflict} onClick={()=>void draftCase()}>Draft company case</button>
         <button className={styles.textButton} disabled={Boolean(busy)||conflict} onClick={()=>{setDraft({symbol,reasons:'',supportingEvidence:'',risks:'',reconsiderWhen:'',sourceRefs:[]});setDraftRevision(currentCase?.revision??0);setDraftProfileRevision(view.profile!.revision);caseSave.current=null;setError('');}}>Write company case</button>
         {currentCase&&<><p>Confirmed case revision {currentCase.revision} · profile revision {currentCase.profileRevision} · {currentCase.confirmedAt}</p><button className={styles.textButton} disabled={Boolean(busy)||conflict} onClick={()=>{setDraft({...currentCase});setDraftRevision(currentCase.revision);setDraftProfileRevision(view.profile!.revision);caseSave.current=null;}}>Revise confirmed case</button><button className={styles.secondaryButton} disabled={Boolean(busy)||conflict} onClick={()=>void run('review',{operation:'review_holding',symbol})}>Review holding evidence</button></>}
       </>}
@@ -98,7 +98,7 @@ export function HoldingSecretary({view,companies,collection,request,onChange}:{v
     <h3>3. Evidence reviews</h3><p>Acknowledging a review records that you read it. It does not revise your company case or holdings.</p>
     {!view.reviews.length&&<p>No holding reviews saved yet.</p>}
     {view.reviews.map(review=><article key={review.id} className={styles.evidenceGroup} aria-label={`${review.symbol} review`}><h4>{review.symbol} · {review.status} · {review.action}</h4><p>Created <time dateTime={review.createdAt}>{review.createdAt}</time> · case revision {review.caseRevision} · profile revision {review.profileRevision}</p>
-      <Accounts accounts={review.accounts}/>{(['changed','supporting','contrary','implications','missing','questions'] as const).map(field=><p dir="auto" key={field}><strong>{field.charAt(0).toUpperCase()+field.slice(1)}: </strong>{review[field]||'Not available'}</p>)}
+      <Accounts accounts={review.accounts} portfolioContext={review.portfolioContext}/>{(['changed','supporting','contrary','implications','missing','questions'] as const).map(field=><p dir="auto" key={field}><strong>{field.charAt(0).toUpperCase()+field.slice(1)}: </strong>{review[field]||'Not available'}</p>)}
       <p>Source dates are separate from the review creation time.</p><Sources refs={review.sourceRefs} dated sources={review.sources}/>
       <details><summary>Review provenance</summary><p>Collection run: {review.collectionRunId??'unknown'}</p><p>Evidence revisions: {review.evidenceRevisions?.join(', ')||'unknown'}</p></details>
       {view.acknowledgedReviewIds.includes(review.id)?<p>Acknowledged</p>:<button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={()=>{acknowledgeIds.current[review.id]??=crypto.randomUUID();void run('acknowledge',{operation:'acknowledge_review',reviewId:review.id,operationId:acknowledgeIds.current[review.id]});}}>Acknowledge review</button>}

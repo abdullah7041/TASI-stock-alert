@@ -16,7 +16,7 @@ test("verifies the exact timestamp plus raw body", async () => {
 
 test("dispatches only PING and documented ledger commands", () => {
   assert.deepEqual(parseDiscordInteraction({ type: 1 }), { kind: "ping" });
-  assert.match(parseDiscordInteraction({ id: "abc", type: 2, data: { name: "bought" } }).message, /cockpit.*broker account.*actual fees/i);
+  assert.match(parseDiscordInteraction({ id: "abc", type: 2, data: { name: "bought" } }).message, /cockpit.*actual fees/i);
   assert.equal(parseDiscordInteraction({ id: "abc", type: 2, data: { name: "sold" } }).kind, 'invalid');
   assert.equal(parseDiscordInteraction({ id: "abc", type: 2, data: { name: "portfolio" } }).kind, "portfolio");
   assert.equal(parseDiscordInteraction({ id: "abc", type: 2, data: { name: "budget" } }).kind, "budget");

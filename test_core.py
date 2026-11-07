@@ -4074,6 +4074,57 @@ def test_the_gate_reads_the_recorded_holiday_list():
         "digest", now=open_moment, holidays={"2026-08-20"}) is not None
 
 
+def test_saved_portfolio_is_used_without_reactivating_config_or_sizing(monkeypatch):
+    """Removing broker setup must never restore the old allocation policy."""
+    payload = {"schemaVersion": 3, "status": "saved", "eventCount": 2,
+               "events": [{"kind": "opening_balance", "operationId": "open", "cashSar": 0,
+                           "confirmedAt": "2026-09-07T00:00:00Z"},
+                          {"kind": "opening_position", "operationId": "position", "code": "2320",
+                           "name": "Al-Babtain", "shares": 12, "priceSar": 64.26,
+                           "confirmedAt": "2026-09-07T00:00:00Z"}],
+               "view": {"policyStatus": "unconfigured", "proposal": None, "cashSar": 0,
+                        "confirmedAt": "2026-09-07T00:00:00Z", "contributionMonth": None,
+                        "holdings": [{"code": "2320", "name": "Al-Babtain", "shares": 12, "avgCostSar": 64.26}]}}
+    monkeypatch.setattr(main, "_load", lambda *_: payload)
+    assert [h["code"] for h in main._holdings()] == ["2320"]
+    assert main._budget_remaining() is None
+    snapshot = main._dashboard_snapshot("unknown", [], {}, {}, as_of="2026-11-04T13:13:17Z", top10={"entries": []})
+    assert snapshot["portfolio"]["policyStatus"] == "unconfigured"
+    assert snapshot["portfolio"]["savedPortfolio"] == payload
+    assert snapshot["monthlyBudgetSar"] is None
+    payload.update(status="empty", eventCount=0, events=[])
+    payload["view"].update(holdings=[], cashSar=None, confirmedAt=None)
+    assert main._holdings() == []
+    payload["eventCount"] = 1
+    with pytest.raises(RuntimeError, match="saved portfolio"):
+        main._holdings()
+
+
+def test_failed_lean_status_preserves_each_provider_attempt(monkeypatch):
+    """The cockpit needs the reason each provider failed or was skipped."""
+    import llm
+    attempts = [{"provider": "openrouter", "reason": "not configured"},
+                {"provider": "gemini", "reason": "timeout", "httpStatus": 504}]
+    monkeypatch.setattr(llm, "get_leans", lambda _: {"_status": {"ok": False, "provider": "gemini", "reason": "timeout", "attempts": attempts}})
+    assert main._attach_leans([])["attempts"] == attempts
+
+
+def test_saved_portfolio_rejects_positions_and_cash_that_disagree_with_recorded_events():
+    """A well-shaped stale projection must never resurrect a fully sold position."""
+    from copy import deepcopy
+    events = [{"operationId":"open","kind":"opening_balance","cashSar":0,"confirmedAt":"2026-09-07T00:00:00Z"},
+              {"operationId":"position","kind":"opening_position","code":"1303","name":"EIC","shares":104,"priceSar":12.41,"confirmedAt":"2026-09-07T00:00:00Z"},
+              {"operationId":"sell","kind":"sell","code":"1303","name":"EIC","shares":104,"priceSar":15.25,"feesSar":2.54,"confirmedAt":"2026-09-27T14:14:45.853Z"}]
+    payload={"schemaVersion":3,"eventCount":3,"status":"saved","events":events,"view":{"policyStatus":"unconfigured","proposal":None,"cashSar":1583.46,"holdings":[],"confirmedAt":"2026-09-27T14:14:45.853Z","contributionMonth":None}}
+    assert main.validate_saved_portfolio(payload)==payload["view"]
+    stale=deepcopy(payload);stale["view"]["holdings"]=[{"code":"1303","name":"EIC","shares":104,"avgCostSar":12.41}]
+    with pytest.raises(RuntimeError,match="projection"):
+        main.validate_saved_portfolio(stale)
+    stale=deepcopy(payload);stale["view"]["cashSar"]=99999
+    with pytest.raises(RuntimeError,match="projection"):
+        main.validate_saved_portfolio(stale)
+
+
 def test_account_books_never_restore_config_holdings_or_legacy_monthly_sizing(monkeypatch):
     """An empty confirmed account and a missing fetch must not look identical."""
     book = {"schemaVersion": 1, "policyStatus": "unconfigured", "accounts": [
@@ -4106,11 +4157,12 @@ def test_pending_company_policy_cannot_turn_technical_levels_into_trade_decision
     assert artifacts.decision_record(rec, [])["decision"]["label"] == "Insufficient data"
 
 
-def test_account_diagnostics_never_allocate_budget_or_record_recommendation_spend(monkeypatch):
+@pytest.mark.parametrize('ledger', [{'book': {}}, {'schemaVersion': 3}])
+def test_account_diagnostics_never_allocate_budget_or_record_recommendation_spend(monkeypatch, ledger):
     """Every recommendation caller shares this guard, including run and digest."""
     holding = {"code": "1303", "name": "EIC", "shares": 2, "avg_cost": None}
     frame = _ohlcv()
-    monkeypatch.setattr(main, "_portfolio_ledger", lambda: {"book": {}})
+    monkeypatch.setattr(main, "_portfolio_ledger", lambda: ledger)
     monkeypatch.setattr(main, "_holdings", lambda: [holding])
     monkeypatch.setattr(main.cfg, "WATCHLIST", [])
     monkeypatch.setattr(main.dat, "get_histories", lambda codes, period: {c: frame for c in codes})

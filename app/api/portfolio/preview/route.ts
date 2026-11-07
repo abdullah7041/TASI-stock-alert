@@ -5,9 +5,12 @@ import {parseAccountEnvelope,PortfolioConflict,PortfolioValidationError} from '@
 export async function POST(request: Request) {
   try {
     const {ownerId}=await getOwnerContext(request);
-    const {accountId,record,expectedRevision}=parseAccountEnvelope(await request.json());
+    if(request.headers.get('origin')!==new URL(request.url).origin)throw new Response('Same-origin request required.',{status:403});
+    const body=await request.json();
     const {env}=await import('cloudflare:workers');
     if(!env.DB)throw new Response('Portfolio storage is unavailable.',{status:503});
+    if(body?.schemaVersion===3)return Response.json(await new PortfolioStore(env.DB).previewSaved(ownerId,body.record,body.expectedRevision));
+    const {accountId,record,expectedRevision}=parseAccountEnvelope(body);
     return Response.json(await new PortfolioStore(env.DB).preview(ownerId,accountId,record,expectedRevision));
   } catch(error) {
     if(error instanceof Response)return Response.json({error:await error.text()},{status:error.status});

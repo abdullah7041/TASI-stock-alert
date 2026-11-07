@@ -122,6 +122,9 @@ def _portfolio_ledger() -> dict | None:
     fallback, while production decision workflows require the confirmed ledger.
     """
     value = _load(PORTFOLIO_FILE, None)
+    if isinstance(value, dict) and value.get("schemaVersion") == 3:
+        validate_saved_portfolio(value)
+        return value
     if isinstance(value, dict) and ("schemaVersion" in value or "book" in value):
         validate_account_book(value)
         return value
@@ -133,6 +136,108 @@ def _portfolio_ledger() -> dict | None:
             and (type(value.get("eventCount")) is not int or value["eventCount"] <= 0)):
         raise RuntimeError("Confirmed portfolio ledger requires an imported opening balance.")
     return value
+
+
+def validate_saved_portfolio(value: dict) -> dict:
+    """Validate the authenticated single-portfolio contract without a legacy downgrade."""
+    import math
+    view, events = value.get("view"), value.get("events")
+    def amount(n):
+        return type(n) in (int, float) and math.isfinite(n) and 0 <= n <= (2**53-1)/100
+    valid = (isinstance(view, dict) and isinstance(events, list)
+             and type(value.get("eventCount")) is int and value["eventCount"] == len(events)
+             and value.get("status") == ("saved" if events else "empty")
+             and view.get("policyStatus") == "unconfigured" and view.get("proposal") is None
+             and isinstance(view.get("holdings"), list))
+    if not valid:
+        raise RuntimeError("Confirmed saved portfolio is invalid.")
+    if events:
+        if not amount(view.get("cashSar")) or not artifacts.timestamp_or_none(view.get("confirmedAt")):
+            raise RuntimeError("Confirmed saved portfolio projection is invalid.")
+    elif view.get("cashSar") is not None or view.get("confirmedAt") is not None or view["holdings"]:
+        raise RuntimeError("Empty saved portfolio projection is invalid.")
+    codes = set()
+    for holding in view["holdings"]:
+        if (not isinstance(holding, dict) or not re.fullmatch(r"\d{4}", str(holding.get("code", "")))
+                or holding["code"] in codes or not isinstance(holding.get("name"), str) or not holding["name"].strip()
+                or type(holding.get("shares")) is not int or not 0 < holding["shares"] <= 2**53-1
+                or (holding.get("avgCostSar") is not None and not amount(holding["avgCostSar"]))):
+            raise RuntimeError("Confirmed saved portfolio holdings are invalid.")
+        codes.add(holding["code"])
+    if any(not isinstance(e, dict) or not isinstance(e.get("operationId"), str)
+           or not artifacts.timestamp_or_none(e.get("confirmedAt")) for e in events):
+        raise RuntimeError("Confirmed saved portfolio history is invalid.")
+    if len({e["operationId"] for e in events}) != len(events):
+        raise RuntimeError("Confirmed saved portfolio history contains duplicates.")
+    # A shaped response is not evidence of ownership. Replay the authenticated
+    # history so a stale projection cannot resurrect a sold stock or invent cash.
+    cash, positions, months, last, regular, opening_seen = 0.0, {}, set(), None, False, False
+    def require(condition):
+        if not condition:
+            raise RuntimeError("Confirmed saved portfolio projection is invalid.")
+    for index, event in enumerate(events):
+        kind = event.get("kind")
+        instant = datetime.fromisoformat(event["confirmedAt"].replace("Z", "+00:00"))
+        require(instant.tzinfo is not None and (last is None or instant >= last))
+        if kind not in ("opening_balance", "opening_position"):
+            require(last is None or instant > last)
+        last = instant
+        if kind == "opening_balance":
+            require(index == 0 and amount(event.get("cashSar")))
+            cash = event["cashSar"]
+            opening_seen = True
+            continue
+        if kind in ("opening_position", "buy", "sell"):
+            code, shares, price = event.get("code"), event.get("shares"), event.get("priceSar")
+            require(isinstance(code, str) and re.fullmatch(r"\d{4}", code) is not None
+                    and isinstance(event.get("name"), str) and bool(event["name"].strip())
+                    and type(shares) is int and 0 < shares <= 2**53-1)
+            if kind == "opening_position":
+                require(opening_seen and not regular and code not in positions and (price is None or amount(price) and price > 0))
+                positions[code] = {"code":code,"name":event["name"],"shares":shares,"avgCostSar":price}
+                continue
+            require(amount(price) and price > 0 and amount(event.get("feesSar", 0)))
+            regular = True
+            fees = event.get("feesSar", 0)
+            previous = positions.get(code)
+            if kind == "buy":
+                spend = shares * price + fees
+                require(spend <= cash + 1e-9)
+                prior_shares = previous["shares"] if previous else 0
+                prior_cost = previous.get("avgCostSar") if previous else 0
+                cost = None if prior_cost is None else (prior_cost * prior_shares + spend)/(prior_shares + shares)
+                positions[code] = {"code":code,"name":previous["name"] if previous else event["name"],"shares":prior_shares+shares,"avgCostSar":cost}
+                cash -= spend
+            else:
+                require(previous is not None and previous["shares"] >= shares)
+                cash += shares * price - fees
+                previous["shares"] -= shares
+                if not previous["shares"]:
+                    del positions[code]
+        else:
+            regular = True
+            require(kind in ("contribution", "dividend", "withdrawal", "fee", "cash_adjustment"))
+            change = event.get("cashSar")
+            if kind == "cash_adjustment":
+                require(type(change) in (int,float) and math.isfinite(change) and isinstance(event.get("reason"),str) and bool(event["reason"].strip()))
+            else:
+                require(amount(change) and change > 0)
+            if kind == "contribution":
+                require(isinstance(event.get("month"),str) and re.fullmatch(r"\d{4}-\d{2}",event["month"]) is not None)
+                months.add(event["month"])
+            cash += -change if kind in ("withdrawal", "fee") else change
+        require(math.isfinite(cash) and -1e-9 <= cash <= (2**53-1)/100)
+    require(len(positions) == len(view["holdings"]))
+    for holding in view["holdings"]:
+        expected = positions.get(holding["code"])
+        require(expected is not None and all(holding.get(k) == expected[k] for k in ("name", "shares")))
+        cost, expected_cost = holding.get("avgCostSar"), expected["avgCostSar"]
+        require(cost is None and expected_cost is None or cost is not None and expected_cost is not None and math.isclose(cost,expected_cost,rel_tol=1e-12,abs_tol=1e-9))
+    if events:
+        require(math.isclose(view["cashSar"], math.floor(cash*100+0.5)/100, abs_tol=1e-9, rel_tol=0))
+        require(datetime.fromisoformat(view["confirmedAt"].replace("Z", "+00:00")) == last)
+    require(view.get("contributionMonth") == (max(months) if months else None))
+    return view
 
 
 def validate_account_book(value: dict) -> dict:
@@ -178,6 +283,9 @@ def _holdings() -> list[dict]:
     takes over, without ever leaving the digest with nothing to report.
     """
     ledger = _portfolio_ledger()
+    if ledger and ledger.get("schemaVersion") == 3:
+        return [{"code": h["code"], "name": h["name"], "shares": h["shares"],
+                 "avg_cost": h.get("avgCostSar")} for h in ledger["view"]["holdings"]]
     if ledger and "book" in ledger:
         # Aggregation is for technical diagnostics only; no account cash pools
         # and no cost basis is inferred from another broker's position.
@@ -226,7 +334,8 @@ def _budget_remaining() -> float:
     balance does carry forward, because that is a true statement about money --
     but the CAP is a spending rule, and it resets.
     """
-    if (_portfolio_ledger() or {}).get("book") is not None:
+    ledger = _portfolio_ledger() or {}
+    if ledger.get("book") is not None or ledger.get("schemaVersion") == 3:
         return None
     return max(0.0, cfg.BUDGET["monthly_budget_sar"] - _budget_spent_this_month())
 
@@ -493,6 +602,12 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
                               "holdings": holdings, "proposal": None},
                 "alerts": alerts or [], "forecast": _forecast(generated_at)}
     book = (_portfolio_ledger() or {}).get("book")
+    ledger = _portfolio_ledger() or {}
+    if ledger.get("schemaVersion") == 3:
+        snapshot["monthlyBudgetSar"] = None
+        snapshot["urgent"] = []
+        snapshot["portfolio"].update(policyStatus="unconfigured", savedPortfolio=ledger,
+                                      cashSar=ledger["view"]["cashSar"])
     if book is not None:
         accounts = book["accounts"]
         complete = all(a["initialized"] for a in accounts)
@@ -726,7 +841,8 @@ def _collect_recs(include_news: bool, record_history: bool = False,
             unverified.append((w["code"], w["name"], v.get("yahoo_name", "")))
         recs.append(rec)
 
-    account_mode = (_portfolio_ledger() or {}).get("book") is not None
+    ledger = _portfolio_ledger() or {}
+    account_mode = ledger.get("book") is not None or ledger.get("schemaVersion") == 3
     if account_mode:
         for rec in recs:
             rec["technicalAction"] = rec["action"]
@@ -901,6 +1017,9 @@ def _attach_leans(recs: list) -> dict:
         http_status = (leans.get("_status") or {}).get("httpStatus")
         if type(http_status) is int and 400 <= http_status <= 599:
             status["httpStatus"] = http_status
+        attempts = (leans.get("_status") or {}).get("attempts")
+        if isinstance(attempts, list):
+            status["attempts"] = attempts
         reason = status["reason"]
         print(f"pre-open lean unavailable: {reason}")
         for rec in recs:

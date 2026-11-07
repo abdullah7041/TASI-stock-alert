@@ -1,4 +1,4 @@
-import type {PortfolioBook} from '@/app/lib/evidence-types';
+import type {SavedPortfolio} from '@/app/lib/evidence-types';
 import { discordMessage, parseDiscordInteraction, verifyDiscordSignature } from "@/app/lib/discord-interactions.mjs";
 import { PortfolioStore } from "@/app/lib/portfolio-store";
 import { CopilotStore } from "@/app/lib/copilot-store";
@@ -10,8 +10,8 @@ function reply(content: string) {
   return Response.json(discordMessage(content));
 }
 
-function portfolioLine(book: PortfolioBook) {
-  return book.accounts.map(a=>`${a.accountId === 'al_rajhi'?'Al Rajhi':'Al Ahli'}: ${a.error?'records unavailable':a.initialized?`${a.cashSar?.toFixed(2)} SAR cash; ${a.holdings.map(h=>`${h.code}: ${h.shares} shares`).join(', ')||'no confirmed holdings'}`:'opening unconfirmed'}; reconciliation ${a.reconciliationStatus}.`).join('\n')+`\nCombined cash: ${book.combined.cashSar===null?'incomplete':`${book.combined.cashSar.toFixed(2)} SAR`} · reporting only; never a spending pool.\nAccounts remain separate. Company policy and sizing are unconfigured. Legacy records are unassigned. No order is sent.`;
+function portfolioLine(saved: SavedPortfolio) {
+  return `${saved.view.cashSar===null?'Recorded cash unavailable':`${saved.view.cashSar.toFixed(2)} SAR recorded cash`}.\n${saved.view.holdings.map(h=>`${h.name} (${h.code}): ${h.shares} shares`).join('\n')||'No holdings in the saved portfolio.'}\nLast recorded: ${saved.view.confirmedAt??'No saved history'}. Check your broker for current balances. Company policy and sizing are unconfigured. No order is sent.`;
 }
 
 function assistantFailure(error: unknown) {
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       await new CopilotStore(env.DB).confirm(env.PORTFOLIO_OWNER_ID, { ...draft, id: command.id, confirmedAt: new Date().toISOString() });
       return reply(`Decision note saved for ${draft.symbol}: ${draft.action}. Conditions and invalidation are recorded; no order was sent.`);
     }
-    const book = await store.book(env.PORTFOLIO_OWNER_ID);
+    const book = await store.saved(env.PORTFOLIO_OWNER_ID);
     if (command.kind === "portfolio") return reply(portfolioLine(book));
     if (command.kind === "budget") {
       return reply(`No monthly spending cap or sizing policy is configured.\n${portfolioLine(book)}`);
