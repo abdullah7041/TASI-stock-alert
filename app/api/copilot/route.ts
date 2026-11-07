@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         await secretary.saveProfile(c.ownerId,profile,body.expectedRevision,body.operationId);
       }else if(body.operation==='confirm_case'){
         let holdingCase;try{holdingCase=parseCaseInput(body.case);}catch{throw new Response('Complete the company case and valid source references.',{status:400});}
-        if(!heldCompanies(await new PortfolioStore(c.db).book(c.ownerId)).some(item=>item.symbol===holdingCase.symbol))throw new Response('Confirm this holding in a healthy broker account first.',{status:409});
+        if(!heldCompanies(await new PortfolioStore(c.db).saved(c.ownerId)).some(item=>item.symbol===holdingCase.symbol))throw new Response('This company is not in your saved portfolio.',{status:409});
         if(!Number.isSafeInteger(body.profileRevision)||body.profileRevision<1)throw new Response('A confirmed profile revision is required.',{status:400});
         await secretary.confirmCase(c.ownerId,holdingCase,body.expectedRevision,body.operationId,body.profileRevision);
       }else if(body.operation==='acknowledge_review'){

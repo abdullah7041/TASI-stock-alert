@@ -1,7 +1,7 @@
 import type { D1Database } from "cloudflare:workers";
 import { researchSchemaStatements } from "@/db/schema";
 import { expandPortfolioEvent, foldPortfolio, type PortfolioEvent } from "@/app/lib/portfolio-core.mjs";
-import { buildPortfolioBook, normalizeAccountRecordInput, previewAccountRecord, PortfolioConflict } from "@/app/lib/portfolio-core.mjs";
+import { buildPortfolioBook, normalizeAccountRecordInput, previewAccountRecord, PortfolioConflict, savedPortfolio, savedActivity } from "@/app/lib/portfolio-core.mjs";
 import type { AccountRecord, AccountRecordInput, BrokerAccountId } from "@/app/lib/evidence-types";
 
 type AccountRow = { operation_id: string; owner_id: string; account_id: BrokerAccountId; revision: number; record_kind: AccountRecord['kind']; recorded_at: string; payload_json: string };
@@ -18,6 +18,38 @@ export class PortfolioStore {
     return rows.results.map((row) => ({ operationId: row.operation_id, kind: row.event_kind, month: row.month_key ?? undefined, code: row.symbol ?? undefined, name: row.name ?? undefined, shares: row.shares ?? undefined, priceSar: row.price_sar ?? undefined, cashSar: row.cash_sar ?? undefined, feesSar: row.fees_sar ?? undefined, reason: row.reason ?? undefined, confirmedAt: row.confirmed_at }));
   }
   async view(ownerId: string) { return foldPortfolio(await this.events(ownerId)); }
+  async saved(ownerId: string) {
+    if((await this.accountRecords(ownerId)).length)throw new PortfolioConflict('Saved records require reconciliation before using one portfolio.');
+    return savedPortfolio(await this.events(ownerId));
+  }
+  async previewSaved(ownerId:string,input:AccountRecordInput,expectedRevision:number) {
+    const current=await this.saved(ownerId);
+    if(!current.eventCount)throw new PortfolioConflict('Saved portfolio history is unavailable.');
+    if(!Number.isSafeInteger(expectedRevision)||expectedRevision!==current.eventCount)throw new PortfolioConflict('Portfolio revision changed; refresh and preview again.');
+    return savedPortfolio([...current.events,...expandPortfolioEvent(current.events,savedActivity(input))]);
+  }
+  async appendSaved(ownerId:string,input:AccountRecordInput,expectedRevision:number) {
+    const event=savedActivity(input);
+    const current=await this.saved(ownerId);
+    const exact=(item:PortfolioEvent)=>(['operationId','kind','confirmedAt','month','code','name','shares','priceSar','cashSar','reason'] as const)
+      .every(key=>(item[key]??null)===(event[key]??null))&&(item.feesSar??0)===(event.feesSar??0);
+    const prior=current.events.find(item=>item.operationId===event.operationId);
+    if(prior){let matches=false;try{matches=exact(prior);}catch{/* Old manual notes are not a new activity retry. */}
+      if(!matches)throw new PortfolioConflict('operationId has already been used for a different record.');return current;}
+    // Validate this snapshot. A second read here can miss an identical commit
+    // between the retry lookup and validation; the INSERT arbitrates the race.
+    if(!current.eventCount)throw new PortfolioConflict('Saved portfolio history is unavailable.');
+    if(!Number.isSafeInteger(expectedRevision)||expectedRevision!==current.eventCount)throw new PortfolioConflict('Portfolio revision changed; refresh and preview again.');
+    savedPortfolio([...current.events,...expandPortfolioEvent(current.events,event)]);
+    // One conditional INSERT serializes concurrent spends without a new lock table.
+    const result=await this.db.prepare(`INSERT INTO portfolio_events (operation_id,owner_id,event_kind,month_key,symbol,name,shares,price_sar,cash_sar,fees_sar,reason,confirmed_at)
+      SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM portfolio_events WHERE owner_id=?)=?`)
+      .bind(event.operationId,ownerId,event.kind,event.month??null,event.code??null,event.name??null,event.shares??null,event.priceSar??null,event.cashSar??null,event.feesSar??0,event.reason??null,event.confirmedAt,ownerId,expectedRevision).run()
+      .catch(async(error:unknown)=>{const raced=(await this.saved(ownerId)).events.find(item=>item.operationId===event.operationId);if(raced&&exact(raced))return {meta:{changes:1}};throw error;});
+    if(!result.meta.changes){const raced=(await this.saved(ownerId)).events.find(item=>item.operationId===event.operationId);
+      if(!raced||!exact(raced))throw new PortfolioConflict('Portfolio revision changed; refresh and preview again.');}
+    return this.saved(ownerId);
+  }
   async accountRecords(ownerId: string, accountId?: BrokerAccountId): Promise<AccountRecord[]> {
     await this.ensureReady();
     const query = this.db.prepare(`SELECT * FROM portfolio_account_records WHERE owner_id = ?${accountId ? ' AND account_id = ?' : ''} ORDER BY account_id,revision`);

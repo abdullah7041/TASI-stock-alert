@@ -233,7 +233,10 @@ jobs:
           import json
           from pathlib import Path
           payload = json.loads(Path(".portfolio-current.json").read_text(encoding="utf-8"))
-          if isinstance(payload, dict) and ("schemaVersion" in payload or "book" in payload):
+          if isinstance(payload, dict) and payload.get("schemaVersion") == 3:
+              from main import validate_saved_portfolio
+              validate_saved_portfolio(payload)
+          elif isinstance(payload, dict) and ("schemaVersion" in payload or "book" in payload):
               from main import validate_account_book
               validate_account_book(payload)
           elif not isinstance(payload, dict) or not isinstance(payload.get("view"), dict):

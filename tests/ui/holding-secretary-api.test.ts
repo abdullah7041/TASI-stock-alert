@@ -37,11 +37,11 @@ test('company confirmation cannot use an unconfirmed holding or change broker ba
   const input={operation:'confirm_case',case:{symbol:'2320',reasons:'Owner reason',supportingEvidence:'Owner evidence',risks:'Demand',reconsiderWhen:'Case changes',sourceRefs:[]},expectedRevision:0,profileRevision:1,operationId:'case'};
   expect((await POST(owner(input))).status).toBe(409);
   const portfolio=new PortfolioStore(db);
-  await portfolio.appendAccountRecord('owner','al_rajhi',{operationId:'opening',kind:'event',payload:{kind:'opening_balance',cashSar:100,holdings:[{code:'2320',name:'Al-Babtain',shares:2,avgCostSar:25}],occurredAt:'2026-10-01T08:00:00Z',provenance:{source:'manual'}}},0);
+  await portfolio.append('owner',{operationId:'opening',kind:'opening_balance',cashSar:100,holdings:[{code:'2320',name:'Al-Babtain',shares:2,avgCostSar:25}],confirmedAt:'2026-10-01T08:00:00Z'});
   expect((await POST(owner(input))).status).toBe(200);
-  expect((await portfolio.book('owner')).accounts[0].cashSar).toBe(100);
-  expect((await portfolio.book('owner')).accounts[0].revision).toBe(1);
-  const saved=await (await GET(owner())).json();expect(saved.secretary.caseHistory).toHaveLength(1);expect(saved.holdingCompanies[0].accounts[0].shares).toBe(2);
+  expect((await portfolio.saved('owner')).view.cashSar).toBe(100);
+  expect((await portfolio.saved('owner')).eventCount).toBe(2);
+  const saved=await (await GET(owner())).json();expect(saved.secretary.caseHistory).toHaveLength(1);expect(saved.holdingCompanies[0].portfolioContext.shares).toBe(2);
   sqlite.close();
 });
 

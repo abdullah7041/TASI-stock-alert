@@ -41,7 +41,7 @@ export function EvidenceReviewForm() {
       const response=await fetch('/api/evidence/records',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(record)});
       const payload=await response.json();
       if(!response.ok)throw new Error(payload.error??'Evidence could not be saved.');
-      setStatus('Evidence revision saved. Your account balances are unchanged.');
+      setStatus('Evidence revision saved. Your portfolio balances are unchanged.');
     } catch(error){setStatus(error instanceof Error?error.message:'Evidence could not be saved.');}
     finally{setBusy(false);}
   }

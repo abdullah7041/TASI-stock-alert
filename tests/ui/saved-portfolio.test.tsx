@@ -1,0 +1,103 @@
+import {cleanup,render,screen,within,act} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import {afterEach,expect,test,vi} from 'vitest';
+import {ActionCockpit} from '@/app/components/ActionCockpit';
+import {PortfolioActivityForm} from '@/app/components/SavedPortfolio';
+import {savedPortfolio,buildPortfolioBook} from '@/app/lib/portfolio-core.mjs';
+import type {DashboardPayload} from '@/app/lib/dashboard-types';
+
+const saved=savedPortfolio([{operationId:'open',kind:'opening_balance',cashSar:0,confirmedAt:'2026-09-07T00:00:00Z'},
+ {operationId:'position',kind:'opening_position',code:'2320',name:'Al-Babtain',shares:12,priceSar:64.26,confirmedAt:'2026-09-07T00:00:00Z'}]);
+const dashboard={snapshot:{schemaVersion:2,tradeDate:'2026-11-04',asOf:'2026-11-04T13:13:17Z',regime:'unknown',dataStatus:'delayed-daily',warnings:[],urgent:[],changed:[],qualified:[],researchCount:0,monthlyBudgetSar:null,summary:[],top10:{proposalId:'none',status:'draft',researchedAt:'2026-11-04T13:13:17Z',entries:[]},portfolio:{...saved.view},alerts:[],forecast:{status:'unavailable',asOf:'2026-11-04',reason:'Not qualified'}} ,freshness:'current',alerts:[]} as DashboardPayload;
+afterEach(()=>{cleanup();vi.unstubAllGlobals();window.history.replaceState({},'', '/');});
+test('saved holdings load without setup and an authoritative empty response clears them',async()=>{
+ let empty=false;
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url==='/api/portfolio'?(empty?savedPortfolio([]):saved):dashboard)));
+ render(<ActionCockpit dashboard={dashboard}/>);
+ await act(async()=>{await new Promise(resolve=>setTimeout(resolve,0));});
+ expect(await screen.findByRole('button',{name:'View Al-Babtain details'},{timeout:5000})).toBeTruthy();
+ expect(screen.queryByText(/Set up accounts|Complete account setup/)).toBeNull();
+ await userEvent.click(screen.getByRole('link',{name:'Portfolio'}));
+ expect(await screen.findByRole('region',{name:'Saved portfolio'})).toBeTruthy();
+ expect(screen.queryByLabelText('View account')).toBeNull();
+ empty=true;await userEvent.click(screen.getByRole('button',{name:'Refresh cockpit'}));
+ expect(await screen.findByText('No holdings in your saved portfolio.')).toBeTruthy();
+},15000);
+test('index warnings combine once and Top 10 alone does not create a portfolio warning',async()=>{
+ const data=structuredClone(dashboard);
+ data.snapshot.warnings=['Top 10 draft unavailable: no current primary-source evidence has been reviewed yet.'];
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url==='/api/portfolio'?saved:data)));
+ const view=render(<ActionCockpit dashboard={data}/>);
+ expect(screen.queryByLabelText('Data quality warning')).toBeNull();
+ view.unmount();
+ data.snapshot.warnings.push('TASI index unavailable; relative strength could not be calculated.','Market regime unavailable: the index (^TASI.SR) returned 0 usable bars this run, so no regime could be computed.');
+ render(<ActionCockpit dashboard={data}/>);
+ await userEvent.click(screen.getByRole('button',{name:'Data status'}));
+ const dialog=screen.getByRole('dialog');
+ expect(within(dialog).getAllByText('TASI index unavailable; market regime and relative strength cannot be calculated.')).toHaveLength(1);
+ expect(within(dialog).getByText('Index diagnostics')).toBeTruthy();
+ expect(within(dialog).getByText(/returned 0 usable bars/)).toBeTruthy();
+ expect(within(dialog).queryByText(/Top 10 draft unavailable/)).toBeNull();
+ expect(within(dialog).queryByText('Discord is confirmed by an authenticated receipt.')).toBeNull();
+});
+test('a reconciliation conflict suppresses conflicting snapshot fallback holdings',async()=>{
+ const book=buildPortfolioBook([{accountId:'al_rajhi',revision:1,operationId:'broker-open',recordedAt:'2026-10-01T00:00:00Z',kind:'event',payload:{kind:'opening_balance',cashSar:0,holdings:[],occurredAt:'2026-10-01T00:00:00Z',provenance:{source:'manual'}}}],saved.events);
+ const data=structuredClone(dashboard);if(data.snapshot.schemaVersion===1)throw new Error('v2 required');
+ data.snapshot.portfolio={...data.snapshot.portfolio,policyStatus:'unconfigured',accountBook:book};
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>url==='/api/portfolio'?Response.json({error:'Saved records require reconciliation before using one portfolio.'},{status:409}):Response.json(data)));
+ render(<ActionCockpit dashboard={data}/>);
+ expect(await screen.findByText('Saved records require reconciliation before using one portfolio.')).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'View Al-Babtain details'})).toBeNull();
+});
+test('news failure and an empty filing check remain distinct',async()=>{
+ const snapshot={...dashboard.snapshot,schemaVersion:3,leanStatus:{ok:false,provider:'gemini',reason:'timeout',httpStatus:504},charts:[],digestRecords:[{code:'2320',name:'Al-Babtain',news:{ok:false},disclosures:{ok:true,items:[]}}]};
+ const data={...dashboard,snapshot} as DashboardPayload;
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url==='/api/portfolio'?saved:data)));
+ render(<ActionCockpit dashboard={data}/>);
+ await userEvent.click(screen.getByRole('button',{name:'Data status'}));
+ const dialog=screen.getByRole('dialog');
+ expect(within(dialog).getByText('News: 1 failed.')).toBeTruthy();
+ expect(within(dialog).getByText('Filings: 1 successful empty.')).toBeTruthy();
+ expect(within(dialog).getByText(/The provider timed out/)).toBeTruthy();
+});
+test('keyboard recording previews fees and reuses the exact confirmation after a lost response',async()=>{
+ const user=userEvent.setup(),bodies:unknown[]=[];let confirms=0;
+ vi.stubGlobal('fetch',vi.fn(async(url:string,options:RequestInit)=>{
+   bodies.push(JSON.parse(String(options.body)));
+   if(url.endsWith('/events')&&++confirms===1)throw new Error('Response lost');
+   return Response.json(saved);
+ }));
+ const view=render(<PortfolioActivityForm portfolio={saved} onSaved={()=>{}}/>);
+ await user.selectOptions(screen.getByLabelText('Activity'),'sell');
+ await user.type(screen.getByLabelText('Activity time (Riyadh)'),'2026-11-04T15:30');
+ await user.type(screen.getByLabelText('Stock code'),'2320');
+ await user.type(screen.getByLabelText('Shares'),'1');
+ await user.type(screen.getByLabelText('Executed price (SAR)'),'70');
+ await user.type(screen.getByLabelText('Actual fees (SAR)'),'0');
+ screen.getByRole('button',{name:'Preview record'}).focus();await user.keyboard('{Enter}');
+ await user.click(await screen.findByRole('button',{name:'Confirm record'}));
+ await screen.findByText('Response lost');
+ const operationId=(bodies[1] as {record:{operationId:string}}).record.operationId;
+ const committed=savedPortfolio([...saved.events,{operationId,kind:'sell',code:'2320',name:'Al-Babtain',shares:1,priceSar:70,feesSar:0,confirmedAt:'2026-11-04T12:30:00.000Z'}]);
+ view.rerender(<PortfolioActivityForm portfolio={committed} onSaved={()=>{}}/>);
+ expect((screen.getByRole('button',{name:'Confirm record'}) as HTMLButtonElement).disabled).toBe(false);
+ await user.click(screen.getByRole('button',{name:'Confirm record'}));
+ await screen.findByText('Completed activity saved. No order was sent.');
+ expect(bodies[2]).toEqual(bodies[1]);
+ expect(bodies[0]).toMatchObject({schemaVersion:3,expectedRevision:2,record:{payload:{kind:'sell',shares:1,feesSar:0,occurredAt:'2026-11-04T12:30:00.000Z'}}});
+},15000);
+test('a newer portfolio disables old confirmation and permits another preview',async()=>{
+ const user=userEvent.setup(),bodies:Array<{expectedRevision:number}>=[];
+ vi.stubGlobal('fetch',vi.fn(async(_url:string,options:RequestInit)=>{bodies.push(JSON.parse(String(options.body)));return Response.json(saved);}));
+ const view=render(<PortfolioActivityForm portfolio={saved} onSaved={()=>{}}/>);
+ await user.selectOptions(screen.getByLabelText('Activity'),'dividend');
+ await user.type(screen.getByLabelText('Activity time (Riyadh)'),'2026-11-04T15:30');
+ await user.type(screen.getByLabelText('Amount (SAR)'),'10');
+ await user.click(screen.getByRole('button',{name:'Preview record'}));
+ await screen.findByRole('button',{name:'Confirm record'});
+ const updated=savedPortfolio([...saved.events,{operationId:'deposit',kind:'contribution',month:'2026-11',cashSar:20,confirmedAt:'2026-11-03T09:00:00Z'}]);
+ view.rerender(<PortfolioActivityForm portfolio={updated} onSaved={()=>{}}/>);
+ expect((screen.getByRole('button',{name:'Confirm record'}) as HTMLButtonElement).disabled).toBe(true);
+ await user.click(screen.getByRole('button',{name:'Preview record'}));
+ expect(bodies.map(body=>body.expectedRevision)).toEqual([2,3]);
+},15000);

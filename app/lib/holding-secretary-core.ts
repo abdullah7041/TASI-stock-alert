@@ -1,16 +1,17 @@
-import type { BrokerAccountId, PortfolioBook } from './evidence-types';
+import type { BrokerAccountId, PortfolioBook, SavedPortfolio } from './evidence-types';
 
 export type ProfileInput = { objective: string; horizon: string; contributions: string; riskSettings: string; constraints: string };
 export type InvestorProfile = ProfileInput & { revision: number; confirmedAt: string; operationId: string };
 export type CaseInput = { symbol: string; reasons: string; supportingEvidence: string; risks: string; reconsiderWhen: string; sourceRefs: string[] };
 export type HoldingCase = CaseInput & { revision: number; profileRevision: number; confirmedAt: string; operationId: string };
 export type AccountContext = { accountId: BrokerAccountId; revision: number; shares: number };
-export type HoldingCompany = { symbol: string; name: string; accounts: AccountContext[] };
+export type PortfolioContext = {source:'portfolio_events';revision:number;shares:number;recordedAt:string};
+export type HoldingCompany = { symbol: string; name: string; accounts: AccountContext[]; portfolioContext?:PortfolioContext };
 export type HoldingReview = {
   id: string; symbol: string; fingerprint: string; caseRevision: number; profileRevision: number; createdAt: string;
   status: 'provisional' | 'incomplete' | 'pending'; action: 'WATCH' | 'RESEARCH_MORE';
   changed: string; supporting: string; contrary: string; implications: string; missing: string; questions: string;
-  sourceRefs: string[]; accounts: AccountContext[];
+  sourceRefs: string[]; accounts: AccountContext[]; portfolioContext?:PortfolioContext;
   evidenceRevisions?: string[]; collectionRunId?: string | null;
   sources?: Array<{ url: string; publishedAt: string | null; retrievedAt: string | null; reviewedAt: string | null; kind: 'reviewed' | 'announcement' }>;
 };
@@ -22,7 +23,7 @@ export const defaultProfile: ProfileInput = {
   horizon: 'Review after 3–5 years; may continue longer.',
   contributions: 'Variable contributions; no mandatory monthly purchase.',
   riskSettings: 'Numerical drawdown, concentration, sizing and fee settings are unconfigured.',
-  constraints: 'Saudi individual stocks only. No ETFs, funds, REITs or international stocks; no Sharia screening. Keep Al Rajhi and Al Ahli separate. Manual execution.',
+  constraints: 'Saudi individual stocks only. No ETFs, funds, REITs or international stocks; no Sharia screening. One saved portfolio. Manual execution.',
 };
 
 export class HoldingSecretaryConflict extends Error {
@@ -71,7 +72,12 @@ export function parseHoldingReview(value: unknown): HoldingReview {
     return { accountId: a.accountId as BrokerAccountId, revision: Number(a.revision), shares: Number(a.shares) };
   });
   if (new Set(accounts.map(a => a.accountId)).size !== accounts.length) throw new Error('Duplicate review broker context.');
-  const lineage: Pick<HoldingReview, 'evidenceRevisions' | 'collectionRunId' | 'sources'> = {};
+  const lineage: Pick<HoldingReview, 'evidenceRevisions' | 'collectionRunId' | 'sources' | 'portfolioContext'> = {};
+  if(v.portfolioContext!==undefined){
+    const p=object(v.portfolioContext);
+    if(p.source!=='portfolio_events'||!Number.isSafeInteger(p.revision)||Number(p.revision)<1||!Number.isSafeInteger(p.shares)||Number(p.shares)<1||typeof p.recordedAt!=='string'||!Number.isFinite(Date.parse(p.recordedAt)))throw new Error('Invalid saved portfolio context.');
+    lineage.portfolioContext={source:'portfolio_events',revision:Number(p.revision),shares:Number(p.shares),recordedAt:p.recordedAt};
+  }
   if (v.evidenceRevisions !== undefined) {
     if (!Array.isArray(v.evidenceRevisions) || v.evidenceRevisions.length > 100) throw new Error('Invalid evidence revisions.');
     lineage.evidenceRevisions = v.evidenceRevisions.map(id => text(id, 'evidence revision'));
@@ -94,7 +100,8 @@ export function parseHoldingReview(value: unknown): HoldingReview {
     status: v.status as HoldingReview['status'], action: v.action as HoldingReview['action'], changed: text(v.changed, 'changed', false), supporting: text(v.supporting, 'supporting', false), contrary: text(v.contrary, 'contrary', false), implications: text(v.implications, 'implications', false), missing: text(v.missing, 'missing', false), questions: text(v.questions, 'questions', false), sourceRefs: sourceRefs(v.sourceRefs), accounts, ...lineage };
 }
 
-export function heldCompanies(book: PortfolioBook | null | undefined): HoldingCompany[] {
+export function heldCompanies(book: PortfolioBook | SavedPortfolio | null | undefined): HoldingCompany[] {
+  if(book?.schemaVersion===3)return book.view.holdings.filter(h=>/^\d{4}$/.test(h.code)&&Number.isSafeInteger(h.shares)&&h.shares>0).map(h=>({symbol:h.code,name:h.name,accounts:[],portfolioContext:{source:'portfolio_events',revision:book.eventCount,shares:h.shares,recordedAt:book.view.confirmedAt!}}));
   const companies = new Map<string, HoldingCompany>();
   for (const account of book?.accounts ?? []) {
     if (!account.initialized || account.error || !account.confirmedAt || !Number.isSafeInteger(account.revision) || account.revision < 1) continue;

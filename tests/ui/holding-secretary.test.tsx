@@ -42,8 +42,7 @@ test('guides explicit profile and case confirmation using only confirmed holding
   await userEvent.click(screen.getByRole('button',{name:'Confirm investor profile'}));
   await screen.findByText(/Profile revision 1/);
   await userEvent.selectOptions(screen.getByLabelText('Confirmed holding'),'2320');
-  expect(screen.getByText(/Al Rajhi.*20 shares.*revision 2/)).toBeTruthy();
-  expect(screen.getByText(/Al Ahli.*5 shares.*revision 4/)).toBeTruthy();
+  expect(screen.getByText('Historical position: 25 shares')).toBeTruthy();
   await userEvent.click(screen.getByRole('button',{name:'Draft company case'}));
   const reasons=await screen.findByLabelText('Reasons for holding');
   fireEvent.change(reasons,{target:{value:'My reviewed reason'}});
@@ -121,7 +120,7 @@ test('restores saved context and acknowledges a provisional review without chang
 test('missing confirmed holdings are a setup gap and never become invented company options',async()=>{
   vi.stubGlobal('fetch',async()=>Response.json(response({...empty,profile},[])));
   render(<CopilotRail/>);
-  expect((await screen.findByText(/Confirm a broker opening snapshot/)).textContent).toMatch(/unavailable/i);
+  expect((await screen.findByText(/Saved holdings are unavailable/)).textContent).toMatch(/unavailable/i);
   expect(screen.queryByRole('button',{name:'Draft company case'})).toBeNull();
 });
 

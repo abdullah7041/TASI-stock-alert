@@ -18,5 +18,9 @@ export default defineConfig({
     include: ["tests/ui/**/*.test.{ts,tsx}"],
     globals: false,
     restoreMocks: true,
+    // Bound jsdom memory on Windows; rich keyboard flows need the same 15s
+    // deadline already used by the longer interaction tests. Assertions stay intact.
+    maxWorkers: 2,
+    testTimeout: 15_000,
   },
 });

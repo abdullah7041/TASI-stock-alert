@@ -30,7 +30,9 @@ export const researchSchemaStatements = [
     month_key TEXT, symbol TEXT, name TEXT, shares INTEGER, price_sar REAL,
     cash_sar REAL, fees_sar REAL NOT NULL DEFAULT 0, reason TEXT, confirmed_at TEXT NOT NULL
   )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS one_contribution_per_owner_month ON portfolio_events(owner_id, month_key) WHERE event_kind = 'contribution'`,
+  // Contributions are variable and may occur more than once per month. Drop
+  // only the obsolete constraint; the immutable event rows remain untouched.
+  `DROP INDEX IF EXISTS one_contribution_per_owner_month`,
   `CREATE UNIQUE INDEX IF NOT EXISTS one_opening_balance_per_owner ON portfolio_events(owner_id) WHERE event_kind = 'opening_balance'`,
   `CREATE TABLE IF NOT EXISTS portfolio_account_records (
     operation_id TEXT PRIMARY KEY, owner_id TEXT NOT NULL,
@@ -40,19 +42,22 @@ export const researchSchemaStatements = [
     recorded_at TEXT NOT NULL, payload_json TEXT NOT NULL,
     UNIQUE(owner_id, account_id, revision)
   )`,
-  `CREATE TRIGGER IF NOT EXISTS portfolio_prevent_overspend
+  `DROP TRIGGER IF EXISTS portfolio_prevent_overspend`,
+  `CREATE TRIGGER IF NOT EXISTS portfolio_prevent_overspend_v2
     BEFORE INSERT ON portfolio_events
-    WHEN NEW.event_kind = 'buy'
+    WHEN NEW.event_kind IN ('buy', 'withdrawal', 'fee')
     BEGIN
       SELECT CASE WHEN COALESCE((
         SELECT SUM(CASE
-          WHEN event_kind IN ('opening_balance', 'contribution', 'cash_adjustment') THEN COALESCE(cash_sar, 0)
+          WHEN event_kind IN ('opening_balance', 'contribution', 'cash_adjustment', 'dividend') THEN COALESCE(cash_sar, 0)
+          WHEN event_kind IN ('withdrawal', 'fee') THEN -COALESCE(cash_sar, 0)
           WHEN event_kind = 'sell' THEN COALESCE(shares, 0) * COALESCE(price_sar, 0) - COALESCE(fees_sar, 0)
           WHEN event_kind = 'buy' THEN -(COALESCE(shares, 0) * COALESCE(price_sar, 0) + COALESCE(fees_sar, 0))
           ELSE 0 END)
         FROM portfolio_events WHERE owner_id = NEW.owner_id
-      ), 0) < NEW.shares * NEW.price_sar + COALESCE(NEW.fees_sar, 0)
-      THEN RAISE(ABORT, 'buy exceeds confirmed cash') END;
+      ), 0) + 0.000000001 < CASE WHEN NEW.event_kind = 'buy'
+        THEN NEW.shares * NEW.price_sar + COALESCE(NEW.fees_sar, 0) ELSE NEW.cash_sar END
+      THEN RAISE(ABORT, 'activity exceeds confirmed cash') END;
     END`,
   `CREATE TRIGGER IF NOT EXISTS portfolio_prevent_oversell
     BEFORE INSERT ON portfolio_events

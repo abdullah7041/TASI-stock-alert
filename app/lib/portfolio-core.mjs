@@ -179,6 +179,30 @@ export function foldPortfolio(events) {
   return { cashSar: round2(cashSar), holdings: [...holdings.values()].map(h=>({...h,realisedSar:h.realisedSar===null?null:round2(h.realisedSar)})).sort((a, b) => a.code.localeCompare(b.code)), realisedSar: [...realised.values()].includes(null) ? null : round2([...realised.values()].reduce((total, value) => total + value, 0)), realisedByCode: Object.fromEntries([...realised.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([code,value])=>[code,value===null?null:round2(value)])), contributionMonth: contributions.size ? [...contributions].sort().at(-1) : null, confirmedAt };
 }
 
+// The saved ledger is reused, never copied into a new opening snapshot.
+export function savedPortfolio(events) {
+  const folded = foldPortfolio(events);
+  return {schemaVersion:3,status:events.length?'saved':'empty',eventCount:events.length,events,
+    view:{...folded,cashSar:events.length?folded.cashSar:null,policyStatus:'unconfigured',proposal:null}};
+}
+export function parseSavedPortfolio(value) {
+  if (!value || value.schemaVersion !== 3 || !Array.isArray(value.events)) throw new PortfolioValidationError('Invalid saved portfolio.');
+  const saved=savedPortfolio(value.events);
+  if(value.eventCount!==saved.eventCount || value.status!==saved.status || value.view?.policyStatus!=='unconfigured' || value.view?.proposal!==null
+    || value.view?.cashSar!==saved.view.cashSar || value.view?.confirmedAt!==saved.view.confirmedAt
+    || !Array.isArray(value.view?.holdings) || value.view.holdings.length!==saved.view.holdings.length
+    || saved.view.holdings.some((holding,i)=>['code','name','shares','avgCostSar','realisedSar'].some(key=>(value.view.holdings[i]?.[key]??null)!==(holding[key]??null)))) throw new PortfolioValidationError('Portfolio projection does not match its records.');
+  return saved;
+}
+export function savedActivity(input) {
+  const record=normalizeAccountRecordInput(input);
+  if(record.kind!=='event'||record.payload.kind==='opening_balance')throw new PortfolioValidationError('Record completed activity against the existing portfolio.');
+  const p=record.payload;
+  return {operationId:record.operationId,kind:p.kind,confirmedAt:p.occurredAt,
+    ...(p.kind==='contribution'?{month:new Date(Date.parse(p.occurredAt)+3*3600000).toISOString().slice(0,7)}:{}),
+    ...(p.code?{code:p.code,name:p.name,shares:p.shares,priceSar:p.priceSar,feesSar:p.feesSar}: {cashSar:p.cashSar}),
+    reason:JSON.stringify({source:'manual',reference:p.provenance.reference??null,reason:p.reason??null})};
+}
 export const brokerAccountIds = ['al_rajhi', 'al_ahli'];
 const sizingPending = 'Sizing policy and fee assumptions are not configured.';
 export class PortfolioConflict extends Error {}

@@ -31,6 +31,11 @@ export type Top10Proposal = {
 };
 
 export type PortfolioHolding = { code: string; name: string; shares: number; avgCostSar?: number };
+export type SavedPortfolio = {
+  schemaVersion: 3; status: 'saved'|'empty'; eventCount: number;
+  events: import('./portfolio-core.mjs').PortfolioEvent[];
+  view: Omit<PortfolioView,'confirmedAt'> & {confirmedAt:string|null};
+};
 
 export type PortfolioProposal = {
   action: "buy" | "add" | "hold" | "trim" | "sell" | "hold_cash";
@@ -49,6 +54,7 @@ export type PortfolioView = {
   proposal: PortfolioProposal;
   policyStatus?: "unconfigured";
   accountBook?: PortfolioBook;
+  savedPortfolio?: SavedPortfolio;
 };
 
 export type BrokerAccountId = "al_rajhi" | "al_ahli";

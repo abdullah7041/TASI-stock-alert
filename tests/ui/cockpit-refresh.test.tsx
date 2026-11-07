@@ -4,7 +4,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { ActionCockpit } from '@/app/components/ActionCockpit';
 import { EvidenceReviewForm } from '@/app/components/EvidenceReviewForm';
 import { IntelligenceBoard } from '@/app/components/IntelligenceBoard';
-import { buildPortfolioBook } from '@/app/lib/portfolio-core.mjs';
+import { savedPortfolio } from '@/app/lib/portfolio-core.mjs';
 import type { DashboardPayload } from '@/app/lib/dashboard-types';
 import saved from '../fixtures/friendly-dashboard.json';
 import { evidenceMetricFields, validateEvidenceRecord } from '@/app/lib/evidence-review-core.mjs';
@@ -29,9 +29,9 @@ test('the home distinguishes unconfirmed accounts from no review and keeps tools
     digestRecords:saved.digestRecords.map(record=>({...record,priceDate:'2026-10-11'}))};
   const payload={snapshot,freshness:'current',alerts:[]} as unknown as DashboardPayload;
   vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url==='/api/portfolio'
-    ?buildPortfolioBook([],[]):url==='/api/copilot'?{messages:[],decisions:[]}:payload)));
+    ?savedPortfolio([]):url==='/api/copilot'?{messages:[],decisions:[]}:payload)));
   render(<ActionCockpit dashboard={payload}/>);
-  expect(await screen.findByText('Complete account setup')).toBeTruthy();
+  expect(await screen.findByText('No holdings in your saved portfolio.')).toBeTruthy();
   expect(screen.queryByText('0 company decisions pending')).toBeNull();
   expect(screen.queryByRole('complementary',{name:'TASI copilot'})).toBeNull();
   expect(screen.queryByRole('region',{name:'Delayed market pulse'})).toBeNull();
@@ -43,8 +43,8 @@ test('the home distinguishes unconfirmed accounts from no review and keeps tools
   await userEvent.click(screen.getByRole('link',{name:'Assistant'}));
   expect(screen.getByRole('complementary',{name:'TASI copilot'})).toBeTruthy();
   await userEvent.click(screen.getByRole('link',{name:'Portfolio'}));
-  await userEvent.selectOptions(screen.getByLabelText('View account'),'al_rajhi');
-  expect(screen.getByLabelText('Amount (SAR)')).toBeTruthy();
+  expect(screen.getByRole('region',{name:'Saved portfolio'})).toBeTruthy();
+  expect(screen.queryByLabelText('View account')).toBeNull();
 });
 
 test('a deep link opens the requested tool and browser Back restores the prior view', async () => {
@@ -66,8 +66,8 @@ test('a failed account fetch never labels legacy positions as confirmed broker h
   render(<ActionCockpit dashboard={payload}/>);
   expect(await screen.findByText(/Live portfolio ledger is unavailable/)).toBeTruthy();
   expect(screen.queryByText('Confirmed holdings')).toBeNull();
-  expect(screen.getByText('Unassigned holdings')).toBeTruthy();
-  expect(screen.getByText(/Saved holdings are unassigned legacy data/)).toBeTruthy();
+  expect(screen.getByText('Saved holdings')).toBeTruthy();
+  expect(screen.getByText('Saved holdings are unavailable.')).toBeTruthy();
 });
 
 test('evidence review exposes labeled fields instead of requiring raw JSON', async () => {

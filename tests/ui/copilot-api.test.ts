@@ -7,7 +7,7 @@ import { DashboardStore } from '@/app/lib/dashboard-store';
 import { PortfolioStore } from '@/app/lib/portfolio-store';
 import { MarketPulseStore } from '@/app/lib/market-pulse-store';
 import { AlertStore } from '@/app/lib/alert-store';
-import {buildPortfolioBook} from '@/app/lib/portfolio-core.mjs';
+import {savedPortfolio} from '@/app/lib/portfolio-core.mjs';
 import { HoldingSecretaryStore } from '@/app/lib/holding-secretary-store';
 import { EvidenceStore } from '@/app/lib/evidence-store';
 
@@ -15,7 +15,7 @@ afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();for(const key of Objec
 function setup() {
   env.AGENT_OWNER_EMAIL='owner@example.test';env.OPENROUTER_API_KEY='test-only';env.AGENT_DEFAULT_MODEL='deepseek/deepseek-v4.1-flash';env.DB={};
   vi.spyOn(DashboardStore.prototype,'latest').mockResolvedValue(null);
-  vi.spyOn(PortfolioStore.prototype,'book').mockResolvedValue(buildPortfolioBook([],[]));
+  vi.spyOn(PortfolioStore.prototype,'saved').mockResolvedValue(savedPortfolio([]));
   vi.spyOn(MarketPulseStore.prototype,'latest').mockResolvedValue(null);
   vi.spyOn(AlertStore.prototype,'latest').mockResolvedValue([]);
   vi.spyOn(CopilotStore.prototype,'history').mockResolvedValue({messages:[],decisions:[]});
@@ -45,8 +45,8 @@ test('answers from the current ledger even without a daily snapshot and never co
   const sent=JSON.parse(String(options.body));
   expect(sent.model).toBe('deepseek/deepseek-v4.1-flash');
   expect(sent.provider).toEqual({require_parameters:true});
-  expect(JSON.parse(sent.input).evidence.portfolio.accounts.map((a:{cashSar:number|null})=>a.cashSar)).toEqual([null,null]);
-  expect(sent.instructions).toMatch(/Never pool/i);
+  expect(JSON.parse(sent.input).evidence.portfolio.view.cashSar).toBeNull();
+  expect(sent.instructions).toMatch(/saved portfolio ledger/i);
   expect(JSON.parse(sent.input).evidence.freshness).toBe('missing');
   expect(save.mock.calls[0][1].map(m=>m.role)).toEqual(['user','assistant']);
   expect(save.mock.calls[0][1][1].draft).toEqual(draft);

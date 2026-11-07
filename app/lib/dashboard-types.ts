@@ -42,6 +42,8 @@ export type LeanStatus = {
   model?: string;
   reason?: string;
   calls_left?: number;
+  httpStatus?: number;
+  errorCategory?: string;
   // Each provider that was tried or skipped, with why. Present when the chain
   // did anything other than succeed first time.
   attempts?: { provider: string; reason: string; httpStatus?: number }[];

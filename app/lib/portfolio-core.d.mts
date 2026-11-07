@@ -1,4 +1,7 @@
 import type { PortfolioProposal, PortfolioView, BrokerAccountId, AccountRecord, AccountRecordInput, PortfolioAccountView, PortfolioBook, AccountPreview } from "@/app/lib/evidence-types";
+export function savedPortfolio(events: PortfolioEvent[]): import('./evidence-types').SavedPortfolio;
+export function parseSavedPortfolio(value: unknown): import('./evidence-types').SavedPortfolio;
+export function savedActivity(input: unknown): PortfolioEvent;
 
 export type PortfolioEvent = {
   operationId: string;
