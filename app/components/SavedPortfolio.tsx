@@ -12,7 +12,8 @@ export function PortfolioActivityForm({portfolio,onSaved}:{portfolio:SavedPortfo
   const operation=useRef<string|null>(null);
   const [preview,setPreview]=useState<{envelope:{schemaVersion:3;record:AccountRecordInput;expectedRevision:number};result:SavedPortfolio}|null>(null);
   const trade=kind==='buy'||kind==='sell';
-  const stale=Boolean(preview&&preview.envelope.expectedRevision!==portfolio.eventCount);
+  const alreadySaved=Boolean(preview&&portfolio.events.some(event=>event.operationId===preview?.envelope.record.operationId));
+  const stale=Boolean(preview&&preview.envelope.expectedRevision!==portfolio.eventCount&&!alreadySaved);
   function invalidate(){operation.current=null;setPreview(null);setMessage('');}
   async function submit(confirm:boolean){
     if(busy)return;setBusy(true);setMessage('');
@@ -43,7 +44,7 @@ export function PortfolioActivityForm({portfolio,onSaved}:{portfolio:SavedPortfo
         <label>Amount (SAR)<input type="number" required min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)}/></label>}
       <button className={styles.secondaryButton}>Preview record</button>
       {preview&&<div role="status"><p>Recorded cash after activity: {preview.result.view.cashSar?.toFixed(2)} SAR. Holdings: {preview.result.view.holdings.map(h=>`${h.code}: ${h.shares}`).join(', ')||'none'}.</p>
-        {stale&&<p>Portfolio changed. Preview again.</p>}<button type="button" className={styles.primaryButton} disabled={stale} onClick={()=>void submit(true)}>Confirm record</button></div>}
+        {stale&&<p>Portfolio changed. Preview again.</p>}{alreadySaved&&<p>This activity is already recorded. Retry confirmation to finish.</p>}<button type="button" className={styles.primaryButton} disabled={stale} onClick={()=>void submit(true)}>Confirm record</button></div>}
     </fieldset>{message&&<p role="status">{message}</p>}
   </form>;
 }

@@ -162,7 +162,7 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
     const counts=new Map<string,number>();
     for(const record of v3?.digestRecords??[]){
       const source=record[field],items=field==='news'?record.news?.headlines:record.disclosures?.items;
-      const state=!source||typeof source.ok!=='boolean'?'not collected':!source.ok?'failed':field==='news'&&record.news?.status==='partial'?'partial coverage':items?.length?'supplied dated content':'successful empty';
+      const state=!source||typeof source.ok!=='boolean'?'not collected':!source.ok?'failed':field==='news'&&record.news?.status==='partial'?'partial coverage':items?.length?'supplied content':'successful empty';
       counts.set(state,(counts.get(state)??0)+1);
     }
     return `${field==='news'?'News':'Filings'}: ${counts.size?[...counts].map(([state,count])=>`${count} ${state}`).join('; '):'collection status unavailable'}.`;

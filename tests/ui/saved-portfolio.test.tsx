@@ -67,7 +67,7 @@ test('keyboard recording previews fees and reuses the exact confirmation after a
    if(url.endsWith('/events')&&++confirms===1)throw new Error('Response lost');
    return Response.json(saved);
  }));
- render(<PortfolioActivityForm portfolio={saved} onSaved={()=>{}}/>);
+ const view=render(<PortfolioActivityForm portfolio={saved} onSaved={()=>{}}/>);
  await user.selectOptions(screen.getByLabelText('Activity'),'sell');
  await user.type(screen.getByLabelText('Activity time (Riyadh)'),'2026-11-04T15:30');
  await user.type(screen.getByLabelText('Stock code'),'2320');
@@ -76,7 +76,12 @@ test('keyboard recording previews fees and reuses the exact confirmation after a
  await user.type(screen.getByLabelText('Actual fees (SAR)'),'0');
  screen.getByRole('button',{name:'Preview record'}).focus();await user.keyboard('{Enter}');
  await user.click(await screen.findByRole('button',{name:'Confirm record'}));
- await screen.findByText('Response lost');await user.click(screen.getByRole('button',{name:'Confirm record'}));
+ await screen.findByText('Response lost');
+ const operationId=(bodies[1] as {record:{operationId:string}}).record.operationId;
+ const committed=savedPortfolio([...saved.events,{operationId,kind:'sell',code:'2320',name:'Al-Babtain',shares:1,priceSar:70,feesSar:0,confirmedAt:'2026-11-04T12:30:00.000Z'}]);
+ view.rerender(<PortfolioActivityForm portfolio={committed} onSaved={()=>{}}/>);
+ expect((screen.getByRole('button',{name:'Confirm record'}) as HTMLButtonElement).disabled).toBe(false);
+ await user.click(screen.getByRole('button',{name:'Confirm record'}));
  await screen.findByText('Completed activity saved. No order was sent.');
  expect(bodies[2]).toEqual(bodies[1]);
  expect(bodies[0]).toMatchObject({schemaVersion:3,expectedRevision:2,record:{payload:{kind:'sell',shares:1,feesSar:0,occurredAt:'2026-11-04T12:30:00.000Z'}}});
