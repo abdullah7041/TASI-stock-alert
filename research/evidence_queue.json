@@ -1,12 +1,316 @@
 {
   "status": "review-required",
   "source": "Saudi Exchange issuer announcements",
-  "retrievedAt": "2026-11-10T19:55:01Z",
+  "retrievedAt": "2026-11-11T12:44:27Z",
   "announcements": [
+    {
+      "title": "United Cooperative Assurance Co. announces its inability to post interim financial results for the period ended on 2026-09-30(Nine Months)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99238&anCat=1&cs=8190&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "8190",
+      "published_at": "2026-11-11T15:43:46+03:00",
+      "source_published_at": "11/11/2026 15:43:46"
+    },
+    {
+      "title": "Al Jouf Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99237&anCat=1&cs=3091&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "3091",
+      "published_at": "2026-11-11T15:42:40+03:00",
+      "source_published_at": "11/11/2026 15:42:40"
+    },
+    {
+      "title": "Naqi Water Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99236&anCat=1&cs=2282&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2282",
+      "published_at": "2026-11-11T15:41:06+03:00",
+      "source_published_at": "11/11/2026 15:41:06"
+    },
+    {
+      "title": "Takween Advanced Industries Co. Announces the Submission of the Decrease of the Company’s Capital Application File to CMA",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99235&anCat=1&cs=1201&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "1201",
+      "published_at": "2026-11-11T15:39:24+03:00",
+      "source_published_at": "11/11/2026 15:39:24"
+    },
+    {
+      "title": "Saudi Arabia Refineries Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99234&anCat=1&cs=2030&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2030",
+      "published_at": "2026-11-11T15:38:10+03:00",
+      "source_published_at": "11/11/2026 15:38:10"
+    },
+    {
+      "title": "Sadara Basic Services Company announces the Interim Financial Results of its parent company, Sadara Chemical Company for the period ending on 30-09-2026 (Nine Months)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99233&anCat=1&cs=2315&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2315",
+      "published_at": "2026-11-11T15:37:47+03:00",
+      "source_published_at": "11/11/2026 15:37:47"
+    },
+    {
+      "title": "National Company for Learning and Education announces the signing of a Sharia-compliant credit facilities agreement with Alinma Bank",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99232&anCat=1&cs=4291&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "4291",
+      "published_at": "2026-11-11T15:35:55+03:00",
+      "source_published_at": "11/11/2026 15:35:55"
+    },
+    {
+      "title": "Middle East Specialized Cables Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99231&anCat=1&cs=2370&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2370",
+      "published_at": "2026-11-11T09:57:19+03:00",
+      "source_published_at": "11/11/2026 09:57:19"
+    },
+    {
+      "title": "Saudi Fisheries Co. Announces its accumulated loses reaching 37.03 % of its capital",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99230&anCat=1&cs=6050&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "6050",
+      "published_at": "2026-11-11T09:47:10+03:00",
+      "source_published_at": "11/11/2026 09:47:10"
+    },
+    {
+      "title": "Jana Medical Company Announces the Results of the Extraordinary General Assembly Meeting (Second Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99229&anCat=1&cs=9616&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9616",
+      "published_at": "2026-11-11T09:32:29+03:00",
+      "source_published_at": "11/11/2026 09:32:29"
+    },
+    {
+      "title": "Najran Cement Company announces the interim financial results for the period ending on 2026-09-30 (Nine Months)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99228&anCat=1&cs=3002&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "3002",
+      "published_at": "2026-11-11T09:31:25+03:00",
+      "source_published_at": "11/11/2026 09:31:25"
+    },
+    {
+      "title": "Saudi Fisheries Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99227&anCat=1&cs=6050&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "6050",
+      "published_at": "2026-11-11T09:26:34+03:00",
+      "source_published_at": "11/11/2026 09:26:34"
+    },
+    {
+      "title": "Rimath Hospitality Co. Announces Appointment Audit Committee Member",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99226&anCat=1&cs=9579&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9579",
+      "published_at": "2026-11-11T09:26:11+03:00",
+      "source_published_at": "11/11/2026 09:26:11"
+    },
+    {
+      "title": "Al Kathiri Holding Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99225&anCat=1&cs=3008&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "3008",
+      "published_at": "2026-11-11T09:13:49+03:00",
+      "source_published_at": "11/11/2026 09:13:49"
+    },
+    {
+      "title": "First Avenue for Real Estate Development Co. announces the Board resolution to transfer from the Parallel Market to the Main Market",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99224&anCat=1&cs=9610&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9610",
+      "published_at": "2026-11-11T09:10:56+03:00",
+      "source_published_at": "11/11/2026 09:10:56"
+    },
+    {
+      "title": "Correction announcement from National Metal Manufacturing and Casting Co. in regards to the Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99223&anCat=1&cs=2220&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2220",
+      "published_at": "2026-11-11T09:10:06+03:00",
+      "source_published_at": "11/11/2026 09:10:06"
+    },
+    {
+      "title": "Saudia Dairy and Foodstuff Co. (\"SADAFCO\") Announces the Organization of an Earnings Call to Discuss its Financial Results for the Third Quarter of 2026G.",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99222&anCat=1&cs=2270&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2270",
+      "published_at": "2026-11-11T09:09:45+03:00",
+      "source_published_at": "11/11/2026 09:09:45"
+    },
+    {
+      "title": "Saudi Cable Company Announces Updates on the Application to the Capital Market Authority for the Increase of the Company’s Capital by Offering Right Issues",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99221&anCat=1&cs=2110&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2110",
+      "published_at": "2026-11-11T09:07:32+03:00",
+      "source_published_at": "11/11/2026 09:07:32"
+    },
+    {
+      "title": "Arab Sea Information System Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99220&anCat=1&cs=7201&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "7201",
+      "published_at": "2026-11-11T09:04:33+03:00",
+      "source_published_at": "11/11/2026 09:04:33"
+    },
+    {
+      "title": "Rimath Hospitality Co. Announces the Appointment of the Chairman, Vice Chairman and Board Secretary, and the Appointment of the Company's Representatives for the New Term of the Board",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99219&anCat=1&cs=9579&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9579",
+      "published_at": "2026-11-11T08:57:39+03:00",
+      "source_published_at": "11/11/2026 08:57:39"
+    },
+    {
+      "title": "Inmar Company for Real Estate Development and Investment Announces the Commencement of Electronic Voting on the Agenda Items of the Fourth Ordinary General Assembly Meeting (First Meeting)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99218&anCat=1&cs=9521&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9521",
+      "published_at": "2026-11-11T08:14:20+03:00",
+      "source_published_at": "11/11/2026 08:14:20"
+    },
+    {
+      "title": "Saudi Automotive Services Co. (SASCO) announces interim financial results for the period ended September 30, 2026 (Nine Months)",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99217&anCat=1&cs=4050&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "4050",
+      "published_at": "2026-11-11T08:12:39+03:00",
+      "source_published_at": "11/11/2026 08:12:39"
+    },
+    {
+      "title": "Tabuk Agricultural Development Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99216&anCat=1&cs=6040&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "6040",
+      "published_at": "2026-11-11T08:10:59+03:00",
+      "source_published_at": "11/11/2026 08:10:59"
+    },
+    {
+      "title": "Al Masar Al Shamil Education Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99215&anCat=1&cs=6019&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "6019",
+      "published_at": "2026-11-11T08:09:55+03:00",
+      "source_published_at": "11/11/2026 08:09:55"
+    },
+    {
+      "title": "Retal Urban Development Company Announces the Latest Developments Regarding Its Announcement of the Board of Directors’ Invitation to Its Shareholders to Attend the Extraordinary General Assembly Meeting Including the Increase of the Company’s Capital (First Meeting and Second Meeting One Hour After the First), in Relation to the Publication of the Shareholders’ Circular Prepared by the Company",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99214&anCat=1&cs=4322&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "4322",
+      "published_at": "2026-11-11T08:09:14+03:00",
+      "source_published_at": "11/11/2026 08:09:14"
+    },
+    {
+      "title": "Bidaya Finance announces its Interim Financial Results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99213&anCat=1&cs=5025&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "5025",
+      "published_at": "2026-11-11T08:08:41+03:00",
+      "source_published_at": "11/11/2026 08:08:41"
+    },
+    {
+      "title": "Alujain Corp. announces that it has organized a conference call to discuss the financial and operational results of the third quarter ended on 30 September 2026 with investors and financial analysts",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99212&anCat=1&cs=2170&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2170",
+      "published_at": "2026-11-11T08:08:01+03:00",
+      "source_published_at": "11/11/2026 08:08:01"
+    },
+    {
+      "title": "Advanced Building Industries Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99211&anCat=1&cs=2240&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2240",
+      "published_at": "2026-11-11T08:07:37+03:00",
+      "source_published_at": "11/11/2026 08:07:37"
+    },
+    {
+      "title": "Jazan Development and Investment Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99210&anCat=1&cs=6090&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "6090",
+      "published_at": "2026-11-11T08:06:51+03:00",
+      "source_published_at": "11/11/2026 08:06:51"
+    },
+    {
+      "title": "Saudi Real Estate Company (“Al Akaria”) announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99209&anCat=1&cs=4020&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "4020",
+      "published_at": "2026-11-11T08:05:03+03:00",
+      "source_published_at": "11/11/2026 08:05:03"
+    },
+    {
+      "title": "National Gypsum Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99208&anCat=1&cs=2090&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "2090",
+      "published_at": "2026-11-11T08:04:24+03:00",
+      "source_published_at": "11/11/2026 08:04:24"
+    },
+    {
+      "title": "Tam Development Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99207&anCat=1&cs=9570&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9570",
+      "published_at": "2026-11-11T08:03:42+03:00",
+      "source_published_at": "11/11/2026 08:03:42"
+    },
+    {
+      "title": "Shalfa Facilities Management Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99206&anCat=1&cs=9613&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9613",
+      "published_at": "2026-11-11T08:03:20+03:00",
+      "source_published_at": "11/11/2026 08:03:20"
+    },
+    {
+      "title": "Al Ashghal Al Moysra Co. Announces Project Award with Saudi Authority for Industrial Cities and Technology Zone",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99205&anCat=1&cs=9608&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "9608",
+      "published_at": "2026-11-11T08:03:01+03:00",
+      "source_published_at": "11/11/2026 08:03:01"
+    },
+    {
+      "title": "Makkah Construction and Development Co. Announces Contract Sign Off with Al Balad Al Ameen for Development and Urban Regeneration",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99204&anCat=1&cs=4100&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "4100",
+      "published_at": "2026-11-11T08:02:26+03:00",
+      "source_published_at": "11/11/2026 08:02:26"
+    },
+    {
+      "title": "Thimar Development Holding Co. Announces Update on the Use of the Proceeds of Issuing Rights Issue",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99203&anCat=1&cs=4160&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "4160",
+      "published_at": "2026-11-11T08:02:01+03:00",
+      "source_published_at": "11/11/2026 08:02:01"
+    },
+    {
+      "title": "BAAN Holding Group Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99202&anCat=1&cs=1820&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "1820",
+      "published_at": "2026-11-11T08:01:30+03:00",
+      "source_published_at": "11/11/2026 08:01:30"
+    },
+    {
+      "title": "Dar Albalad for Business Solutions Co. Announces the Purchasing of Office Units in the amount of SAR 19,427,940",
+      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99201&anCat=1&cs=7205&locale=en",
+      "retrieved_at": "2026-11-11T12:44:27Z",
+      "symbol": "7205",
+      "published_at": "2026-11-11T08:00:45+03:00",
+      "source_published_at": "11/11/2026 08:00:45"
+    },
     {
       "title": "Ataa Educational Company Announces the Latest Developments Regarding the Board of Directors' Recommendation to Purchase the Company's Shares and Hold Them as Treasury Shares",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99200&anCat=1&cs=4292&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4292",
       "published_at": "2026-11-10T16:31:35+03:00",
       "source_published_at": "10/11/2026 16:31:35"
@@ -14,7 +318,7 @@
     {
       "title": "Riyal Investment and Development Co. Announces Resignation and Appointment of a CEO",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99199&anCat=1&cs=9584&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9584",
       "published_at": "2026-11-10T16:19:33+03:00",
       "source_published_at": "10/11/2026 16:19:33"
@@ -22,7 +326,7 @@
     {
       "title": "Al-Omran Industrial Trading Co.  announces its Interim Financial results for the Period Ending on 2026-09-30( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99198&anCat=1&cs=4141&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4141",
       "published_at": "2026-11-10T16:13:02+03:00",
       "source_published_at": "10/11/2026 16:13:02"
@@ -30,7 +334,7 @@
     {
       "title": "Time Entertainment Company Announces an update on Rescheduling of the remaining balance for the Interest-Free Loan from the Chairwoman of the Board (completion of repayment)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99197&anCat=1&cs=9642&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9642",
       "published_at": "2026-11-10T16:04:37+03:00",
       "source_published_at": "10/11/2026 16:04:37"
@@ -38,7 +342,7 @@
     {
       "title": "ASG Plastic Factory Co. announces the board of director’s decision to distribute cash dividends for Third Quarter of 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99196&anCat=1&cs=9607&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9607",
       "published_at": "2026-11-10T16:02:48+03:00",
       "source_published_at": "10/11/2026 16:02:48"
@@ -46,7 +350,7 @@
     {
       "title": "ASG Plastic Factory Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99195&anCat=1&cs=9607&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9607",
       "published_at": "2026-11-10T16:00:45+03:00",
       "source_published_at": "10/11/2026 16:00:45"
@@ -54,7 +358,7 @@
     {
       "title": "Development Works Food Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99194&anCat=1&cs=6013&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6013",
       "published_at": "2026-11-10T16:00:07+03:00",
       "source_published_at": "10/11/2026 16:00:07"
@@ -62,7 +366,7 @@
     {
       "title": "Digital Research Company (DRC) announces the receiving of award notification from the Communications, Space & Technology Commission (CST).",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99193&anCat=1&cs=9621&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9621",
       "published_at": "2026-11-10T15:59:18+03:00",
       "source_published_at": "10/11/2026 15:59:18"
@@ -70,7 +374,7 @@
     {
       "title": "National Metal Manufacturing and Casting Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99192&anCat=1&cs=2220&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2220",
       "published_at": "2026-11-10T15:49:27+03:00",
       "source_published_at": "10/11/2026 15:49:27"
@@ -78,7 +382,7 @@
     {
       "title": "Anaam International Holding Group announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99191&anCat=1&cs=4061&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4061",
       "published_at": "2026-11-10T15:44:30+03:00",
       "source_published_at": "10/11/2026 15:44:30"
@@ -86,7 +390,7 @@
     {
       "title": "Nama Chemicals Co. announces its inability to post interim financial results for the period ended on 2026-09-30(Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99190&anCat=1&cs=2210&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2210",
       "published_at": "2026-11-10T15:41:26+03:00",
       "source_published_at": "10/11/2026 15:41:26"
@@ -94,7 +398,7 @@
     {
       "title": "Saudi Marketing Company (Farm Superstores)  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99189&anCat=1&cs=4006&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4006",
       "published_at": "2026-11-10T15:39:11+03:00",
       "source_published_at": "10/11/2026 15:39:11"
@@ -102,7 +406,7 @@
     {
       "title": "Abdullah Al Othaim Markets Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99188&anCat=1&cs=4001&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4001",
       "published_at": "2026-11-10T15:36:33+03:00",
       "source_published_at": "10/11/2026 15:36:33"
@@ -110,7 +414,7 @@
     {
       "title": "Correction announcement from Gulf Union Al Ahlia Cooperative Insurance Co. in regards to the announcement of its Interim Financial Results for the period ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99187&anCat=1&cs=8120&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8120",
       "published_at": "2026-11-10T09:55:58+03:00",
       "source_published_at": "10/11/2026 09:55:58"
@@ -118,7 +422,7 @@
     {
       "title": "Bawan Company announces that it has conducted earnings call to discuss its Q3 2026 financial results with investors and financial analysts",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99186&anCat=1&cs=1302&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1302",
       "published_at": "2026-11-10T09:32:45+03:00",
       "source_published_at": "10/11/2026 09:32:45"
@@ -126,7 +430,7 @@
     {
       "title": "Baazeem Trading Co. Announces Resignation of a Board Member",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99185&anCat=1&cs=4051&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4051",
       "published_at": "2026-11-10T09:21:17+03:00",
       "source_published_at": "10/11/2026 09:21:17"
@@ -134,7 +438,7 @@
     {
       "title": "Saudi Energy announces its interim condensed consolidated financial results for the period ending on 30-09-2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99184&anCat=1&cs=5110&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "5110",
       "published_at": "2026-11-10T08:54:51+03:00",
       "source_published_at": "10/11/2026 08:54:51"
@@ -142,7 +446,7 @@
     {
       "title": "Scientific & Medical Equipment House Company Announces the Award of a Tender for the Provision of Maintenance, Cleaning and Non-Medical Operation Services for King Salman Center for Kidney Diseases in Riyadh Region, with a Value of SAR (39,403,068.50)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99183&anCat=1&cs=4014&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4014",
       "published_at": "2026-11-10T08:51:05+03:00",
       "source_published_at": "10/11/2026 08:51:05"
@@ -150,7 +454,7 @@
     {
       "title": "MOBI Industry Co. announces the board of director’s decision to distribute cash dividends for The third quarterquarter of the year 2026G.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99182&anCat=1&cs=9517&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9517",
       "published_at": "2026-11-10T08:23:48+03:00",
       "source_published_at": "10/11/2026 08:23:48"
@@ -158,7 +462,7 @@
     {
       "title": "MBC Group Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99181&anCat=1&cs=4072&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4072",
       "published_at": "2026-11-10T08:22:44+03:00",
       "source_published_at": "10/11/2026 08:22:44"
@@ -166,7 +470,7 @@
     {
       "title": "Wafrah for Industry and Development Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99180&anCat=1&cs=2100&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2100",
       "published_at": "2026-11-10T08:20:57+03:00",
       "source_published_at": "10/11/2026 08:20:57"
@@ -174,7 +478,7 @@
     {
       "title": "Announcement by Alinma Capital Company regarding the results of the meeting of the Unitholders of Alinma Hospitality REIT Fund.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99179&anCat=1&cs=4349&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4349",
       "published_at": "2026-11-10T08:16:50+03:00",
       "source_published_at": "10/11/2026 08:16:50"
@@ -182,7 +486,7 @@
     {
       "title": "Mutakamela Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99178&anCat=1&cs=8040&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8040",
       "published_at": "2026-11-10T08:15:30+03:00",
       "source_published_at": "10/11/2026 08:15:30"
@@ -190,7 +494,7 @@
     {
       "title": "United Wire Factories Co. announces the board of director’s decision to distribute cash dividends from  the accumulated retained earnings up to the end of the fourth quarter of 2025 and the nine-month period of 2026.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99177&anCat=1&cs=1301&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1301",
       "published_at": "2026-11-10T08:14:39+03:00",
       "source_published_at": "10/11/2026 08:14:39"
@@ -198,7 +502,7 @@
     {
       "title": "Al Moammar Information Systems Co. (MIS) announces the board of director’s decision to distribute cash dividends for Second quarter of the fiscal year 2026.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99176&anCat=1&cs=7200&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "7200",
       "published_at": "2026-11-10T08:13:31+03:00",
       "source_published_at": "10/11/2026 08:13:31"
@@ -206,7 +510,7 @@
     {
       "title": "Saudi Industrial Development Company (SIDC) announces that its branch, SIDC Ceramic Factory (CASAVIA) has received a Purchase Order for the supply of sanitary wares, bathroom fixtures and accessories with a value representing 7.34% of the Company’s total revenues for the year 2025 G.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99175&anCat=1&cs=2130&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2130",
       "published_at": "2026-11-10T08:11:30+03:00",
       "source_published_at": "10/11/2026 08:11:30"
@@ -214,7 +518,7 @@
     {
       "title": "BinDawood Holding Company announces the Board of Director’s resolution to distribute cash dividends for the First Half of the Financial Year 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99174&anCat=1&cs=4161&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4161",
       "published_at": "2026-11-10T08:11:13+03:00",
       "source_published_at": "10/11/2026 08:11:13"
@@ -222,7 +526,7 @@
     {
       "title": "Al Moammar Information Systems Co.  (MIS) announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99173&anCat=1&cs=7200&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "7200",
       "published_at": "2026-11-10T08:08:52+03:00",
       "source_published_at": "10/11/2026 08:08:52"
@@ -230,7 +534,7 @@
     {
       "title": "Al Hammadi Holding announces the board of director’s decision to distribute cash dividends for the third quarter of 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99172&anCat=1&cs=4007&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4007",
       "published_at": "2026-11-10T08:08:46+03:00",
       "source_published_at": "10/11/2026 08:08:46"
@@ -238,7 +542,7 @@
     {
       "title": "Aljazira Bank announces its intention to redeem its SAR 2,000,000,000 Tier 2 Sukuk due 2031",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99171&anCat=1&cs=1020&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1020",
       "published_at": "2026-11-10T08:07:05+03:00",
       "source_published_at": "10/11/2026 08:07:05"
@@ -246,7 +550,7 @@
     {
       "title": "MOBI Industry Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99170&anCat=1&cs=9517&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9517",
       "published_at": "2026-11-10T08:05:20+03:00",
       "source_published_at": "10/11/2026 08:05:20"
@@ -254,7 +558,7 @@
     {
       "title": "Academy of Learning Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Three Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99169&anCat=1&cs=9541&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9541",
       "published_at": "2026-11-10T08:04:53+03:00",
       "source_published_at": "10/11/2026 08:04:53"
@@ -262,7 +566,7 @@
     {
       "title": "Saudi Lime Industries Company Announces the Financial Impact of the Revised Electricity and Water Service Tariffs in Accordance with the Governance Procedures for Amending Energy and Water Product Prices",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99168&anCat=1&cs=9566&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9566",
       "published_at": "2026-11-10T08:04:36+03:00",
       "source_published_at": "10/11/2026 08:04:36"
@@ -270,7 +574,7 @@
     {
       "title": "Jahez International Company for Information System Technology (Jahez) announces its interim consolidated Financial Results for the Period Ending on 30-09-2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99167&anCat=1&cs=6017&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6017",
       "published_at": "2026-11-10T08:04:02+03:00",
       "source_published_at": "10/11/2026 08:04:02"
@@ -278,7 +582,7 @@
     {
       "title": "BinDawood Holding Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99166&anCat=1&cs=4161&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4161",
       "published_at": "2026-11-10T08:03:24+03:00",
       "source_published_at": "10/11/2026 08:03:24"
@@ -286,7 +590,7 @@
     {
       "title": "United Wire Factories Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99165&anCat=1&cs=1301&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1301",
       "published_at": "2026-11-10T08:02:52+03:00",
       "source_published_at": "10/11/2026 08:02:52"
@@ -294,7 +598,7 @@
     {
       "title": "Seera Group Holding  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99164&anCat=1&cs=1810&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1810",
       "published_at": "2026-11-10T08:02:12+03:00",
       "source_published_at": "10/11/2026 08:02:12"
@@ -302,7 +606,7 @@
     {
       "title": "ARTEX Industrial Investment Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99163&anCat=1&cs=2340&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2340",
       "published_at": "2026-11-10T08:01:10+03:00",
       "source_published_at": "10/11/2026 08:01:10"
@@ -310,7 +614,7 @@
     {
       "title": "Al Hammadi Holding  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99162&anCat=1&cs=4007&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4007",
       "published_at": "2026-11-10T08:00:40+03:00",
       "source_published_at": "10/11/2026 08:00:40"
@@ -318,7 +622,7 @@
     {
       "title": "Saudi Research and Media Group\n announces its Interim Financial results for the Period Ending on 2026-09-30 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99161&anCat=1&cs=4210&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4210",
       "published_at": "2026-11-09T16:15:07+03:00",
       "source_published_at": "09/11/2026 16:15:07"
@@ -326,7 +630,7 @@
     {
       "title": "Supplementary Announcement by Retal Urban Development Company Regarding its Announcement of the Board of Directors’ Invitation to its Shareholders to Attend the Extraordinary General Assembly Meeting, Including the Increase of the Company’s Capital (First Meeting and Second Meeting One Hour After the First Meeting), via Modern Technology Means",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99160&anCat=1&cs=4322&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4322",
       "published_at": "2026-11-09T16:14:03+03:00",
       "source_published_at": "09/11/2026 16:14:03"
@@ -334,7 +638,7 @@
     {
       "title": "Saudi Manpower Solutions Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99159&anCat=1&cs=1834&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1834",
       "published_at": "2026-11-09T16:04:11+03:00",
       "source_published_at": "09/11/2026 16:04:11"
@@ -342,7 +646,7 @@
     {
       "title": "Gulf General Cooperative Insurance Co. Announces the Final Approval of Insurance Authority on a Product",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99158&anCat=1&cs=8260&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8260",
       "published_at": "2026-11-09T15:46:52+03:00",
       "source_published_at": "09/11/2026 15:46:52"
@@ -350,7 +654,7 @@
     {
       "title": "Correction announcement from Saudi Company for Hardware in regards to The accumulated losses percentage",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99157&anCat=1&cs=4008&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4008",
       "published_at": "2026-11-09T15:42:17+03:00",
       "source_published_at": "09/11/2026 15:42:17"
@@ -358,7 +662,7 @@
     {
       "title": "Addendum Announcement by Almoosa Health Company Regarding the Cash Dividend Distribution for Q3 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99156&anCat=1&cs=4018&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4018",
       "published_at": "2026-11-09T15:40:33+03:00",
       "source_published_at": "09/11/2026 15:40:33"
@@ -366,7 +670,7 @@
     {
       "title": "Northern Region Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99155&anCat=1&cs=3004&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3004",
       "published_at": "2026-11-09T15:34:55+03:00",
       "source_published_at": "09/11/2026 15:34:55"
@@ -374,7 +678,7 @@
     {
       "title": "Baazeem Trading Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99154&anCat=1&cs=4051&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4051",
       "published_at": "2026-11-09T15:34:23+03:00",
       "source_published_at": "09/11/2026 15:34:23"
@@ -382,7 +686,7 @@
     {
       "title": "Al Majed for Oud Company announces the earnings call organization to discuss its Interim Financial results for Nine months 2026.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99152&anCat=1&cs=4165&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4165",
       "published_at": "2026-11-09T09:50:32+03:00",
       "source_published_at": "09/11/2026 09:50:32"
@@ -390,7 +694,7 @@
     {
       "title": "International Human Resources Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99151&anCat=1&cs=9545&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9545",
       "published_at": "2026-11-09T09:47:49+03:00",
       "source_published_at": "09/11/2026 09:47:49"
@@ -398,7 +702,7 @@
     {
       "title": "Almunajem Foods Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99150&anCat=1&cs=4162&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4162",
       "published_at": "2026-11-09T09:26:50+03:00",
       "source_published_at": "09/11/2026 09:26:50"
@@ -406,7 +710,7 @@
     {
       "title": "Saudi Arabian Mining Company (Maaden) announces its interim financial results for the period ended 30-09-2026 (Nine months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99149&anCat=1&cs=1211&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1211",
       "published_at": "2026-11-09T09:23:45+03:00",
       "source_published_at": "09/11/2026 09:23:45"
@@ -414,7 +718,7 @@
     {
       "title": "Saudi Advanced Industries Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99148&anCat=1&cs=2120&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2120",
       "published_at": "2026-11-09T09:21:06+03:00",
       "source_published_at": "09/11/2026 09:21:06"
@@ -422,7 +726,7 @@
     {
       "title": "Makkah Construction and Development Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99147&anCat=1&cs=4100&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4100",
       "published_at": "2026-11-09T09:07:58+03:00",
       "source_published_at": "09/11/2026 09:07:58"
@@ -430,7 +734,7 @@
     {
       "title": "Horizon Food Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99146&anCat=1&cs=9564&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9564",
       "published_at": "2026-11-09T08:51:39+03:00",
       "source_published_at": "09/11/2026 08:51:39"
@@ -438,7 +742,7 @@
     {
       "title": "Alqemam for Computer Systems Co. Announces Project Award with Al-Bukayriyah Governorate MunicipalityWith a total value of SAR 1,249,245 SAR",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99145&anCat=1&cs=9558&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9558",
       "published_at": "2026-11-09T08:49:04+03:00",
       "source_published_at": "09/11/2026 08:49:04"
@@ -446,7 +750,7 @@
     {
       "title": "Al Gassim Investment Holding Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99144&anCat=1&cs=6020&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6020",
       "published_at": "2026-11-09T08:37:35+03:00",
       "source_published_at": "09/11/2026 08:37:35"
@@ -454,7 +758,7 @@
     {
       "title": "Derayah Financial Co. Announces The Board Of Director’s Decision To Distribute Cash Dividends For Third Quarter Of The Fiscal Year 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99143&anCat=1&cs=4084&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4084",
       "published_at": "2026-11-09T08:33:14+03:00",
       "source_published_at": "09/11/2026 08:33:14"
@@ -462,7 +766,7 @@
     {
       "title": "Ades Holding Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99142&anCat=1&cs=2382&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2382",
       "published_at": "2026-11-09T08:30:17+03:00",
       "source_published_at": "09/11/2026 08:30:17"
@@ -470,7 +774,7 @@
     {
       "title": "The Board of Directors of Retal Urban Development Company invites its Shareholders to attend the Extraordinary General Assembly Meeting which includes the increase of the Company’s capital (First Meeting and the Second Meeting one hour after the First) by Means of Modern Technology",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99141&anCat=1&cs=4322&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4322",
       "published_at": "2026-11-09T08:27:15+03:00",
       "source_published_at": "09/11/2026 08:27:15"
@@ -478,7 +782,7 @@
     {
       "title": "United Mining Industries Company announces, on behalf of Knauf International GmbH, the latest developments regarding the results of the acceptance of the Tender Offer",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99140&anCat=1&cs=9583&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9583",
       "published_at": "2026-11-09T08:22:42+03:00",
       "source_published_at": "09/11/2026 08:22:42"
@@ -486,7 +790,7 @@
     {
       "title": "The National Medical Care Company announces its intention to purchase a number of its shares and allocate them to its employees within the employee stock program",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99139&anCat=1&cs=4005&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4005",
       "published_at": "2026-11-09T08:16:57+03:00",
       "source_published_at": "09/11/2026 08:16:57"
@@ -494,7 +798,7 @@
     {
       "title": "Maharah Human Resources Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99138&anCat=1&cs=1831&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1831",
       "published_at": "2026-11-09T08:15:59+03:00",
       "source_published_at": "09/11/2026 08:15:59"
@@ -502,7 +806,7 @@
     {
       "title": "Methanol Chemicals Company (Chemanol) announces the latest material developments related to the lawsuit filed against the Company in connection with the acquisition of Addar Chemicals Company (ACC)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99137&anCat=1&cs=2001&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2001",
       "published_at": "2026-11-09T08:15:09+03:00",
       "source_published_at": "09/11/2026 08:15:09"
@@ -510,7 +814,7 @@
     {
       "title": "City Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99136&anCat=1&cs=3003&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3003",
       "published_at": "2026-11-09T08:11:28+03:00",
       "source_published_at": "09/11/2026 08:11:28"
@@ -518,7 +822,7 @@
     {
       "title": "Perfect Presentation for Commercial Services Co.  announces its Interim Financial results for the Period Ending on 30-09-2026 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99135&anCat=1&cs=7204&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "7204",
       "published_at": "2026-11-09T08:11:13+03:00",
       "source_published_at": "09/11/2026 08:11:13"
@@ -526,7 +830,7 @@
     {
       "title": "Canadian Medical Center Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99134&anCat=1&cs=4021&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4021",
       "published_at": "2026-11-09T08:07:45+03:00",
       "source_published_at": "09/11/2026 08:07:45"
@@ -534,7 +838,7 @@
     {
       "title": "Middle East Pharmaceutical Industries Co. announces the signing of a credit facility agreement with the Saudi Industrial Development Fund.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99133&anCat=1&cs=4016&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4016",
       "published_at": "2026-11-09T08:02:53+03:00",
       "source_published_at": "09/11/2026 08:02:53"
@@ -542,7 +846,7 @@
     {
       "title": "Consolidated Grunenfelder Saady Holding Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Six Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99132&anCat=1&cs=4147&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4147",
       "published_at": "2026-11-09T08:02:20+03:00",
       "source_published_at": "09/11/2026 08:02:20"
@@ -550,7 +854,7 @@
     {
       "title": "Arabian Centres Co. (Cenomi Centers) announces its Interim Financial results for the Period Ending on 30 September 2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99131&anCat=1&cs=4321&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4321",
       "published_at": "2026-11-09T08:01:46+03:00",
       "source_published_at": "09/11/2026 08:01:46"
@@ -558,7 +862,7 @@
     {
       "title": "Canadian Medical Center Company Announces the Signing of a Long-Term Lease Agreement to Establish an Integrated Medical Complex",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99130&anCat=1&cs=4021&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4021",
       "published_at": "2026-11-09T08:01:19+03:00",
       "source_published_at": "09/11/2026 08:01:19"
@@ -566,7 +870,7 @@
     {
       "title": "Derayah Financial Company announces its Interim Financial results for the Period Ending on 30-09-2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99129&anCat=1&cs=4084&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4084",
       "published_at": "2026-11-09T08:00:49+03:00",
       "source_published_at": "09/11/2026 08:00:49"
@@ -574,7 +878,7 @@
     {
       "title": "Balady Poultry Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99128&anCat=1&cs=9559&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9559",
       "published_at": "2026-11-09T08:00:16+03:00",
       "source_published_at": "09/11/2026 08:00:16"
@@ -582,7 +886,7 @@
     {
       "title": "Knowledge Economic City announces its Interim Financial results for the Period Ended on 2026-09-30 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99127&anCat=1&cs=4310&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4310",
       "published_at": "2026-11-08T17:39:30+03:00",
       "source_published_at": "08/11/2026 17:39:30"
@@ -590,7 +894,7 @@
     {
       "title": "Saudi Paper Manufacturing Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99126&anCat=1&cs=2300&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2300",
       "published_at": "2026-11-08T17:36:43+03:00",
       "source_published_at": "08/11/2026 17:36:43"
@@ -598,7 +902,7 @@
     {
       "title": "Correction announcement from Lazurde Company for  Jewelry in regards to the company's announcement about its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99125&anCat=1&cs=4011&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4011",
       "published_at": "2026-11-08T17:20:01+03:00",
       "source_published_at": "08/11/2026 17:20:01"
@@ -606,7 +910,7 @@
     {
       "title": "Corrective Announcement by Jarir Marketing Co. regarding the board of directors’ decision date to distribute cash dividends to shareholders for the Third Quarter of 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99124&anCat=1&cs=4190&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4190",
       "published_at": "2026-11-08T17:16:51+03:00",
       "source_published_at": "08/11/2026 17:16:51"
@@ -614,7 +918,7 @@
     {
       "title": "Al Rajhi Bank announces the starting date of electronic voting on the agenda of the 36th Ordinary General Assembly Meeting by means of modern technology (First Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99123&anCat=1&cs=1120&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1120",
       "published_at": "2026-11-08T17:15:28+03:00",
       "source_published_at": "08/11/2026 17:15:28"
@@ -622,7 +926,7 @@
     {
       "title": "Saudi Networkers Services Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99122&anCat=1&cs=9543&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9543",
       "published_at": "2026-11-08T17:14:35+03:00",
       "source_published_at": "08/11/2026 17:14:35"
@@ -630,7 +934,7 @@
     {
       "title": "Zahrat Al Waha for Trading Company announces the signing of a Sharia-compliant credit facilities agreement with Alrajhi Bank.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99121&anCat=1&cs=3007&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3007",
       "published_at": "2026-11-08T17:01:15+03:00",
       "source_published_at": "08/11/2026 17:01:15"
@@ -638,7 +942,7 @@
     {
       "title": "Al-Babtain Power and Telecommunication Co. announces the board of director’s decision to distribute cash dividends for the third quarter of 2026 AD",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99120&anCat=1&cs=2320&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2320",
       "published_at": "2026-11-08T17:00:04+03:00",
       "source_published_at": "08/11/2026 17:00:04"
@@ -646,7 +950,7 @@
     {
       "title": "Al Saqr Cooperative Insurance Company announces the renewal of the medical insurance contract with Nasser Saeed Al Hajri & Partners Contracting Company",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99119&anCat=1&cs=8180&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8180",
       "published_at": "2026-11-08T16:58:31+03:00",
       "source_published_at": "08/11/2026 16:58:31"
@@ -654,7 +958,7 @@
     {
       "title": "Jarir Marketing Co. announces the board of director’s decision to distribute cash dividends for Third Quarter 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99118&anCat=1&cs=4190&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4190",
       "published_at": "2026-11-08T16:56:02+03:00",
       "source_published_at": "08/11/2026 16:56:02"
@@ -662,7 +966,7 @@
     {
       "title": "Al Kuzama Trading Company Announces the Commencement of Electronic Voting on the Agenda Items of Extraordinary General Assembly Meeting the (First Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99117&anCat=1&cs=9636&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9636",
       "published_at": "2026-11-08T16:52:54+03:00",
       "source_published_at": "08/11/2026 16:52:54"
@@ -670,7 +974,7 @@
     {
       "title": "Al-Babtain Power and Telecommunication Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99116&anCat=1&cs=2320&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2320",
       "published_at": "2026-11-08T16:49:27+03:00",
       "source_published_at": "08/11/2026 16:49:27"
@@ -678,7 +982,7 @@
     {
       "title": "Jarir Marketing Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99115&anCat=1&cs=4190&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4190",
       "published_at": "2026-11-08T16:44:50+03:00",
       "source_published_at": "08/11/2026 16:44:50"
@@ -686,7 +990,7 @@
     {
       "title": "Saudi Company for Hardware  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99114&anCat=1&cs=4008&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4008",
       "published_at": "2026-11-08T16:42:34+03:00",
       "source_published_at": "08/11/2026 16:42:34"
@@ -694,7 +998,7 @@
     {
       "title": "Gulf Union Al Ahlia Cooperative Insurance Co. announces receiving certification of Sharia compliance by Shariyah Review Bureau",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99113&anCat=1&cs=8120&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8120",
       "published_at": "2026-11-08T09:58:12+03:00",
       "source_published_at": "08/11/2026 09:58:12"
@@ -702,7 +1006,7 @@
     {
       "title": "Almunajem Foods Company Announces the Expected Financial Impact of the Revised Electricity and Water Service Tariffs",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99112&anCat=1&cs=4162&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4162",
       "published_at": "2026-11-08T09:51:31+03:00",
       "source_published_at": "08/11/2026 09:51:31"
@@ -710,7 +1014,7 @@
     {
       "title": "Raoom Trading Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99111&anCat=1&cs=4144&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4144",
       "published_at": "2026-11-08T09:49:11+03:00",
       "source_published_at": "08/11/2026 09:49:11"
@@ -718,7 +1022,7 @@
     {
       "title": "Etihad GO Telecom Co. (GO) announces its consolidated Interim Financial results for the Period Ending on 30-09-2026 (Six Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99110&anCat=1&cs=7040&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "7040",
       "published_at": "2026-11-08T09:15:32+03:00",
       "source_published_at": "08/11/2026 09:15:32"
@@ -726,7 +1030,7 @@
     {
       "title": "Middle East Healthcare Company (Saudi German Health) Announces Its Interim Financial Results for the Period Ending on 30 September 2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99109&anCat=1&cs=4009&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4009",
       "published_at": "2026-11-08T09:11:03+03:00",
       "source_published_at": "08/11/2026 09:11:03"
@@ -734,7 +1038,7 @@
     {
       "title": "National Industrialization Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99108&anCat=1&cs=2060&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2060",
       "published_at": "2026-11-08T08:42:17+03:00",
       "source_published_at": "08/11/2026 08:42:17"
@@ -742,7 +1046,7 @@
     {
       "title": "TIME Entertainment Company announcement regarding the issuance of a preliminary judgment in its favor in the lawsuit filed against Jockey Club of Saudi Arabia",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99107&anCat=1&cs=9642&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9642",
       "published_at": "2026-11-08T08:41:16+03:00",
       "source_published_at": "08/11/2026 08:41:16"
@@ -750,7 +1054,7 @@
     {
       "title": "Arabian Drilling Co.  announces its Interim Financial results for the Period Ended on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99106&anCat=1&cs=2381&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2381",
       "published_at": "2026-11-08T08:39:01+03:00",
       "source_published_at": "08/11/2026 08:39:01"
@@ -758,7 +1062,7 @@
     {
       "title": "Raydan Food Company Announces the Submission of the Decrease of the Company’s Capital Application File and the Increase of the Company’s Capital by Offering Right Issues Application File to CMA",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99105&anCat=1&cs=6012&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6012",
       "published_at": "2026-11-08T08:33:04+03:00",
       "source_published_at": "08/11/2026 08:33:04"
@@ -766,7 +1070,7 @@
     {
       "title": "The National Company for Glass Industries “ZOUJAJ\" Announces the Expected Financial Impact of Amendments to Electricity, Water, and Sewage Tariffs",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99104&anCat=1&cs=2150&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2150",
       "published_at": "2026-11-08T08:29:40+03:00",
       "source_published_at": "08/11/2026 08:29:40"
@@ -774,7 +1078,7 @@
     {
       "title": "Ratio Speciality Company for Trading Announces the Appointment of a Managing Director and the Termination of the Acting Chief Executive Officer’s Assignment",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99103&anCat=1&cs=9630&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9630",
       "published_at": "2026-11-08T08:29:06+03:00",
       "source_published_at": "08/11/2026 08:29:06"
@@ -782,7 +1086,7 @@
     {
       "title": "Announcement from Saudi Industrial Development Company \"SIDC\" regarding the latest developments in connection with the signing of non-binding memorandum of understanding with Sudom Investment Company and Mohammed A. ALSwailm Holding Company to consider acquisition of the entire share capital of the Industrial Production Services Company.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99101&anCat=1&cs=2130&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2130",
       "published_at": "2026-11-08T08:24:59+03:00",
       "source_published_at": "08/11/2026 08:24:59"
@@ -790,7 +1094,7 @@
     {
       "title": "Saudi AZM for Communication and Information Technology Co. Announces the Results of the Extraordinary General Assembly Meeting (First Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99100&anCat=1&cs=7211&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "7211",
       "published_at": "2026-11-08T08:17:40+03:00",
       "source_published_at": "08/11/2026 08:17:40"
@@ -798,7 +1102,7 @@
     {
       "title": "Mohammed Hasan AlNaqool Sons Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99099&anCat=1&cs=9514&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9514",
       "published_at": "2026-11-08T08:14:07+03:00",
       "source_published_at": "08/11/2026 08:14:07"
@@ -806,7 +1110,7 @@
     {
       "title": "Qomel Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99098&anCat=1&cs=9600&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9600",
       "published_at": "2026-11-08T08:11:50+03:00",
       "source_published_at": "08/11/2026 08:11:50"
@@ -814,7 +1118,7 @@
     {
       "title": "Leen Alkhair Trading Co. Announces Regarding the latest developments concerning the construction of a company-owned factory",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99097&anCat=1&cs=9555&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9555",
       "published_at": "2026-11-08T08:08:17+03:00",
       "source_published_at": "08/11/2026 08:08:17"
@@ -822,7 +1126,7 @@
     {
       "title": "ADES Secures Multi-Year Contracts for Two Standard Jackup Rigs with ONGC in India, Reinforcing its Long-Term Presence in this Market",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99096&anCat=1&cs=2382&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2382",
       "published_at": "2026-11-08T08:06:37+03:00",
       "source_published_at": "08/11/2026 08:06:37"
@@ -830,7 +1134,7 @@
     {
       "title": "Tanmiah Food Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99095&anCat=1&cs=2281&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2281",
       "published_at": "2026-11-08T08:06:11+03:00",
       "source_published_at": "08/11/2026 08:06:11"
@@ -838,7 +1142,7 @@
     {
       "title": "Naseej International Trading Co. Announces Board's Recommendation to Decrease the Company's Capital",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99094&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1213",
       "published_at": "2026-11-08T08:05:41+03:00",
       "source_published_at": "08/11/2026 08:05:41"
@@ -846,7 +1150,7 @@
     {
       "title": "Obeikan Glass Co. Announces its Interim Financial Results for the Period Ending on 2026-09-30 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99093&anCat=1&cs=4145&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4145",
       "published_at": "2026-11-08T08:04:19+03:00",
       "source_published_at": "08/11/2026 08:04:19"
@@ -854,7 +1158,7 @@
     {
       "title": "Lazurde Company for Jewelry  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99092&anCat=1&cs=4011&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4011",
       "published_at": "2026-11-08T08:03:47+03:00",
       "source_published_at": "08/11/2026 08:03:47"
@@ -862,7 +1166,7 @@
     {
       "title": "Alkhaleej Training and Education Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99091&anCat=1&cs=4290&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4290",
       "published_at": "2026-11-08T08:03:21+03:00",
       "source_published_at": "08/11/2026 08:03:21"
@@ -870,7 +1174,7 @@
     {
       "title": "Middle East Paper Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99090&anCat=1&cs=1202&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1202",
       "published_at": "2026-11-08T08:02:54+03:00",
       "source_published_at": "08/11/2026 08:02:54"
@@ -878,7 +1182,7 @@
     {
       "title": "The United International Transportation Co. (Budget Saudi) announces its Interim Financial Results for the Period Ending on 30-09-2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99089&anCat=1&cs=4260&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4260",
       "published_at": "2026-11-08T08:02:17+03:00",
       "source_published_at": "08/11/2026 08:02:17"
@@ -886,7 +1190,7 @@
     {
       "title": "A reminder announcement from the Tourism Enterprise Company (Shams) regarding the commencement of electronic voting on the items of the Extraordinary General Assembly meeting (first meeting) in person and through modern technology means.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99088&anCat=1&cs=4170&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4170",
       "published_at": "2026-11-08T08:01:50+03:00",
       "source_published_at": "08/11/2026 08:01:50"
@@ -894,7 +1198,7 @@
     {
       "title": "Marble Design Co. announces its Interim Financial results for the Period Ending on 2026-09-30 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99087&anCat=1&cs=9575&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9575",
       "published_at": "2026-11-08T08:01:25+03:00",
       "source_published_at": "08/11/2026 08:01:25"
@@ -902,7 +1206,7 @@
     {
       "title": "Arabian Food and Dairy Factories Co. Board invites its shareholders to attend the Ordinary General Assembly Meeting the (Second Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99086&anCat=1&cs=9536&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9536",
       "published_at": "2026-11-05T17:10:14+03:00",
       "source_published_at": "05/11/2026 17:10:14"
@@ -910,7 +1214,7 @@
     {
       "title": "Shatirah House Restaurant Co.\"BURGERIZZR\" announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99085&anCat=1&cs=6016&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6016",
       "published_at": "2026-11-05T16:27:11+03:00",
       "source_published_at": "05/11/2026 16:27:11"
@@ -918,7 +1222,7 @@
     {
       "title": "Sadr Logistics Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99084&anCat=1&cs=1832&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1832",
       "published_at": "2026-11-05T16:26:52+03:00",
       "source_published_at": "05/11/2026 16:26:52"
@@ -926,7 +1230,7 @@
     {
       "title": "Saudi Industrial Development Company (SIDC)announces its Interim Consolidated Financial Results for the Period Ending on 30/09/2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99083&anCat=1&cs=2130&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2130",
       "published_at": "2026-11-05T16:24:46+03:00",
       "source_published_at": "05/11/2026 16:24:46"
@@ -934,7 +1238,7 @@
     {
       "title": "Saudi Printing and Packaging Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99082&anCat=1&cs=4270&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4270",
       "published_at": "2026-11-05T16:23:12+03:00",
       "source_published_at": "05/11/2026 16:23:12"
@@ -942,7 +1246,7 @@
     {
       "title": "Arabian Contracting Services Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99081&anCat=1&cs=4071&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4071",
       "published_at": "2026-11-05T16:19:46+03:00",
       "source_published_at": "05/11/2026 16:19:46"
@@ -950,7 +1254,7 @@
     {
       "title": "Mohammed Hasan AlNaqool Sons Co. Announces the date for the commencement of electronic voting on the items of the Extraordinary General Assembly meeting (first meeting) via modern technology (reminder announcement).",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99080&anCat=1&cs=9514&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9514",
       "published_at": "2026-11-05T16:16:58+03:00",
       "source_published_at": "05/11/2026 16:16:58"
@@ -958,7 +1262,7 @@
     {
       "title": "Batic Investments and Logistics Co. announces the interim consolidated financial results for the period ending on 30-09-2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99079&anCat=1&cs=4110&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4110",
       "published_at": "2026-11-05T16:14:34+03:00",
       "source_published_at": "05/11/2026 16:14:34"
@@ -966,7 +1270,7 @@
     {
       "title": "Theeb Rent a Car Co. Announces Board recommendation to buy-back its Shares",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99078&anCat=1&cs=4261&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4261",
       "published_at": "2026-11-05T16:12:37+03:00",
       "source_published_at": "05/11/2026 16:12:37"
@@ -974,7 +1278,7 @@
     {
       "title": "Leejam Sports Company Announces the Expected Financial Impact of the Amendment to Commercial Electricity and Water Tariffs Effective 1 January 2027",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99077&anCat=1&cs=1830&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1830",
       "published_at": "2026-11-05T16:11:49+03:00",
       "source_published_at": "05/11/2026 16:11:49"
@@ -982,7 +1286,7 @@
     {
       "title": "Saudia Dairy and Foodstuff Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99076&anCat=1&cs=2270&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2270",
       "published_at": "2026-11-05T16:11:16+03:00",
       "source_published_at": "05/11/2026 16:11:16"
@@ -990,7 +1294,7 @@
     {
       "title": "Red Sea International Company Announces the Latest Developments Regarding the Proposed Initial Public Offering of Its Subsidiary, Fundamental Installation for Electric Work Company",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99075&anCat=1&cs=4230&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4230",
       "published_at": "2026-11-05T16:10:23+03:00",
       "source_published_at": "05/11/2026 16:10:23"
@@ -998,7 +1302,7 @@
     {
       "title": "Middle East Specialized Cables Company (MESC) announces the Obtaining of Banking Facilities Agreement by its subsidiary\" Middle East Specialized Cables Company \"(MESC) LLC-O.P.C with First Abu Dhabi Bank PJSC in United Arab Emirates.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99074&anCat=1&cs=2370&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2370",
       "published_at": "2026-11-05T16:08:10+03:00",
       "source_published_at": "05/11/2026 16:08:10"
@@ -1006,7 +1310,7 @@
     {
       "title": "Saudi Arabian Amiantit Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99073&anCat=1&cs=2160&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2160",
       "published_at": "2026-11-05T16:06:55+03:00",
       "source_published_at": "05/11/2026 16:06:55"
@@ -1014,7 +1318,7 @@
     {
       "title": "Najran Cement Company announces the latest developments regarding Contract with Sinoma International Engineering Limited for Contracting Company",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99072&anCat=1&cs=3002&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3002",
       "published_at": "2026-11-05T16:06:24+03:00",
       "source_published_at": "05/11/2026 16:06:24"
@@ -1022,7 +1326,7 @@
     {
       "title": "Specialized Medical Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99071&anCat=1&cs=4019&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4019",
       "published_at": "2026-11-05T16:03:47+03:00",
       "source_published_at": "05/11/2026 16:03:47"
@@ -1030,7 +1334,7 @@
     {
       "title": "Takween Advanced Industries Company Announces the Latest Developments on its Board of Directors’ Recommendation to Reduce the Company’s Share Capital and Subsequently Increase the Share Capital through a Rights Issue Offering",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99070&anCat=1&cs=1201&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1201",
       "published_at": "2026-11-05T16:03:34+03:00",
       "source_published_at": "05/11/2026 16:03:34"
@@ -1038,7 +1342,7 @@
     {
       "title": "Al Mawarid Manpower Co. Announces the Board’s Recommendation to Increase the Capital by Granting Bouns Shares",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99069&anCat=1&cs=1833&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1833",
       "published_at": "2026-11-05T16:00:07+03:00",
       "source_published_at": "05/11/2026 16:00:07"
@@ -1046,7 +1350,7 @@
     {
       "title": "Al Mawarid Manpower Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99068&anCat=1&cs=1833&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1833",
       "published_at": "2026-11-05T15:58:36+03:00",
       "source_published_at": "05/11/2026 15:58:36"
@@ -1054,7 +1358,7 @@
     {
       "title": "Naseej International Trading Company Announces the Appointment of two Board Member to Fill the two Vacancies on its Board of Director",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99067&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1213",
       "published_at": "2026-11-05T15:57:57+03:00",
       "source_published_at": "05/11/2026 15:57:57"
@@ -1062,7 +1366,7 @@
     {
       "title": "Naseej International Trading Co. Announces that the accumulated Losses reduced to 49.48%",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99066&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1213",
       "published_at": "2026-11-05T15:55:45+03:00",
       "source_published_at": "05/11/2026 15:55:45"
@@ -1070,7 +1374,7 @@
     {
       "title": "Marketing Home Group for Trading Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99065&anCat=1&cs=4194&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4194",
       "published_at": "2026-11-05T15:54:41+03:00",
       "source_published_at": "05/11/2026 15:54:41"
@@ -1078,7 +1382,7 @@
     {
       "title": "Theeb Rent a Car Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99064&anCat=1&cs=4261&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4261",
       "published_at": "2026-11-05T15:52:26+03:00",
       "source_published_at": "05/11/2026 15:52:26"
@@ -1086,7 +1390,7 @@
     {
       "title": "Naseej International Trading Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99063&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1213",
       "published_at": "2026-11-05T15:50:53+03:00",
       "source_published_at": "05/11/2026 15:50:53"
@@ -1094,7 +1398,7 @@
     {
       "title": "Almoosa Health Co. announces the board of director’s decision to distribute cash dividends for Third quarter of the financial year 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99062&anCat=1&cs=4018&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4018",
       "published_at": "2026-11-05T15:50:41+03:00",
       "source_published_at": "05/11/2026 15:50:41"
@@ -1102,7 +1406,7 @@
     {
       "title": "Almoosa Health Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99061&anCat=1&cs=4018&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4018",
       "published_at": "2026-11-05T15:49:15+03:00",
       "source_published_at": "05/11/2026 15:49:15"
@@ -1110,7 +1414,7 @@
     {
       "title": "Umm Al-Qura Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99060&anCat=1&cs=3005&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3005",
       "published_at": "2026-11-05T15:45:36+03:00",
       "source_published_at": "05/11/2026 15:45:36"
@@ -1118,7 +1422,7 @@
     {
       "title": "Acwa Power Company announces Interim Financial Results for the Period Ending on 2026-09-30 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99059&anCat=1&cs=2082&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2082",
       "published_at": "2026-11-05T15:43:41+03:00",
       "source_published_at": "05/11/2026 15:43:41"
@@ -1126,7 +1430,7 @@
     {
       "title": "Addendum announcement from Mulkia Investment Company related to cash dividend distributions announcement to the Unitholders of Mulkia Gulf Real Estate REIT fund",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99058&anCat=1&cs=4336&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4336",
       "published_at": "2026-11-05T15:40:28+03:00",
       "source_published_at": "05/11/2026 15:40:28"
@@ -1134,7 +1438,7 @@
     {
       "title": "Scientific and Medical Equipment House Company announces the starting date of electronic voting on the agenda items of the Extraordinary General Assembly 5Th Meeting (first meeting) Reminder Announcement",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99057&anCat=1&cs=4014&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4014",
       "published_at": "2026-11-05T15:38:13+03:00",
       "source_published_at": "05/11/2026 15:38:13"
@@ -1142,7 +1446,7 @@
     {
       "title": "Al-Battal Chemical Industries Factory Company announces the latest developments regarding the limited fire that occurred at one of its manufacturing facilities, confirming the receipt of an additional insurance compensation payment.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99056&anCat=1&cs=9623&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9623",
       "published_at": "2026-11-05T09:50:15+03:00",
       "source_published_at": "05/11/2026 09:50:15"
@@ -1150,7 +1454,7 @@
     {
       "title": "Gulf General Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99055&anCat=1&cs=8260&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8260",
       "published_at": "2026-11-05T09:49:19+03:00",
       "source_published_at": "05/11/2026 09:49:19"
@@ -1158,7 +1462,7 @@
     {
       "title": "CHUBB Arabia Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99054&anCat=1&cs=8240&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8240",
       "published_at": "2026-11-05T09:46:44+03:00",
       "source_published_at": "05/11/2026 09:46:44"
@@ -1166,7 +1470,7 @@
     {
       "title": "Southern Province Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99053&anCat=1&cs=3050&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3050",
       "published_at": "2026-11-05T09:44:03+03:00",
       "source_published_at": "05/11/2026 09:44:03"
@@ -1174,7 +1478,7 @@
     {
       "title": "Qassim Cement Company Announces the Resolution of its Board of Directors to Distribute Cash Dividends to its Shareholders for the Third Quarter of Year 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99052&anCat=1&cs=3040&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3040",
       "published_at": "2026-11-05T09:42:30+03:00",
       "source_published_at": "05/11/2026 09:42:30"
@@ -1182,7 +1486,7 @@
     {
       "title": "Saudi Enaya Cooperative Insurance Co. announces its Interim Financial Results for the period ending on 30-09-2026 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99051&anCat=1&cs=8311&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8311",
       "published_at": "2026-11-05T09:42:09+03:00",
       "source_published_at": "05/11/2026 09:42:09"
@@ -1190,7 +1494,7 @@
     {
       "title": "Sinad Holding Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99050&anCat=1&cs=4080&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4080",
       "published_at": "2026-11-05T09:39:11+03:00",
       "source_published_at": "05/11/2026 09:39:11"
@@ -1198,7 +1502,7 @@
     {
       "title": "Addendum Announcement from Amwaj International Co. Regarding the Date of the Appellate Judgment in Its Favor in Its Claim Against Baz United Trading Co.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99049&anCat=1&cs=9537&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9537",
       "published_at": "2026-11-05T09:37:26+03:00",
       "source_published_at": "05/11/2026 09:37:26"
@@ -1206,7 +1510,7 @@
     {
       "title": "Saudi Ground Services Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99048&anCat=1&cs=4031&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4031",
       "published_at": "2026-11-05T09:37:04+03:00",
       "source_published_at": "05/11/2026 09:37:04"
@@ -1214,7 +1518,7 @@
     {
       "title": "Addendum Announcement from Amwaj International Co. Regarding the Date of the Appellate Judgment in Its Favor in Its Claim Against Adwa Al Qamar Modern Home Appliances Company",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99047&anCat=1&cs=9537&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9537",
       "published_at": "2026-11-05T09:35:55+03:00",
       "source_published_at": "05/11/2026 09:35:55"
@@ -1222,7 +1526,7 @@
     {
       "title": "Sahara International Petrochemical Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99046&anCat=1&cs=2310&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2310",
       "published_at": "2026-11-05T09:34:33+03:00",
       "source_published_at": "05/11/2026 09:34:33"
@@ -1230,7 +1534,7 @@
     {
       "title": "Mayar Holding Company Announces the Latest Developments Regarding Its Previous Announcement on the Appointment by Its Subsidiary Ziorak of Middle East Financial Investment Company (MEFIC Capital) as Financial Advisor to Arrange the Offering and Listing of Ziorak Shares on the Parallel Market (Nomu)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99045&anCat=1&cs=9568&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9568",
       "published_at": "2026-11-05T09:30:08+03:00",
       "source_published_at": "05/11/2026 09:30:08"
@@ -1238,7 +1542,7 @@
     {
       "title": "Cherry Trading Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99044&anCat=1&cs=4265&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4265",
       "published_at": "2026-11-05T09:29:52+03:00",
       "source_published_at": "05/11/2026 09:29:52"
@@ -1246,7 +1550,7 @@
     {
       "title": "Multi Business Group Co. Announces Renewal of its Credit Facility Agreement (Islamic Shariah-compliant)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99043&anCat=1&cs=9619&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9619",
       "published_at": "2026-11-05T09:27:57+03:00",
       "source_published_at": "05/11/2026 09:27:57"
@@ -1254,7 +1558,7 @@
     {
       "title": "Al-Muhafaza Education Company announces receipt of a notification regarding the award of a lease agreement for the investment of land with Tatweer Buildings Company.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99042&anCat=1&cs=9598&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9598",
       "published_at": "2026-11-05T09:27:18+03:00",
       "source_published_at": "05/11/2026 09:27:18"
@@ -1262,7 +1566,7 @@
     {
       "title": "Rimath Hospitality Co. Announces the Results of the Extraordinary General Assembly Meeting (First Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99041&anCat=1&cs=9579&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9579",
       "published_at": "2026-11-05T09:26:23+03:00",
       "source_published_at": "05/11/2026 09:26:23"
@@ -1270,7 +1574,7 @@
     {
       "title": "Abdulaziz Bin Ahmed Altwijri Trading Co. Announces the Results of the Ordinary General Assembly Meeting (First Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99040&anCat=1&cs=9651&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9651",
       "published_at": "2026-11-05T09:23:22+03:00",
       "source_published_at": "05/11/2026 09:23:22"
@@ -1278,7 +1582,7 @@
     {
       "title": "Quara Finance Co. Announces Appointment of a Board Member",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99039&anCat=1&cs=9596&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9596",
       "published_at": "2026-11-05T09:21:42+03:00",
       "source_published_at": "05/11/2026 09:21:42"
@@ -1286,7 +1590,7 @@
     {
       "title": "United Mining Industries Company announces, on behalf of Knauf International GmbH, the latest developments regarding the publication of the board circular",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99038&anCat=1&cs=9583&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9583",
       "published_at": "2026-11-05T09:21:27+03:00",
       "source_published_at": "05/11/2026 09:21:27"
@@ -1294,7 +1598,7 @@
     {
       "title": "Marble Design Company Announces the Latest Developments Regarding the Board of Directors' Approval to Transfer from the Parallel Market (Nomu) to the Main Market (TASI), through the Publication of the Board of Directors' Report for the Fiscal Year 2025G.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99037&anCat=1&cs=9575&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9575",
       "published_at": "2026-11-05T09:20:32+03:00",
       "source_published_at": "05/11/2026 09:20:32"
@@ -1302,7 +1606,7 @@
     {
       "title": "The Savola Group Announces the Board of Directors' Decision to Distribute Interim Cash Dividends to Shareholders for the First Half of 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99036&anCat=1&cs=2050&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2050",
       "published_at": "2026-11-05T09:18:43+03:00",
       "source_published_at": "05/11/2026 09:18:43"
@@ -1310,7 +1614,7 @@
     {
       "title": "Naseej for Technology Co. Announces Contract Sign Off with Ministry of Human Resources and Social Development",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99035&anCat=1&cs=9538&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9538",
       "published_at": "2026-11-05T09:18:01+03:00",
       "source_published_at": "05/11/2026 09:18:01"
@@ -1318,7 +1622,7 @@
     {
       "title": "Al Ashghal Al Moysra Co. Announces Contract Sign Off with Royal Commission for Jubail and Yanbu",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99034&anCat=1&cs=9608&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9608",
       "published_at": "2026-11-05T09:17:15+03:00",
       "source_published_at": "05/11/2026 09:17:15"
@@ -1326,7 +1630,7 @@
     {
       "title": "Edarat Communication and Information Technology Co. (EDARAT) Announces the Board of Directors' Resolution to Form the Remuneration and Nominations Committee",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99033&anCat=1&cs=9557&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9557",
       "published_at": "2026-11-05T09:16:32+03:00",
       "source_published_at": "05/11/2026 09:16:32"
@@ -1334,7 +1638,7 @@
     {
       "title": "United Electronics Company (eXtra) Announces the Results of the Extraordinary General Assembly Meeting (Second Meeting)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99032&anCat=1&cs=4003&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4003",
       "published_at": "2026-11-05T09:15:30+03:00",
       "source_published_at": "05/11/2026 09:15:30"
@@ -1342,7 +1646,7 @@
     {
       "title": "Savola Group announces its Interim Financial Results for the Period Ended on 30/09/2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99031&anCat=1&cs=2050&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2050",
       "published_at": "2026-11-05T09:15:29+03:00",
       "source_published_at": "05/11/2026 09:15:29"
@@ -1350,7 +1654,7 @@
     {
       "title": "Saudi Steel Pipe Co.  announces its Interim Financial results for the Period Ending on 30-09-2026 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99030&anCat=1&cs=1320&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1320",
       "published_at": "2026-11-05T09:14:16+03:00",
       "source_published_at": "05/11/2026 09:14:16"
@@ -1358,7 +1662,7 @@
     {
       "title": "Riyadh Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99029&anCat=1&cs=3092&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3092",
       "published_at": "2026-11-05T09:09:14+03:00",
       "source_published_at": "05/11/2026 09:09:14"
@@ -1366,7 +1670,7 @@
     {
       "title": "Al-Etihad Cooperative Insurance Co. Announces its accumulated loses reaching 50.4 % of its capital",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99028&anCat=1&cs=8170&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8170",
       "published_at": "2026-11-05T09:08:39+03:00",
       "source_published_at": "05/11/2026 09:08:39"
@@ -1374,7 +1678,7 @@
     {
       "title": "Amana Cooperative Insurance Co. Announces its accumulated loses reaching 54.90 % of its capital",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99027&anCat=1&cs=8310&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8310",
       "published_at": "2026-11-05T09:06:05+03:00",
       "source_published_at": "05/11/2026 09:06:05"
@@ -1382,7 +1686,7 @@
     {
       "title": "Amana Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99026&anCat=1&cs=8310&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8310",
       "published_at": "2026-11-05T09:03:54+03:00",
       "source_published_at": "05/11/2026 09:03:54"
@@ -1390,7 +1694,7 @@
     {
       "title": "Al-Jouf Agricultural Development Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99025&anCat=1&cs=6070&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6070",
       "published_at": "2026-11-05T08:59:56+03:00",
       "source_published_at": "05/11/2026 08:59:56"
@@ -1398,7 +1702,7 @@
     {
       "title": "Supplementary Announcement by Southern Province Cement Company Regarding the Opening of Nomination for Membership of the Board of Directors for the Upcoming Term",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99024&anCat=1&cs=3050&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3050",
       "published_at": "2026-11-05T08:58:29+03:00",
       "source_published_at": "05/11/2026 08:58:29"
@@ -1406,7 +1710,7 @@
     {
       "title": "Cherry Trading Company Announcement Regarding the Termination of the Acting CEO’s Assignment and the Appointment of a New Chief Executive Officer.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99023&anCat=1&cs=4265&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4265",
       "published_at": "2026-11-05T08:56:34+03:00",
       "source_published_at": "05/11/2026 08:56:34"
@@ -1414,7 +1718,7 @@
     {
       "title": "Cherry Trading Company Announces the Appointment of a Member to the Nomination and Remuneration Committee.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99022&anCat=1&cs=4265&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4265",
       "published_at": "2026-11-05T08:56:25+03:00",
       "source_published_at": "05/11/2026 08:56:25"
@@ -1422,7 +1726,7 @@
     {
       "title": "Allied Cooperative Insurance Group announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99021&anCat=1&cs=8150&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8150",
       "published_at": "2026-11-05T08:51:41+03:00",
       "source_published_at": "05/11/2026 08:51:41"
@@ -1430,7 +1734,7 @@
     {
       "title": "Aljazira Takaful Taawuni Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99020&anCat=1&cs=8012&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8012",
       "published_at": "2026-11-05T08:46:46+03:00",
       "source_published_at": "05/11/2026 08:46:46"
@@ -1438,7 +1742,7 @@
     {
       "title": "Dar Albalad for Business Solutions Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99019&anCat=1&cs=7205&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "7205",
       "published_at": "2026-11-05T08:45:34+03:00",
       "source_published_at": "05/11/2026 08:45:34"
@@ -1446,7 +1750,7 @@
     {
       "title": "Filling & Packing Materials MFG. Co. (FIPCO) announces the Consolidated Interim Financial results for the period ended Sep. 30, 2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99018&anCat=1&cs=2180&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2180",
       "published_at": "2026-11-05T08:42:43+03:00",
       "source_published_at": "05/11/2026 08:42:43"
@@ -1454,7 +1758,7 @@
     {
       "title": "Miahona Co. announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99017&anCat=1&cs=2084&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2084",
       "published_at": "2026-11-05T08:41:27+03:00",
       "source_published_at": "05/11/2026 08:41:27"
@@ -1462,7 +1766,7 @@
     {
       "title": "Taiba Investments Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99016&anCat=1&cs=4090&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4090",
       "published_at": "2026-11-05T08:39:39+03:00",
       "source_published_at": "05/11/2026 08:39:39"
@@ -1470,7 +1774,7 @@
     {
       "title": "Al-Etihad Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99015&anCat=1&cs=8170&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8170",
       "published_at": "2026-11-05T08:38:09+03:00",
       "source_published_at": "05/11/2026 08:38:09"
@@ -1478,7 +1782,7 @@
     {
       "title": "AFG International Co (AFG Retail) Announces Its Financial Results for the Period Ending on 30 September 2026 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99014&anCat=1&cs=4240&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4240",
       "published_at": "2026-11-05T08:34:16+03:00",
       "source_published_at": "05/11/2026 08:34:16"
@@ -1486,7 +1790,7 @@
     {
       "title": "Saudi Aramco Base Oil Company - Luberef announces the formation of the Project Execution Committee.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99013&anCat=1&cs=2223&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2223",
       "published_at": "2026-11-05T08:30:40+03:00",
       "source_published_at": "05/11/2026 08:30:40"
@@ -1494,7 +1798,7 @@
     {
       "title": "Aljazira Bank announces the commencement of the offer of its SAR denominated tier 2 capital sukuk under its tier 2 capital sukuk programme",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99012&anCat=1&cs=1020&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1020",
       "published_at": "2026-11-05T08:23:32+03:00",
       "source_published_at": "05/11/2026 08:23:32"
@@ -1502,7 +1806,7 @@
     {
       "title": "Red Sea International Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99011&anCat=1&cs=4230&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4230",
       "published_at": "2026-11-05T08:20:23+03:00",
       "source_published_at": "05/11/2026 08:20:23"
@@ -1510,7 +1814,7 @@
     {
       "title": "AlSaif Stores for Development and Investment Company “AlSaif Gallery” Announces the Financial Impact of Adjustments to Energy and Water Tariffs.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99010&anCat=1&cs=4192&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4192",
       "published_at": "2026-11-05T08:14:18+03:00",
       "source_published_at": "05/11/2026 08:14:18"
@@ -1518,7 +1822,7 @@
     {
       "title": "Dr. Soliman Abdel Kader Fakeeh Hospital Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99009&anCat=1&cs=4017&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4017",
       "published_at": "2026-11-05T08:09:12+03:00",
       "source_published_at": "05/11/2026 08:09:12"
@@ -1526,7 +1830,7 @@
     {
       "title": "The Company for Cooperative Insurance announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99008&anCat=1&cs=8010&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8010",
       "published_at": "2026-11-05T08:00:31+03:00",
       "source_published_at": "05/11/2026 08:00:31"
@@ -1534,7 +1838,7 @@
     {
       "title": "Aljazira Bank announces its intention to issue SAR denominated tier 2 capital sukuk under its tier 2 capital sukuk programme",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99007&anCat=1&cs=1020&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1020",
       "published_at": "2026-11-05T08:00:20+03:00",
       "source_published_at": "05/11/2026 08:00:20"
@@ -1542,7 +1846,7 @@
     {
       "title": "Abdullah Saad Mohammed Abo Moati for Bookstores Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Six Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99006&anCat=1&cs=4191&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4191",
       "published_at": "2026-11-05T08:00:11+03:00",
       "source_published_at": "05/11/2026 08:00:11"
@@ -1550,7 +1854,7 @@
     {
       "title": "Arabia Insurance Cooperative Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99005&anCat=1&cs=8160&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8160",
       "published_at": "2026-11-05T08:00:01+03:00",
       "source_published_at": "05/11/2026 08:00:01"
@@ -1558,7 +1862,7 @@
     {
       "title": "Aldawaa Medical Services Co. announces the board of director’s decision to distribute cash dividends for The Second Quarter of the year ended 31/12/2026.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99004&anCat=1&cs=4163&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4163",
       "published_at": "2026-11-04T16:30:35+03:00",
       "source_published_at": "04/11/2026 16:30:35"
@@ -1566,7 +1870,7 @@
     {
       "title": "Aldawaa Medical Services Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99003&anCat=1&cs=4163&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4163",
       "published_at": "2026-11-04T16:02:33+03:00",
       "source_published_at": "04/11/2026 16:02:33"
@@ -1574,7 +1878,7 @@
     {
       "title": "Arabian Company for Agricultural and Industrial Investment  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99002&anCat=1&cs=2287&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2287",
       "published_at": "2026-11-04T15:56:50+03:00",
       "source_published_at": "04/11/2026 15:56:50"
@@ -1582,7 +1886,7 @@
     {
       "title": "Marble Design Factory Company (Marble Design) Announces the Change of the Company’s Name.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99001&anCat=1&cs=9575&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9575",
       "published_at": "2026-11-04T15:50:05+03:00",
       "source_published_at": "04/11/2026 15:50:05"
@@ -1590,7 +1894,7 @@
     {
       "title": "Dar Alarkan Real Estate Development Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=99000&anCat=1&cs=4300&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4300",
       "published_at": "2026-11-04T15:48:12+03:00",
       "source_published_at": "04/11/2026 15:48:12"
@@ -1598,7 +1902,7 @@
     {
       "title": "Saudi Printing and Packaging Co. Announces the Board's Recommendation to Increase the Capital by Offering Right Issues",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98999&anCat=1&cs=4270&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4270",
       "published_at": "2026-11-04T15:46:28+03:00",
       "source_published_at": "04/11/2026 15:46:28"
@@ -1606,7 +1910,7 @@
     {
       "title": "Saudi Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98998&anCat=1&cs=3030&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3030",
       "published_at": "2026-11-04T15:43:39+03:00",
       "source_published_at": "04/11/2026 15:43:39"
@@ -1614,7 +1918,7 @@
     {
       "title": "Saleh Abdulaziz Al Rashed and Sons Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98997&anCat=1&cs=1324&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1324",
       "published_at": "2026-11-04T15:41:25+03:00",
       "source_published_at": "04/11/2026 15:41:25"
@@ -1622,7 +1926,7 @@
     {
       "title": "Announcement by Albilab Capital regarding Non-Fundamental changes to Albilad MSCI Saudi Equity ETF",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98996&anCat=1&cs=9412&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9412",
       "published_at": "2026-11-04T15:39:09+03:00",
       "source_published_at": "04/11/2026 15:39:09"
@@ -1630,7 +1934,7 @@
     {
       "title": "Saudi Aramco Base Oil Company- Luberef announces its Interim Financial results for the Period Ending on 2026-09-30 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98995&anCat=1&cs=2223&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2223",
       "published_at": "2026-11-04T15:35:13+03:00",
       "source_published_at": "04/11/2026 15:35:13"
@@ -1638,7 +1942,7 @@
     {
       "title": "Corrective announcement from  Middle East Specialized Cables Company regarding the distribution of cash dividends to shareholders for the second half of the fiscal year 2026.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98994&anCat=1&cs=2370&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2370",
       "published_at": "2026-11-04T09:54:04+03:00",
       "source_published_at": "04/11/2026 09:54:04"
@@ -1646,7 +1950,7 @@
     {
       "title": "Amwaj International Company Announces the Latest Developments in Its Lawsuit Following the Issuance of an Appellate Judgment in Its Favor, Upholding the Order Requiring Adwa Al Qamar Modern Home Appliances Company to Pay SAR 7,592,306.84.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98993&anCat=1&cs=9537&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9537",
       "published_at": "2026-11-04T09:51:41+03:00",
       "source_published_at": "04/11/2026 09:51:41"
@@ -1654,7 +1958,7 @@
     {
       "title": "Amwaj International Company Announces the Latest Developments in Its Lawsuit Following the Issuance of an Appellate Judgment in Its Favor, Upholding the Order Requiring Baz United Trading Company to Pay SAR 14,409,024.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98992&anCat=1&cs=9537&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9537",
       "published_at": "2026-11-04T09:50:11+03:00",
       "source_published_at": "04/11/2026 09:50:11"
@@ -1662,7 +1966,7 @@
     {
       "title": "Riyal Investment & Development Co. Announces the Signing of a Framework Agreement with MASA Services Company for Operation & Maintenance with an Value of SAR 31,050,000.00 (Inclusive of VAT).",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98991&anCat=1&cs=9584&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9584",
       "published_at": "2026-11-04T09:30:40+03:00",
       "source_published_at": "04/11/2026 09:30:40"
@@ -1670,7 +1974,7 @@
     {
       "title": "Albilad Capital announcement on the process of re-balancing the Sukuk basket for Albilad Saudi Sovereign Sukuk ETF",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98990&anCat=1&cs=9403&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9403",
       "published_at": "2026-11-04T09:16:19+03:00",
       "source_published_at": "04/11/2026 09:16:19"
@@ -1678,7 +1982,7 @@
     {
       "title": "Sure Global Tech Company Announces That Its Subsidiary (SurePay) Has Obtained the Technical Certificate for Payment Technical Service Providers (PTSP) for E-Commerce Payments",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98989&anCat=1&cs=9550&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9550",
       "published_at": "2026-11-04T09:03:43+03:00",
       "source_published_at": "04/11/2026 09:03:43"
@@ -1686,7 +1990,7 @@
     {
       "title": "Dar Almarkabah for Renting Cars Co. Announces Appointment Audit Committee Member",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98988&anCat=1&cs=9577&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9577",
       "published_at": "2026-11-04T09:00:16+03:00",
       "source_published_at": "04/11/2026 09:00:16"
@@ -1694,7 +1998,7 @@
     {
       "title": "Dar Almarkabah for Renting Cars Co. Announces Appointment of a Board Member",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98987&anCat=1&cs=9577&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "9577",
       "published_at": "2026-11-04T08:59:03+03:00",
       "source_published_at": "04/11/2026 08:59:03"
@@ -1702,7 +2006,7 @@
     {
       "title": "Sustained Infrastructure Holding Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98986&anCat=1&cs=2190&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2190",
       "published_at": "2026-11-04T08:55:46+03:00",
       "source_published_at": "04/11/2026 08:55:46"
@@ -1710,7 +2014,7 @@
     {
       "title": "Tabuk Cement Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98985&anCat=1&cs=3090&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "3090",
       "published_at": "2026-11-04T08:53:47+03:00",
       "source_published_at": "04/11/2026 08:53:47"
@@ -1718,7 +2022,7 @@
     {
       "title": "Rabigh Refining and Petrochemical Co. (Petro Rabigh) Announces the Appointment of a Board Member in the Vacant Seat",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98984&anCat=1&cs=2380&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2380",
       "published_at": "2026-11-04T08:53:36+03:00",
       "source_published_at": "04/11/2026 08:53:36"
@@ -1726,7 +2030,7 @@
     {
       "title": "Retal Urban Development Company announces its interim financial results for the period ended 30 September 2026 (nine months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98983&anCat=1&cs=4322&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4322",
       "published_at": "2026-11-04T08:50:55+03:00",
       "source_published_at": "04/11/2026 08:50:55"
@@ -1734,7 +2038,7 @@
     {
       "title": "Flynas Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98982&anCat=1&cs=4264&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4264",
       "published_at": "2026-11-04T08:50:28+03:00",
       "source_published_at": "04/11/2026 08:50:28"
@@ -1742,7 +2046,7 @@
     {
       "title": "AYYAN Investment Co. Announces updates on Decrease of the Company’s Capital File at CMA",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98981&anCat=1&cs=2140&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2140",
       "published_at": "2026-11-04T08:47:31+03:00",
       "source_published_at": "04/11/2026 08:47:31"
@@ -1750,7 +2054,7 @@
     {
       "title": "Tamkeen Human Resource Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98980&anCat=1&cs=1835&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1835",
       "published_at": "2026-11-04T08:45:32+03:00",
       "source_published_at": "04/11/2026 08:45:32"
@@ -1758,7 +2062,7 @@
     {
       "title": "AYYAN Investment Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98979&anCat=1&cs=2140&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2140",
       "published_at": "2026-11-04T08:34:25+03:00",
       "source_published_at": "04/11/2026 08:34:25"
@@ -1766,7 +2070,7 @@
     {
       "title": "Saudi Arabian Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98978&anCat=1&cs=8100&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8100",
       "published_at": "2026-11-04T08:32:08+03:00",
       "source_published_at": "04/11/2026 08:32:08"
@@ -1774,7 +2078,7 @@
     {
       "title": "Salama Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98977&anCat=1&cs=8050&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8050",
       "published_at": "2026-11-04T08:25:18+03:00",
       "source_published_at": "04/11/2026 08:25:18"
@@ -1782,7 +2086,7 @@
     {
       "title": "Armah Sports Company (Armah) announces that the auction for the purchase of a land plot located on Anas Ibn Malik Road in Al Sahafah District, in Riyadh city, has been awarded to the Company. The auction was conducted through the Infath Auctions Platform, affiliated with the Entrustment and Liquidation Center (Infath).",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98976&anCat=1&cs=6022&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6022",
       "published_at": "2026-11-04T08:25:12+03:00",
       "source_published_at": "04/11/2026 08:25:12"
@@ -1790,7 +2094,7 @@
     {
       "title": "Nofoth Food Products Co. announces the board of director’s decision to distribute cash dividends for the Third quarter of 2026",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98975&anCat=1&cs=2288&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2288",
       "published_at": "2026-11-04T08:20:58+03:00",
       "source_published_at": "04/11/2026 08:20:58"
@@ -1798,7 +2102,7 @@
     {
       "title": "Nofoth Food Products Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98974&anCat=1&cs=2288&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2288",
       "published_at": "2026-11-04T08:19:26+03:00",
       "source_published_at": "04/11/2026 08:19:26"
@@ -1806,7 +2110,7 @@
     {
       "title": "Middle East Pharmaceutical Industries Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98973&anCat=1&cs=4016&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4016",
       "published_at": "2026-11-04T08:19:08+03:00",
       "source_published_at": "04/11/2026 08:19:08"
@@ -1814,7 +2118,7 @@
     {
       "title": "Almasane Alkobra Mining Company (AMAK) Announces its Intention to Hold a Shareholders’ Meeting to Present its Strategy and Future Outlook",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98972&anCat=1&cs=1322&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "1322",
       "published_at": "2026-11-04T08:16:14+03:00",
       "source_published_at": "04/11/2026 08:16:14"
@@ -1822,7 +2126,7 @@
     {
       "title": "Alamar Foods Co. announces the Board of Directors’ decision to distribute cash dividends for Q3 2026.",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98971&anCat=1&cs=6014&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6014",
       "published_at": "2026-11-04T08:10:00+03:00",
       "source_published_at": "04/11/2026 08:10:00"
@@ -1830,7 +2134,7 @@
     {
       "title": "Alamar Foods Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 (Nine Months)",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98970&anCat=1&cs=6014&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "6014",
       "published_at": "2026-11-04T08:07:59+03:00",
       "source_published_at": "04/11/2026 08:07:59"
@@ -1838,7 +2142,7 @@
     {
       "title": "National Gas and Industrialization Company Holding  announces its Interim Financial Results for the Period Ended on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98969&anCat=1&cs=2080&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "2080",
       "published_at": "2026-11-04T08:05:20+03:00",
       "source_published_at": "04/11/2026 08:05:20"
@@ -1846,7 +2150,7 @@
     {
       "title": "Gas Arabian Services Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98968&anCat=1&cs=4146&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4146",
       "published_at": "2026-11-04T08:00:22+03:00",
       "source_published_at": "04/11/2026 08:00:22"
@@ -1854,7 +2158,7 @@
     {
       "title": "Wataniya Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98967&anCat=1&cs=8300&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "8300",
       "published_at": "2026-11-04T08:00:12+03:00",
       "source_published_at": "04/11/2026 08:00:12"
@@ -1862,264 +2166,16 @@
     {
       "title": "SAL Saudi Logistics Services Co. Announces Hosting its Virtual Q3 and Nine Months 2026 Earnings Conference Call to Discuss the Financial Results with Financial Analysts and Investors",
       "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98966&anCat=1&cs=4263&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
+      "retrieved_at": "2026-11-11T12:44:27Z",
       "symbol": "4263",
       "published_at": "2026-11-04T08:00:01+03:00",
       "source_published_at": "04/11/2026 08:00:01"
-    },
-    {
-      "title": "Middle East Healthcare Company (Saudi German Health) Announcement to Invite its Shareholders to Attend the Extraordinary General Assembly (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98965&anCat=1&cs=4009&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4009",
-      "published_at": "2026-11-03T17:46:31+03:00",
-      "source_published_at": "03/11/2026 17:46:31"
-    },
-    {
-      "title": "Arabian United Float  Glass Co. announces the board of director’s decision to distribute cash dividends for The first half of the fiscal year 2026",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98964&anCat=1&cs=9611&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "9611",
-      "published_at": "2026-11-03T16:13:15+03:00",
-      "source_published_at": "03/11/2026 16:13:15"
-    },
-    {
-      "title": "Arabian United Float  Glass Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98963&anCat=1&cs=9611&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "9611",
-      "published_at": "2026-11-03T16:11:50+03:00",
-      "source_published_at": "03/11/2026 16:11:50"
-    },
-    {
-      "title": "Announcement by Eastern Development Company regarding its preliminary financial results for the financial period ending on 30/09/2026 (nine months)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98962&anCat=1&cs=6060&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "6060",
-      "published_at": "2026-11-03T16:06:16+03:00",
-      "source_published_at": "03/11/2026 16:06:16"
-    },
-    {
-      "title": "Clarification announcement from Naseej International Trading Company regarding the Sharia Compliance of its banking dealings",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98961&anCat=1&cs=1213&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "1213",
-      "published_at": "2026-11-03T15:59:49+03:00",
-      "source_published_at": "03/11/2026 15:59:49"
-    },
-    {
-      "title": "Yanbu Cement Company announces the Interim Condensed Consolidated Financial Results for the period ended on 30-09-2026 (Nine months)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98960&anCat=1&cs=3060&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "3060",
-      "published_at": "2026-11-03T15:58:29+03:00",
-      "source_published_at": "03/11/2026 15:58:29"
-    },
-    {
-      "title": "Takween Advanced Industries Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98959&anCat=1&cs=1201&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "1201",
-      "published_at": "2026-11-03T15:53:40+03:00",
-      "source_published_at": "03/11/2026 15:53:40"
-    },
-    {
-      "title": "Middle East Specialized Cables Co. announces the board of director’s decision to distribute cash dividends for the second half of the fiscal year 2026",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98958&anCat=1&cs=2370&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "2370",
-      "published_at": "2026-11-03T15:48:32+03:00",
-      "source_published_at": "03/11/2026 15:48:32"
-    },
-    {
-      "title": "Alkhorayef Water and Power Technologies Co.  announces its Interim Financial results for the Period Ending on 30-09-2026 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98957&anCat=1&cs=2081&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "2081",
-      "published_at": "2026-11-03T15:47:14+03:00",
-      "source_published_at": "03/11/2026 15:47:14"
-    },
-    {
-      "title": "The Power and Water Utility Company for Jubail and Yanbu  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98956&anCat=1&cs=2083&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "2083",
-      "published_at": "2026-11-03T15:42:32+03:00",
-      "source_published_at": "03/11/2026 15:42:32"
-    },
-    {
-      "title": "Gulf Union Alahlia Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98955&anCat=1&cs=8120&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "8120",
-      "published_at": "2026-11-03T09:58:07+03:00",
-      "source_published_at": "03/11/2026 09:58:07"
-    },
-    {
-      "title": "Molan Steel Co. Announces the Results of the Extraordinary General Assembly Meeting (First Meeting)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98954&anCat=1&cs=9553&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "9553",
-      "published_at": "2026-11-03T09:47:58+03:00",
-      "source_published_at": "03/11/2026 09:47:58"
-    },
-    {
-      "title": "Alramz Real Estate Co. (Alramz) announces its interim consolidated financial results for the period ended 30-09-2026 (Nine Months)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98953&anCat=1&cs=4327&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4327",
-      "published_at": "2026-11-03T09:21:00+03:00",
-      "source_published_at": "03/11/2026 09:21:00"
-    },
-    {
-      "title": "Arabian Plastic Industrial Company announces the amendment of the tariffs of electricity and water service in accordance with the governance procedures of adjusting the prices of energy and water products.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98952&anCat=1&cs=9548&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "9548",
-      "published_at": "2026-11-03T08:47:31+03:00",
-      "source_published_at": "03/11/2026 08:47:31"
-    },
-    {
-      "title": "Dallah Healthcare Company announces the board of directors’ resolution to distribute interim cash dividends to shareholders for the third quarter of 2026.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98951&anCat=1&cs=4004&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4004",
-      "published_at": "2026-11-03T08:47:18+03:00",
-      "source_published_at": "03/11/2026 08:47:18"
-    },
-    {
-      "title": "The National Agricultural Development Company (NADEC) Announces the Board of Directors’ Approval of its Strategic Plan for 2027–2031",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98950&anCat=1&cs=6010&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "6010",
-      "published_at": "2026-11-03T08:45:31+03:00",
-      "source_published_at": "03/11/2026 08:45:31"
-    },
-    {
-      "title": "Etihad GO Telecom Co. (GO) announces the signing of a binding agreement valued at SAR 76.85 million with Izdihar Alraqmiah Company for Information Technology (ezditek) to lease dedicated space in a data center to provide Artificial Intelligence (AI) services.",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98949&anCat=1&cs=7040&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "7040",
-      "published_at": "2026-11-03T08:45:19+03:00",
-      "source_published_at": "03/11/2026 08:45:19"
-    },
-    {
-      "title": "Al Rajhi Company for Cooperative Insurance (Al Rajhi Takaful) Announces the Affirmation of Its (A-) Credit Rating with a Stable Outlook by S&P Global Ratings",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98948&anCat=1&cs=8230&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "8230",
-      "published_at": "2026-11-03T08:42:33+03:00",
-      "source_published_at": "03/11/2026 08:42:33"
-    },
-    {
-      "title": "Retal Urban Development Co. announces updates on its offers to the other shareholders of Ajdan Real Estate Development Company to Acquire all of their shares in Ajdan",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98947&anCat=1&cs=4322&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4322",
-      "published_at": "2026-11-03T08:40:55+03:00",
-      "source_published_at": "03/11/2026 08:40:55"
-    },
-    {
-      "title": "Alwasail Industrial Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98946&anCat=1&cs=4148&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4148",
-      "published_at": "2026-11-03T08:40:40+03:00",
-      "source_published_at": "03/11/2026 08:40:40"
-    },
-    {
-      "title": "The Mediterranean and Gulf Insurance and Reinsurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98945&anCat=1&cs=8030&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "8030",
-      "published_at": "2026-11-03T08:34:13+03:00",
-      "source_published_at": "03/11/2026 08:34:13"
-    },
-    {
-      "title": "Alandalus Property Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98944&anCat=1&cs=4320&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4320",
-      "published_at": "2026-11-03T08:34:00+03:00",
-      "source_published_at": "03/11/2026 08:34:00"
-    },
-    {
-      "title": "Malath Cooperative Insurance Co. announces its Interim Financial Results for the period ending on  2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98943&anCat=1&cs=8020&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "8020",
-      "published_at": "2026-11-03T08:30:40+03:00",
-      "source_published_at": "03/11/2026 08:30:40"
-    },
-    {
-      "title": "Basic Chemical Industries Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98942&anCat=1&cs=1210&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "1210",
-      "published_at": "2026-11-03T08:29:50+03:00",
-      "source_published_at": "03/11/2026 08:29:50"
-    },
-    {
-      "title": "SAL Saudi Logistics Services Co. announces the board of director’s decision to distribute cash dividends for Third Quarter of the Fiscal Year 2026",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98941&anCat=1&cs=4263&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4263",
-      "published_at": "2026-11-03T08:26:32+03:00",
-      "source_published_at": "03/11/2026 08:26:32"
-    },
-    {
-      "title": "Dallah Healthcare Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98940&anCat=1&cs=4004&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4004",
-      "published_at": "2026-11-03T08:24:37+03:00",
-      "source_published_at": "03/11/2026 08:24:37"
-    },
-    {
-      "title": "Dar Al Majed Real Estate Co.  announces its Interim Financial results for the Period Ending on 2026-09-30 ( Nine Months )",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98939&anCat=1&cs=4326&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4326",
-      "published_at": "2026-11-03T08:15:57+03:00",
-      "source_published_at": "03/11/2026 08:15:57"
-    },
-    {
-      "title": "SAL Saudi Logistics Services Co. announces its interim Consolidated Financial Results for the period ended 30-09-2026 (Nine Months)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98938&anCat=1&cs=4263&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4263",
-      "published_at": "2026-11-03T08:12:28+03:00",
-      "source_published_at": "03/11/2026 08:12:28"
-    },
-    {
-      "title": "Alramz Real Estate Company Announces the Latest Developments regarding White Land Tax Notices and the Cancellation of Approximately (96%) of the Total Invoiced Amount",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98937&anCat=1&cs=4327&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "4327",
-      "published_at": "2026-11-03T08:08:04+03:00",
-      "source_published_at": "03/11/2026 08:08:04"
-    },
-    {
-      "title": "Saudi Arabian Oil Company (“Saudi Aramco” or the “Company”) Announces the Distribution of Base Dividend for the Third Quarter of 2026",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98936&anCat=1&cs=2222&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "2222",
-      "published_at": "2026-11-03T08:01:11+03:00",
-      "source_published_at": "03/11/2026 08:01:11"
-    },
-    {
-      "title": "Saudi Arabian Oil Company (Saudi Aramco) Announces its Interim Financial Results for the Period Ended 2026-09-30 (Nine Months)",
-      "url": "https://www.saudiexchange.sa/wps/portal/saudiexchange/newsandreports/issuer-news/issuer-announcements/issuer-announcements-details/?anId=98935&anCat=1&cs=2222&locale=en",
-      "retrieved_at": "2026-11-10T19:55:01Z",
-      "symbol": "2222",
-      "published_at": "2026-11-03T08:00:13+03:00",
-      "source_published_at": "03/11/2026 08:00:13"
     }
   ],
   "receipt": {
-    "runId": "e686dc62-01c1-4842-bb70-1e8e1b54a157",
-    "attemptedAt": "2026-11-10T19:55:01Z",
+    "runId": "08229ac1-0bb1-4315-92bc-376d10e3790f",
+    "attemptedAt": "2026-11-11T12:44:27Z",
     "status": "content",
-    "count": 264
+    "count": 271
   }
 }
