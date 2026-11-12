@@ -20,7 +20,7 @@
     "health": {
       "prices": "available",
       "news": "available",
-      "filings": "available"
+      "filings": "failed"
     }
   }
 }
