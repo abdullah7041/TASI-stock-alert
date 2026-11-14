@@ -244,3 +244,114 @@ test('a reviewed holding produces one dated evaluation and a newer unresolved no
   expect((await recommendationSummary({...context,ownerId:'another'},now)).history).toEqual([]);
   sqlite.close();
 });
+
+const liveEvaluation = process.env.TASI_RECOMMENDATION_EVALUATION === '1';
+test.skipIf(!liveEvaluation)('the configured model runs the frozen 30-case recommendation evaluation twice',async()=>{
+  const {writeFileSync}=await import('node:fs');
+  const {policy}=await import('@/app/lib/recommendation-core');
+  const {default:config}=await import('../../wrangler.cloudflare.json');
+  const apiKey=process.env.OPENROUTER_API_KEY;
+  const chatModel=config.vars.AGENT_DEFAULT_MODEL;
+  expect(apiKey,'OPENROUTER_API_KEY must be configured').toBeTruthy();
+  expect(chatModel).toBe(process.env.TASI_LLM_MODEL_OPENROUTER);
+  const expected=['BUY','BUY','BUY','ADD','ADD','ADD','HOLD','HOLD','HOLD','REDUCE','REDUCE','REDUCE','SELL','SELL','SELL','WATCH','WATCH','WATCH'];
+  const sectors=['operating','bank','insurer'] as const;
+  const stableFacts=[
+    ['profitability_direction','Operating profit SAR 120m versus SAR 100m; cash conversion 95% versus 80%.','Customer concentration rose from 20% to 25%.'],
+    ['asset_quality','Nonperforming loans 1.4% versus 1.7%; capital adequacy 19% versus 17%.','Funding cost rose from 3% to 3.3%.'],
+    ['service_result_direction','Insurance service result SAR 60m versus SAR 48m; solvency 165% versus 150%.','Claims ratio rose from 62% to 65%.'],
+  ];
+  const realFetch=globalThis.fetch;
+  const runs=[];
+  for(let pass=1;pass<=2;pass++)for(let n=1;n<=30;n++){
+    const id=n<=18?`A${String(n).padStart(2,'0')}`:`B${String(n-18).padStart(2,'0')}`;
+    const action=expected[n-1]??null;
+    const sectorIndex=(n-1)%3, sector=sectors[sectorIndex], [metric,strong,risk]=stableFacts[sectorIndex];
+    const day=n>18||sectorIndex===0?'22':sectorIndex===1?'25':'26';
+    const date=`2026-10-${day}`, now=new Date(date+'T07:00Z');
+    const priceDate=day==='26'?'2026-10-25':day==='25'?'2026-10-22':'2026-10-21';
+    const owned=action!=='BUY'&&action!=='WATCH'&&n!==26;
+    const {db,sqlite}=database();
+    const ownerId='evaluation-owner', symbol='9991', url='https://www.saudiexchange.sa/synthetic/9991';
+    const c={db,ownerId,apiKey,chatModel};
+    const store=new HoldingSecretaryStore(db), evidence=new EvidenceStore(db);
+    let calls=0, responseText=null, requestBody=null, inputFacts=null;
+    const outcome:{result:Awaited<ReturnType<typeof recommendationSummary>>['rows'][number]|null;error:string|null}={result:null,error:null};
+    const severe=n>=13&&n<=15;
+    const mixed=n>=10&&n<=12||n===18;
+    const adverse=['Operating cash flow turned negative, from SAR 95m to −SAR 25m.','Nonperforming loans rose from 1.7% to 5.1%.','Claims ratio rose from 62% to 93%.'][sectorIndex];
+    const failedCase=['Cash conversion fell to −25% and operating cash flow turned negative.','Capital adequacy fell below the confirmed 14% case minimum to 10%.','Solvency fell below the confirmed 130% case minimum to 105%.'][sectorIndex];
+    const reasons=['Sustained positive cash conversion and recurring customer demand.','Asset quality and capital adequacy at or above 14%.','Stable claim costs and solvency at or above 130%.'][sectorIndex];
+    const reconsiderWhen=['Operating cash flow turns negative and cash conversion falls below zero.','Capital adequacy falls below 14%.','Solvency falls below 130%.'][sectorIndex];
+    const unfavorable=[9,16].includes(n);
+    const entry=[7,17].includes(n)?'failed':[8,15,26].includes(n)?'unavailable':'passed';
+    const receipt={runId:id,attemptedAt:date+'T06:00:00Z',count:0,status:'empty' as const};
+    const previous=await (async()=>{
+      try {
+        await new PortfolioStore(db).append(ownerId,{operationId:'opening',kind:'opening_balance',cashSar:100,
+          holdings:owned?[{code:symbol,name:'Synthetic evaluation issuer',shares:2,avgCostSar:25}]:[],confirmedAt:'2026-10-01T08:00:00Z'});
+        if(n!==19)await store.saveProfile(ownerId,defaultProfile,0,'profile');
+        if(owned&&n!==19&&n!==20)await store.confirmCase(ownerId,{symbol,reasons,
+          supportingEvidence:'Synthetic case for validation only.',risks:risk,reconsiderWhen,sourceRefs:[url]},0,'case',1);
+        if(![8,15].includes(n))await new DashboardStore(db).save({...fixture,tradeDate:date,asOf:date+'T06:00:00Z',
+          expectedPriceDate:priceDate,indexUnavailable:false,warnings:[],
+          qualified:owned?[]:[{code:symbol,name:'Synthetic evaluation issuer',relativeStrengthPct:15,squeeze:true,conditionsMet:2}],
+          recommendationEntries:[{code:symbol,priceDate,status:entry}]} as Parameters<DashboardStore['save']>[0]);
+        if(n!==22){
+          if(n===21)await evidence.saveCollection({...receipt,status:'failed',error:'Synthetic outage'},[]);
+          else if(n===24)await evidence.saveCollection({...receipt,status:'content',count:1},[{symbol,title:'New unreviewed results',
+            url:url+'/new',published_at:date+'T05:00:00Z',retrieved_at:receipt.attemptedAt}]);
+          else await evidence.saveCollection({...receipt,attemptedAt:n===23?'2026-10-01T06:00:00Z':receipt.attemptedAt},[]);
+        }
+        const descriptions:Record<string,string>={
+          [metric]:n===27?'Two reviewed sources give irreconcilable values for the same reporting period. Do not resolve the conflict by choosing one.':
+            severe?failedCase:mixed?adverse:strong,
+          valuation_context:unfavorable?'Trades at 24 times comparable earnings versus a peer median of 12.':
+            'Trades at 10 times comparable earnings versus a peer median of 14.',
+          downside_risk:risk,
+          official_catalyst:severe?'Reviewed filing confirms the reconsideration condition and provides no supported recovery plan.':
+            'Recurring demand supported by renewed long-term contracts.',
+        };
+        const metrics=Object.fromEntries(evidenceMetricFields(sector).slice(n===25?1:0).map((key:string)=>[key,{
+          raw_value:descriptions[key]??(severe?failedCase:'Stable relative to the prior period.'),
+          prior_value:'Prior comparable period',grade:2,explanation:'Synthetic reviewed case fixture.',source_url:url,
+        }]));
+        const revision=await evidence.saveReviewed({symbol,companyName:'Synthetic evaluation issuer',sector,sectorKind:sector,
+          latestResultsConfirmed:true,noticeDispositions:[],reportPeriod:'2026-Q3',sourceName:'Synthetic Saudi Exchange fixture',
+          sourceUrl:url,publishedAt:'2026-10-21T06:00:00Z',retrievedAt:'2026-10-21T06:30:00Z',riskFlags:[],analystNotes:'Synthetic fixture',metrics},ownerId);
+        inputFacts={revision:revision.revisionId,metrics,date,owned,reasons,reconsiderWhen,entry,
+          boundary:n===5?{rsi:25}:n===6?{rsi:60,momentum:-5}:null};
+        vi.stubGlobal('fetch',async(input:RequestInfo|URL,init?:RequestInit)=>{
+          calls++;
+          if(n===30)return new Response('Synthetic provider failure',{status:503});
+          requestBody=JSON.parse(String(init?.body)).input;
+          const response=await realFetch(input,init);
+          if(!response.ok)return response;
+          const body=await response.json();
+          responseText=body;
+          if(n===28)return Response.json({output_text:JSON.stringify({company:'supported',valuation:'favorable',
+            rationale:{interpretation:'Invalid evidence reference',evidence:['outside-fixture']}})});
+          if(n===29)await new PortfolioStore(db).append(ownerId,{operationId:'sale',kind:'sell',code:symbol,name:'Synthetic evaluation issuer',shares:2,priceSar:25,confirmedAt:date+'T06:30:00Z'});
+          return Response.json(body);
+        });
+        try{await generateRecommendation(c,symbol,()=>now);}
+        catch(e){outcome.error=e instanceof Response?`${e.status} ${await e.text()}`:String(e);}
+        const summary=await recommendationSummary(c,now);
+        outcome.result=summary.rows.find(row=>row.symbol===symbol)??null;
+        return summary.history.length;
+      }finally{vi.unstubAllGlobals();sqlite.close();}
+    })();
+    const {result,error}=outcome;
+    const passed=n<=18?calls===1&&result?.current?.action===action&&!error:
+      n<=25?calls===0&&Boolean(result?.blockers.length)&&!error:
+      n<=27?calls===1&&result?.current?.status==='blocked'&&!error:
+      n===28?calls===1&&Boolean(error?.includes('evidence requirements'))&&!result?.current:
+      n===29?calls===1&&Boolean(error?.startsWith('409'))&&!result?.current&&previous===0:
+      calls===1&&Boolean(error?.startsWith('502'))&&!result?.current;
+    runs.push({id,pass,expected:action??'blocked or rejected',passed,calls,error,result,inputFacts,requestBody,responseText});
+    console.log(`${id} run ${pass}: ${passed?'pass':'FAIL'} · ${result?.current?.action??error??'blocked'}`);
+    writeFileSync('recommendation-evaluation-results.json',JSON.stringify({policy,model:chatModel,runs},null,2));
+  }
+  expect(runs).toHaveLength(60);
+  expect(runs.filter(run=>!run.passed).map(run=>`${run.id}/${run.pass}`)).toEqual([]);
+},720_000);

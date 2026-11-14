@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: "discord-smoke | heartbeat | cockpit-refresh | digest | run"
+        description: "discord-smoke | heartbeat | cockpit-refresh | digest | run | recommendation-evaluation"
         required: true
         default: discord-smoke
 
@@ -24,6 +24,7 @@ concurrency:
 
 jobs:
   operate:
+    if: inputs.operation != 'recommendation-evaluation'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -58,3 +59,26 @@ jobs:
         run: |
           printf 'operation=%s\ncommit=%s\nactor=%s\nresult=%s\n' \
             "$OPERATION" "$GITHUB_SHA" "$GITHUB_ACTOR" "${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  recommendation-evaluation:
+    if: inputs.operation == 'recommendation-evaluation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run frozen cases
+        env:
+          TASI_RECOMMENDATION_EVALUATION: '1'
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TASI_LLM_MODEL_OPENROUTER: ${{ vars.TASI_LLM_MODEL_OPENROUTER }}
+        run: npm exec -- vitest run tests/ui/holding-secretary-service.test.ts -t 'frozen 30-case'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recommendation-evaluation
+          path: recommendation-evaluation-results.json
