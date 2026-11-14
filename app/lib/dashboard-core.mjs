@@ -143,6 +143,10 @@ export function parseDashboardSnapshot(value) {
     };
   }
   const parsedV2 = {
+    ...(value.recommendationEntries===undefined?{}:{recommendationEntries:list(value.recommendationEntries,"recommendationEntries").map(entry=>({
+      code:text(entry,"code"),priceDate:tradeDate(entry.priceDate),
+      status:enumValue(entry.status,"entry status",["passed","failed","unavailable"]),
+    }))}),
     ...common, schemaVersion: 2, summary: list(value.summary, "summary").map((line) => text({ line }, "line")),
     top10: { proposalId: text(top10, "proposalId"), status: enumValue(top10.status, "top10.status", ["draft", "approved", "rejected"]), researchedAt: timestamp(top10.researchedAt, "top10.researchedAt"), entries },
     portfolio: { confirmedAt: timestamp(portfolio.confirmedAt, "portfolio.confirmedAt"), cashSar: portfolio.policyStatus === 'unconfigured' && portfolio.cashSar === null ? null : nonNegative(portfolio, "cashSar"), contributionMonth: portfolio.contributionMonth === null ? null : text(portfolio, "contributionMonth"), holdings: list(portfolio.holdings, "portfolio.holdings").map((holding) => ({ code: text(holding, "code"), name: text(holding, "name"), shares: nonNegative(holding, "shares"), ...(typeof holding.avgCostSar === "number" ? { avgCostSar: nonNegative(holding, "avgCostSar") } : {}) })), proposal: portfolio.proposal === null ? null : portfolio.proposal, ...(portfolio.policyStatus === 'unconfigured'?{policyStatus:'unconfigured',...(portfolio.accountBook?{...(portfolio.accountBook?{accountBook:parsePortfolioBook(portfolio.accountBook)}:{}),...(portfolio.savedPortfolio?{savedPortfolio:parseSavedPortfolio(portfolio.savedPortfolio)}:{})}:{}),...(portfolio.savedPortfolio?{savedPortfolio:parseSavedPortfolio(portfolio.savedPortfolio)}:{})}:{}) },

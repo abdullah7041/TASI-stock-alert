@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { evidenceMetricFields } from '@/app/lib/evidence-review-core.mjs';
 import styles from './FriendlyCockpit.module.css';
 
-type Announcement = {title:string;url:string;retrieved_at?:string};
+type Announcement = {title:string;url:string;retrieved_at?:string;published_at?:string|null;symbol?:string|null};
+const localDate=(value?:string|null)=>value&&Number.isFinite(Date.parse(value))?new Date(Date.parse(value)+3*3600_000).toISOString().slice(0,16):'';
 type Metric = {raw_value:string;prior_value:string;grade:string;explanation:string;source_url:string};
 const label=(key:string)=>key.charAt(0).toUpperCase()+key.slice(1).replaceAll('_',' ');
 const emptyMetric=():Metric=>({raw_value:'',prior_value:'',grade:'',explanation:'',source_url:''});
@@ -12,6 +13,16 @@ export function EvidenceReviewForm() {
   const [busy,setBusy]=useState(false), [kind,setKind]=useState('operating');
   const [fields,setFields]=useState({symbol:'',companyName:'',sector:'',reportPeriod:'',
     publishedAt:'',retrievedAt:'',sourceName:'Saudi Exchange',sourceUrl:'',analystNotes:'',riskFlags:''});
+  const [latestResultsConfirmed,setLatestResultsConfirmed]=useState(false);
+  const [notices,setNotices]=useState<Record<string,{status:string;explanation:string}>>({});
+  const relevant=queue.filter(item=>fields.symbol&&(item.symbol===fields.symbol||!item.symbol)&&
+    (!item.published_at||!fields.publishedAt||Date.parse(item.published_at)>Date.parse(fields.publishedAt+'+03:00')));
+  function selectSource(url:string){
+    const item=queue.find(row=>row.url===url);
+    setLatestResultsConfirmed(false);
+    setFields(current=>({...current,sourceUrl:url,symbol:item?.symbol??current.symbol,
+      publishedAt:localDate(item?.published_at),retrievedAt:localDate(item?.retrieved_at)}));
+  }
   const [metrics,setMetrics]=useState<Record<string,Metric>>({});
   useEffect(()=>{
     const controller=new AbortController();
@@ -30,7 +41,10 @@ export function EvidenceReviewForm() {
   async function submit(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault();if(busy)return;setBusy(true);setStatus('');
     try {
-      const record={...fields,sectorKind:kind,
+      const record={...fields,sectorKind:kind,latestResultsConfirmed,
+        noticeDispositions:relevant.filter(item=>notices[item.url]?.explanation.trim()).map(item=>({
+          url:item.url,title:item.title,publication:item.published_at??null,...notices[item.url],
+        })),
         publishedAt:new Date(`${fields.publishedAt}+03:00`).toISOString(),
         retrievedAt:new Date(`${fields.retrievedAt}+03:00`).toISOString(),
         riskFlags:fields.riskFlags.split('\n').map(flag=>flag.trim()).filter(Boolean),
@@ -49,7 +63,7 @@ export function EvidenceReviewForm() {
     <p className={styles.sectionNote}>Enter only reviewed source facts. Every grade requires an explanation and source. Times use Riyadh (UTC+3).</p>
     <fieldset disabled={busy}>
       {queue.length>0&&<label>Choose a collected official source<select value={queue.some(item=>item.url===fields.sourceUrl)?fields.sourceUrl:''}
-        onChange={event=>change('sourceUrl',event.target.value)}><option value="">Enter a source below</option>
+        onChange={event=>selectSource(event.target.value)}><option value="">Enter a source below</option>
         {queue.map(item=><option key={item.url} value={item.url}>{item.title}</option>)}</select></label>}
       <div className={styles.formGrid}>
         <label>Stock code<input value={fields.symbol} onChange={event=>change('symbol',event.target.value)} pattern="[0-9]{4}" required/></label>
@@ -73,6 +87,15 @@ export function EvidenceReviewForm() {
           <label>{title} · source URL<input type="url" value={metric.source_url} onChange={event=>metricChange(key,'source_url',event.target.value)} placeholder="Uses the official source above if blank"/></label>
         </div><label>{title} · explanation<textarea value={metric.explanation} onChange={event=>metricChange(key,'explanation',event.target.value)} required/></label></fieldset>;
       })}
+      <label><input type="checkbox" checked={latestResultsConfirmed} onChange={e=>setLatestResultsConfirmed(e.target.checked)}/> I checked that this is the latest official financial report for this company</label>
+      {relevant.map(item=><fieldset key={item.url}><legend>{item.title}</legend>
+        <a href={item.url.startsWith('https://')?item.url:undefined} target="_blank" rel="noreferrer">Read notice</a>
+        <label>Notice status<select value={notices[item.url]?.status??'unresolved'} onChange={e=>setNotices({...notices,[item.url]:{status:e.target.value,explanation:notices[item.url]?.explanation??''}})}>
+          <option value="unresolved">Unresolved</option><option value="incorporated">Included in reviewed evidence</option><option value="immaterial">Does not change the assessment</option>
+        </select></label>
+        {notices[item.url]?.status&&notices[item.url].status!=='unresolved'&&<label>Explain how the notice was reviewed
+          <textarea required value={notices[item.url].explanation} onChange={e=>setNotices({...notices,[item.url]:{...notices[item.url],explanation:e.target.value}})}/></label>}
+      </fieldset>)}
       <label>Risk flags · one per line<textarea value={fields.riskFlags} onChange={event=>change('riskFlags',event.target.value)}/></label>
       <label>Review notes<textarea value={fields.analystNotes} onChange={event=>change('analystNotes',event.target.value)} required/></label>
       <button className={styles.primaryButton} type="submit">{busy?'Saving…':'Save reviewed evidence'}</button>

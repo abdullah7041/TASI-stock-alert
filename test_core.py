@@ -2465,12 +2465,12 @@ def test_scanner_coverage_requires_an_actual_sixty_day_index_return(monkeypatch)
     import universe
     monkeypatch.setattr(universe, "load", lambda: ["4016"])
     for bars, unavailable in [(1, True), (60, True), (61, False)]:
-        close = pd.Series(range(100, 100 + bars), index=pd.date_range("2026-01-01", periods=bars))
+        close = pd.Series(range(100, 100 + bars), index=pd.date_range(end="2026-01-07", periods=bars))
         frame = pd.DataFrame({"Close": close, "High": close + 1,
                               "Low": close - 1, "Volume": 100000})
         monkeypatch.setattr(data, "get_histories_adjusted",
                             lambda *_: {cfg.REGIME["index_code"]: frame})
-        result = main._scanner_result()
+        result = main._scanner_result(now=datetime(2026, 1, 8, 8, tzinfo=session_gate.RIYADH))
         assert result["indexUnavailable"] is unavailable, f"index bars: {bars}"
         assert bool(result["warning"]) is unavailable
 

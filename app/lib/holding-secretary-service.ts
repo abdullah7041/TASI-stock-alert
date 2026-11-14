@@ -48,7 +48,7 @@ function checkSources(value:unknown,allowed:string[]):string[]{
   if(!Array.isArray(value)||value.length>40||value.some(url=>typeof url!=='string'||!allowed.includes(url)))throw new Error('The review cited an unsupported source.');
   return [...new Set(value as string[])];
 }
-async function model(context:SecretaryContext,operationKey:string,input:unknown,properties:Record<string,unknown>,required:string[]){
+export async function model(context:SecretaryContext,operationKey:string,input:unknown,properties:Record<string,unknown>,required:string[],systemInstructions=instructions){
   if(!context.apiKey||!context.chatModel)throw new Response('The research assistant is not configured.',{status:503});
   const usage=new ResearchStore(context.db);
   const now=new Date().toISOString();
@@ -58,7 +58,7 @@ async function model(context:SecretaryContext,operationKey:string,input:unknown,
   const reservation=await usage.reserve(context.ownerId,now.slice(0,7),operationKey,estimateOperationCostSar('chat'));
   if(reservation!=='reserved')throw new Response(reservation==='duplicate'?'This review is already being prepared.':'Monthly AI budget reached. Review remains pending.',{status:reservation==='duplicate'?409:429});
   try{
-    const response=await fetch('https://openrouter.ai/api/v1/responses',{method:'POST',signal:AbortSignal.timeout(45000),headers:{Authorization:`Bearer ${context.apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:context.chatModel,max_output_tokens:2400,provider:{require_parameters:true},instructions,input:JSON.stringify(input),text:{format:{type:'json_schema',name:'holding_review',strict:true,schema:{type:'object',additionalProperties:false,required,properties}}}})});
+    const response=await fetch('https://openrouter.ai/api/v1/responses',{method:'POST',signal:AbortSignal.timeout(45000),headers:{Authorization:`Bearer ${context.apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:context.chatModel,max_output_tokens:2400,provider:{require_parameters:true},instructions:systemInstructions,input:JSON.stringify(input),text:{format:{type:'json_schema',name:'holding_review',strict:true,schema:{type:'object',additionalProperties:false,required,properties}}}})});
     if(!response.ok)throw new Response(`Review provider unavailable (${response.status}).`,{status:502});
     const text=extractResponseText(await response.json());
     return {value:JSON.parse(text) as Record<string,unknown>,release:()=>usage.release(context.ownerId,operationKey)};

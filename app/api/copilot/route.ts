@@ -6,6 +6,7 @@ import { answerPortfolioQuestion } from '@/app/lib/copilot-service';
 import { HoldingSecretaryStore } from '@/app/lib/holding-secretary-store';
 import { HoldingSecretaryConflict, heldCompanies, parseProfileInput, parseCaseInput } from '@/app/lib/holding-secretary-core';
 import { secretaryConversation, draftHoldingCase, reviewHolding } from '@/app/lib/holding-secretary-service';
+import { hasRecommendation } from '@/app/lib/recommendation-service';
 import { PortfolioStore } from '@/app/lib/portfolio-store';
 
 async function context(request: Request) {
@@ -61,6 +62,8 @@ export async function POST(request: Request) {
       if (body.confirmed !== true || typeof body.id !== 'string' || !/^[a-f0-9-]{36}$/.test(body.id)) throw new Response('Explicit confirmation and decision ID required.',{status:400});
       let draft;
       try { draft = parseDecision(body.draft); } catch (e) { throw new Response((e as Error).message,{status:400}); }
+      if(draft.recommendationId&&!await hasRecommendation(c,draft.symbol,draft.recommendationId))
+        throw new Response('This recommendation is unavailable for the selected company.',{status:409});
       await c.store.confirm(c.ownerId,{...draft,id:body.id,confirmedAt:new Date().toISOString()});
       return Response.json(await secretaryConversation(c));
     }

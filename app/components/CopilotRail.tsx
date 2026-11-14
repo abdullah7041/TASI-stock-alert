@@ -52,6 +52,7 @@ export function CopilotRail() {
       <label>Stock code or PORTFOLIO<input value={draft.symbol} onChange={e=>setDraft({...draft,symbol:e.target.value})}/></label>
       <label>Decision<select value={draft.action} onChange={e=>setDraft({...draft,action:e.target.value as DecisionDraft['action']})}>{decisionActions.map(action=><option key={action}>{action}</option>)}</select></label>
       <label>Conditions<textarea dir="auto" maxLength={2000} value={draft.conditions} onChange={e=>setDraft({...draft,conditions:e.target.value})}/></label>
+      <label>Recommendation reference (optional)<input value={draft.recommendationId??''} onChange={e=>setDraft({...draft,recommendationId:e.target.value.trim()||undefined})}/></label>
       <label>Invalidation<textarea dir="auto" maxLength={2000} value={draft.invalidation} onChange={e=>setDraft({...draft,invalidation:e.target.value})}/></label>
       <button className={styles.primaryButton} onClick={()=>void confirm()}>Confirm decision note</button><button className={styles.textButton} onClick={()=>setDraft(null)}>Discard draft</button>
     </fieldset>}

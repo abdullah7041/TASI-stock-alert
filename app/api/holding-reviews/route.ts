@@ -1,3 +1,4 @@
+import { recommendationSummary } from '@/app/lib/recommendation-service';
 import { PortfolioStore } from '@/app/lib/portfolio-store';
 import { EvidenceStore } from '@/app/lib/evidence-store';
 import { holdingReviewSummary, refreshHoldingReviews } from '@/app/lib/holding-secretary-service';
@@ -26,7 +27,13 @@ async function respond(request:Request,refresh:boolean){
     if(runId&&(await new EvidenceStore(c.db).latestCollection())?.runId!==runId)throw new Response('The collection receipt is not the latest saved attempt.',{status:409});
     if(!c.ownerId)return Response.json({generatedAt:new Date().toISOString(),collection:await new EvidenceStore(c.db).latestCollection(),items:[],notices:[{id:'owner-setup',text:'No confirmed broker owner is available. Complete account setup.',kind:'setup'}]},{headers:{'Cache-Control':'no-store'}});
     const scoped={...c,ownerId:c.ownerId};
-    return Response.json(refresh?await refreshHoldingReviews(scoped):await holdingReviewSummary(scoped),{headers:{'Cache-Control':'no-store'}});
+    const summary=refresh?await refreshHoldingReviews(scoped):await holdingReviewSummary(scoped);
+    const evaluations=await recommendationSummary(scoped).then(
+      result=>result.rows.flatMap(row=>row.current?[{id:row.current.id,symbol:row.symbol,status:row.current.status,
+        createdAt:row.current.createdAt,evaluation:true}]:[]),
+      ()=>null,
+    );
+    return Response.json({...summary,evaluations},{headers:{'Cache-Control':'no-store'}});
   }catch(error){return error instanceof Response?error:Response.json({error:'Holding reviews could not be completed. Saved records remain available.'},{status:502});}
 }
 export const GET=(request:Request)=>respond(request,false);

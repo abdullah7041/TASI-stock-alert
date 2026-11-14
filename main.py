@@ -22,6 +22,7 @@ On GitHub Actions the workflow sets MODE.
 from __future__ import annotations
 
 import json
+import math
 import uuid
 import os
 import re
@@ -591,6 +592,8 @@ def _dashboard_snapshot(regime: str, recs: list, budget: dict, scanner_result: d
                 "urgent": urgent, "changed": _changed_entries(recs), "qualified": qualified,
                 "researchCount": len([c for c in candidates if c.get("conditions_met") == 1]),
                 "earlyMovers": early_movers,
+                **({"recommendationEntries": scanner_result["recommendationEntries"]}
+                   if scanner_result and "recommendationEntries" in scanner_result else {}),
                 "indexUnavailable": bool((scanner_result or {}).get("indexUnavailable")),
                 "monthlyBudgetSar": budget.get("monthly_cap"), "top10": top10,
                 # cashSar and contributionMonth were hardcoded 0.0/None, so the
@@ -877,7 +880,7 @@ def _collect_recs(include_news: bool, record_history: bool = False,
     return regime, recs, budget_summary
 
 
-def _scanner_result() -> dict:
+def _scanner_result(*, now: datetime | None = None) -> dict:
     """Breakout scanner section for the digest. Fail-soft: this rides a
     genuinely new network-heavy step (~265 live Yahoo fetches) on every
     digest run, so ANY exception here (network failure, missing/empty
@@ -898,9 +901,14 @@ def _scanner_result() -> dict:
 
         index_code = cfg.REGIME["index_code"]
         hist = data.get_histories_adjusted(codes + [index_code], cfg.SCANNER["history_period"])
+        # Today's in-progress bar is not a completed entry observation.
+        expected = session_gate.previous_trading_date((now or datetime.now(session_gate.RIYADH)).astimezone(session_gate.RIYADH).date())
+        hist = {code: frame.loc[frame.index.strftime("%Y-%m-%d") <= expected]
+                for code, frame in hist.items() if frame is not None}
         index_df = hist.get(index_code)
         # Yahoo can return one bar: non-empty is not enough for the scanner's 60-day return.
         index_unavailable = (index_df is None or index_df.empty
+                             or index_df.index[-1].strftime("%Y-%m-%d") != expected
                              or not scanner.code_feature_series(index_df)["ret_60d"].notna().any())
         if index_unavailable:
             print(f"scanner: no data for the index ({index_code}) this run -- "
@@ -909,7 +917,24 @@ def _scanner_result() -> dict:
 
         candidates = scanner.scan(codes, hist, index_df)
         names = scanner.resolve_names(candidates)
+        recommendation_entries = []
+        covered = {item["code"] for item in _holdings()}
+        covered.update(c["code"] for c in candidates if c["conditions_met"] == 2)
+        for code in sorted(covered):
+            frame = hist.get(code)
+            if frame is None or frame.empty:
+                continue
+            long = ind.long_term_read(frame, cfg.HORIZON["long_lookback_days"], cfg.HORIZON["short_ma"],
+                                      cfg.HORIZON["long_ma"], cfg.TECH["rsi_period"])
+            passed, rules = az.buy_decision(long, cfg.BUY_CRITERIA)
+            available = len(frame) >= cfg.HORIZON["long_lookback_days"] + 1 and all(
+                rule.get("actual") is not None and
+                (not isinstance(rule["actual"], float) or math.isfinite(rule["actual"]))
+                for rule in rules)
+            recommendation_entries.append({"code": code, "priceDate": frame.index[-1].strftime("%Y-%m-%d"),
+                                           "status": ("passed" if passed else "failed") if available else "unavailable"})
         return {"candidates": candidates, "names": names, "indexUnavailable": index_unavailable,
+                "recommendationEntries": recommendation_entries,
                 "warning": "TASI index unavailable; relative strength could not be calculated." if index_unavailable else None}
     except Exception as e:
         print(f"scanner: unavailable ({type(e).__name__}: {e})")

@@ -118,7 +118,7 @@ test('manual refresh reports an updated artifact',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(updatedPayload));
-  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):url==='/api/portfolio'?Promise.resolve(Response.error()):fetchMock());
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):url==='/api/portfolio'?Promise.resolve(Response.error()):url==='/api/recommendations'?Promise.resolve(Response.json({rows:[],history:[]})):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
@@ -131,7 +131,7 @@ test('manual refresh reports when the latest saved artifact is stale',async()=>{
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(Response.json(payload))
     .mockResolvedValueOnce(Response.json(stalePayload));
-  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):url==='/api/portfolio'?Promise.resolve(Response.error()):fetchMock());
+  vi.stubGlobal('fetch',(url: string)=>url==='/api/copilot'?Promise.resolve(Response.json({messages:[],decisions:[]})):url==='/api/portfolio'?Promise.resolve(Response.error()):url==='/api/recommendations'?Promise.resolve(Response.json({rows:[],history:[]})):fetchMock());
   render(<ActionCockpit dashboard={payload}/>);
 
   await screen.findByRole('button',{name:'Refresh cockpit'});
@@ -159,7 +159,7 @@ test('optional AI unavailability does not downgrade complete deterministic holdi
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json(completePayload)));
   render(<ActionCockpit dashboard={completePayload}/>);
 
-  expect(screen.getByText('Company reviews are pending')).toBeTruthy();
+  expect(screen.getByRole('heading',{name:'Investment recommendations'})).toBeTruthy();
   expect(screen.queryByText('Some checks unavailable')).toBeNull();
 });
 

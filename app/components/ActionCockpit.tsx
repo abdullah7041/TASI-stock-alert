@@ -13,6 +13,7 @@ import { DetailDialog, StockDetails } from './CockpitDetails';
 import { IntelligenceBoard } from './IntelligenceBoard';
 import { MarketPulse } from './MarketPulse';
 import { CopilotRail } from './CopilotRail';
+import { RecommendationPanel } from './RecommendationPanel';
 import { EvidenceReviewForm } from './EvidenceReviewForm';
 import styles from './FriendlyCockpit.module.css';
 
@@ -141,7 +142,6 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
   const displayedPortfolio=portfolio??fallback;
   const livePortfolio={...(displayedPortfolio??savedPortfolio([])).view,confirmedAt:displayedPortfolio?.view.confirmedAt??snapshot.asOf};
   const view=buildDecisionView(snapshot,freshness,livePortfolio), candidates=all?view.candidates:view.candidates.slice(0,3);
-  const policyPending=true;
   const statusWarnings=[...new Set(snapshot.warnings.filter(warning=>!/^Top 10 draft unavailable:/i.test(warning)))];
   const indexWarning=statusWarnings.some(warning=>/TASI index unavailable|Market regime unavailable:.*index/i.test(warning));
   const visibleWarnings=statusWarnings.filter(warning=>!/TASI index unavailable|Market regime unavailable:.*index/i.test(warning));
@@ -198,7 +198,7 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
       <section className={styles.today} aria-label="Daily freshness">
         <div className={styles.briefing}><h1>Portfolio overview</h1>
           <p className={styles.takeaway}>{view.incomplete?'Some checks unavailable':
-            policyPending?'Company reviews are pending':reviews.length?'Review the dated observations below':'Your daily check-in is ready'}</p>
+            reviews.length?'Review the dated observations below':'Your daily check-in is ready'}</p>
           <p className={styles.muted}>Use the dated evidence to review your companies. No trade quantity is proposed.</p>
           <p className={styles.date}>Daily snapshot for {snapshot.tradeDate}</p>
           <p className={styles.date}>{priceDateLabel} · Saved {formatCockpitTimestamp(snapshot.asOf)}</p>
@@ -219,9 +219,9 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
         <button className={styles.textButton} onClick={()=>navigate('research')}>Open Research ↗</button></div>
         {reviews.length?<div className={styles.reviewList}>{reviews.map(stock=><button key={stock.code} onClick={()=>setSelected(stock)}>
             <strong>{stock.name}</strong><span>{stock.reason}</span><span>View evidence ↗</span></button>)}</div>:
-          <p className={styles.sectionNote}>{policyPending?'Company assessments are pending. Review sources before reaching an investment conclusion.':
-            view.incomplete?'Review coverage is incomplete; check source availability.':'No new review item in this dated snapshot.'}</p>}
+          <p className={styles.sectionNote}>{view.incomplete?'Review coverage is incomplete; check source availability.':'No new review item in this dated snapshot.'}</p>}
       </section>
+      <RecommendationPanel key={`${snapshot.asOf}:${displayedPortfolio?.eventCount}:${freshness}`} snapshotDate={snapshot.asOf}/>
       {holdings}
     </>}
     {viewId==='portfolio'&&<><div className={styles.viewHeading}><h1>Portfolio</h1><p>Your saved holdings and completed activity.</p></div>
@@ -258,7 +258,7 @@ export function ActionCockpit({dashboard}:{dashboard:DashboardPayload|null}) {
     </>}
     {viewId==='assistant'&&<><div className={styles.viewHeading}><h1>Assistant</h1><p>Ask about your evidence and save a decision note for later review.</p></div><CopilotRail/></>}
     <footer className={styles.footer}><span>TASI · Evidence for your next review</span><p>Delayed analysis. Check live prices in your broker. Every trade remains yours to execute.</p></footer>
-    {selected&&<DetailDialog title={selected.name} onClose={close}><StockDetails stock={selected}/></DetailDialog>}
+    {selected&&<DetailDialog title={selected.name} onClose={close}><StockDetails stock={selected}/><RecommendationPanel snapshotDate={snapshot.asOf} symbol={selected.code}/></DetailDialog>}
     {!selected&&panel==='trade'&&portfolio&&!ledgerError&&<DetailDialog title="Record completed activity" onClose={close}>
       <PortfolioActivityForm portfolio={portfolio} onSaved={()=>void refresh()}/></DetailDialog>}
     {!selected&&panel==='status'&&<DetailDialog title="Data status" onClose={close}>

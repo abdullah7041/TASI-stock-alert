@@ -44,6 +44,16 @@ export class EvidenceStore {
     const row = await this.db.prepare("SELECT receipt_json FROM evidence_collections ORDER BY julianday(attempted_at) DESC, rowid DESC LIMIT 1").first<{receipt_json:string}>();
     return row ? JSON.parse(row.receipt_json) : null;
   }
+  async collectionWithQueue() {
+    await this.ensureReady();
+    const [receipt,queue]=await this.db.batch([
+      this.db.prepare("SELECT receipt_json FROM evidence_collections ORDER BY julianday(attempted_at) DESC, rowid DESC LIMIT 1"),
+      this.db.prepare("SELECT announcement_json FROM evidence_queue ORDER BY julianday(collected_at) DESC, source_url ASC"),
+    ]);
+    const raw=(receipt.results?.[0] as {receipt_json?:unknown}|undefined)?.receipt_json;
+    return {receipt:typeof raw==='string'?JSON.parse(raw) as CollectionReceipt:null,
+      queue:((queue.results??[]) as {announcement_json?:unknown}[]).flatMap(row=>typeof row.announcement_json==='string'?[JSON.parse(row.announcement_json) as QueueItem]:[])};
+  }
   async queue() {
     await this.ensureReady();
     const rows = await this.db.prepare("SELECT announcement_json FROM evidence_queue ORDER BY julianday(collected_at) DESC, source_url ASC").all<{ announcement_json: string }>();

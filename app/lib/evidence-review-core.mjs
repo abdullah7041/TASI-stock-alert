@@ -59,7 +59,16 @@ export function validateEvidenceRecord(value, issuerHosts = []) {
       source_url: officialUrl(metric.source_url, allowedHosts, `${key}.source_url`),
     };
   }
+  if (value.latestResultsConfirmed !== undefined && typeof value.latestResultsConfirmed !== "boolean") throw new Error("Invalid results confirmation.");
+  const dispositions = value.noticeDispositions ?? [];
+  if (!Array.isArray(dispositions) || dispositions.length > 200) throw new Error("Invalid notice dispositions.");
+  const noticeDispositions = dispositions.map(d => {
+    if (!d || !["incorporated","immaterial","unresolved"].includes(d.status)) throw new Error("Invalid notice disposition.");
+    return {url:officialUrl(d.url,allowedHosts,"notice URL"),publication:d.publication===null?null:timestamp(d.publication,"notice publication"),
+      title:text(d.title,"notice title"),status:d.status,explanation:text(d.explanation,"notice explanation")};
+  });
   return {
+    ...(value.latestResultsConfirmed !== undefined ? {latestResultsConfirmed:value.latestResultsConfirmed,noticeDispositions} : {}),
     symbol: text(value.symbol, "symbol"), companyName: text(value.companyName, "companyName"), sector: text(value.sector, "sector"), sectorKind: kind,
     reportPeriod: text(value.reportPeriod, "reportPeriod"), publishedAt, retrievedAt, sourceName: text(value.sourceName, "sourceName"),
     sourceUrl: officialUrl(value.sourceUrl, allowedHosts, "sourceUrl"), riskFlags: Array.isArray(value.riskFlags) ? value.riskFlags.map((flag) => text(flag, "riskFlags")) : [],

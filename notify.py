@@ -304,6 +304,13 @@ def build_dashboard_digest(snapshot: dict) -> str:
         status = collection.get("status", "unavailable")
         count = f" ({collection.get('count', 0)} candidates, unreviewed)" if status == "content" else ""
         lines.append(f"Official source check: {status}{count}; attempted {collection.get('attemptedAt', 'unavailable')}.")
+        evaluations = holding_reviews.get("evaluations")
+        if evaluations is None and "evaluations" in holding_reviews:
+            lines.append("Evaluation recommendation status unavailable.")
+        elif evaluations:
+            lines.append("Saved evaluations: " + "; ".join(
+                f"{item['symbol']} {item['status']} · {item['id'][:12]}" for item in evaluations[:3]
+            ) + ". Review dates and evidence in the cockpit.")
         items = holding_reviews.get("items") or []
         for item in items[:3]:
             lines.append(f"• {_clip(str(item.get('name') or item.get('symbol')), 60)}: {item.get('status', 'incomplete')} review — {_clip(str(item.get('changed') or 'Review in cockpit.'), 120)}")

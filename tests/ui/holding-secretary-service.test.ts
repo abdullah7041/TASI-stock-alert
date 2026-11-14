@@ -7,6 +7,10 @@ import { CopilotStore } from '@/app/lib/copilot-store';
 import { HoldingSecretaryStore } from '@/app/lib/holding-secretary-store';
 import { defaultProfile } from '@/app/lib/holding-secretary-core';
 import { PortfolioStore } from '@/app/lib/portfolio-store';
+import { DashboardStore } from '@/app/lib/dashboard-store';
+import { generateRecommendation,recommendationSummary } from '@/app/lib/recommendation-service';
+import { evidenceMetricFields } from '@/app/lib/evidence-review-core.mjs';
+import fixture from '../fixtures/friendly-dashboard.json';
 import { EvidenceStore } from '@/app/lib/evidence-store';
 import { reviewHolding, draftHoldingCase, holdingReviewSummary, secretaryConversation } from '@/app/lib/holding-secretary-service';
 
@@ -21,7 +25,7 @@ function database() {
       async run(){const result=sqlite.prepare(sql).run(...args as []);return {meta:{changes:Number(result.changes)}};}};
     return query;
   };
-  return {sqlite,db:{prepare,async batch(queries:ReturnType<typeof prepare>[]){return Promise.all(queries.map(q=>q.run()));}} as unknown as D1Database};
+  return {sqlite,db:{prepare,async batch(queries:ReturnType<typeof prepare>[]){return Promise.all(queries.map(q=>q.all()));}} as unknown as D1Database};
 }
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();});
 const reply=(action='WATCH')=>({answer:'Company evidence is incomplete.',draft:{symbol:'2320',action,conditions:'Review official results.',invalidation:'A reviewed filing changes the case.'}});
@@ -210,4 +214,33 @@ test('a large announcement history remains bounded and exposes omitted coverage'
   const result=await reviewHolding(context,'2320');
   expect(result.status).toBe('provisional');expect(result.sources!.length).toBeLessThanOrEqual(40);
   expect(result.missing).toMatch(/omitted|bounded|older notices/i);sqlite.close();
+});
+
+test('a reviewed holding produces one dated evaluation and a newer unresolved notice makes it historical',async()=>{
+  const {context,evidence,db,sqlite}=await seeded();
+  const now=new Date('2026-10-22T07:00:00Z');
+  await new DashboardStore(db).save({...fixture,tradeDate:'2026-10-22',asOf:'2026-10-22T06:00:00Z',
+    expectedPriceDate:'2026-10-21',recommendationEntries:[{code:'2320',priceDate:'2026-10-21',status:'passed'}]} as Parameters<DashboardStore['save']>[0]);
+  const revision=await evidence.saveReviewed({symbol:'2320',companyName:'Al Babtain',sector:'Operating',
+    sectorKind:'operating',latestResultsConfirmed:true,noticeDispositions:[],
+    reportPeriod:'2026-Q2',sourceName:'Saudi Exchange',sourceUrl:source,publishedAt:'2026-08-01T08:00:00Z',
+    retrievedAt:'2026-10-20T08:00:00Z',riskFlags:[],analystNotes:'Reviewed',
+    metrics:Object.fromEntries(evidenceMetricFields('operating').map(field=>[field,
+      {raw_value:'10',prior_value:'9',grade:3,explanation:'Reviewed comparison',source_url:source}]))},'owner');
+  const claim={interpretation:'Reviewed comparison supports the case.',evidence:[revision.revisionId+':valuation_context']};
+  const model=vi.fn(async()=>Response.json({output_text:JSON.stringify({company:'supported',valuation:'favorable',
+    rationale:claim,supporting:[claim],contrary:[claim],risks:[claim],invalidation:claim,ownershipCondition:'',remainingRationale:''})}));
+  vi.stubGlobal('fetch',model);
+  await generateRecommendation(context,'2320',()=>now);
+  await generateRecommendation(context,'2320',()=>now);
+  expect(model).toHaveBeenCalledTimes(1);
+  expect((await recommendationSummary(context,now)).rows.find(row=>row.symbol==='2320')?.current).toMatchObject({action:'ADD',evaluation:true});
+  const receipt={runId:'new-notice',attemptedAt:'2026-10-22T06:30:00Z',status:'content' as const,count:1};
+  await evidence.saveCollection(receipt,[{symbol:'2320',title:'New official notice',url:source,
+    published_at:'2026-10-22T06:10:00Z',retrieved_at:receipt.attemptedAt}]);
+  const changed=await recommendationSummary(context,now);
+  expect(changed.rows.find(row=>row.symbol==='2320')).toMatchObject({current:null,blockers:[expect.stringContaining('newer')]});
+  expect(changed.history).toHaveLength(1);
+  expect((await recommendationSummary({...context,ownerId:'another'},now)).history).toEqual([]);
+  sqlite.close();
 });

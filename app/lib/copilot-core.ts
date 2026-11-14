@@ -1,6 +1,6 @@
 export const decisionActions = ['WATCH', 'AVOID', 'HOLD', 'REDUCE', 'RESEARCH_MORE'] as const;
 const modelDecisionActions = ['WATCH','RESEARCH_MORE'] as const;
-export type DecisionDraft = { symbol: string; action: typeof decisionActions[number]; conditions: string; invalidation: string };
+export type DecisionDraft = { symbol: string; action: typeof decisionActions[number]; conditions: string; invalidation: string; recommendationId?:string };
 export type CopilotMessage = { id: string; role: 'user' | 'assistant'; text: string; createdAt: string; draft?: DecisionDraft | null };
 export type DecisionNote = DecisionDraft & { id: string; confirmedAt: string };
 
@@ -12,7 +12,8 @@ export function parseDecision(value: unknown): DecisionDraft {
   for (const key of ['conditions', 'invalidation']) {
     if (typeof v[key] !== 'string' || !v[key].trim() || v[key].length > 2000) throw new Error('Conditions and invalidation are required (up to 2000 characters each).');
   }
-  return { symbol: v.symbol, action: v.action as DecisionDraft['action'], conditions: (v.conditions as string).trim(), invalidation: (v.invalidation as string).trim() };
+  if(v.recommendationId!==undefined&&(typeof v.recommendationId!=='string'||!/^[a-f0-9]{64}$/.test(v.recommendationId)))throw new Error('Invalid recommendation reference.');
+  return { ...(typeof v.recommendationId==='string'?{recommendationId:v.recommendationId}:{}), symbol: v.symbol, action: v.action as DecisionDraft['action'], conditions: (v.conditions as string).trim(), invalidation: (v.invalidation as string).trim() };
 }
 
 export function parseCopilotReply(text: string): { answer: string; draft: DecisionDraft | null } {
